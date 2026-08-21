@@ -203,12 +203,63 @@ Empfehlung: mit (1) starten, (2) einbauen sobald erste Links tot sind.
 - **Teilnehmerzahl**: Soft-Limit 8, UI von Anfang an für "1 bis viele" gebaut statt fest verdrahtet.
 - **Datenpflege**: eigene Admin-UI statt Seed-Script als Dauerlösung.
 - **1./2. Bundesliga**: gleiches Datenmodell, Liga-Zugehörigkeit über `team_seasons` statt festem Feld auf `Team`, jährlich in der Admin-UI anpassbar.
+- **Auth**: echter Login (`mix phx.gen.auth`), nicht `Plug.BasicAuth`. Begründung in 9.1.
+- **Reveal-Host**: übertragbar. Begründung in 9.2.
+- **Mobile-Layout Reveal**: nebeneinander mit horizontalem Swipen, nicht gestapelt. Begründung in 9.3.
+
+### 9.1 Auth: echter Login statt geteiltem Passwort
+
+`Plug.BasicAuth` hätte für heute gereicht – ein Nutzer, ein Passwort. Gebaut ist
+trotzdem ein vollwertiger Login über `mix phx.gen.auth`, weil die App später
+normale Nutzerkonten bekommen soll und ein geteiltes Passwort dann komplett
+wegzuwerfen wäre.
+
+Damit daraus jetzt keine offene Anmeldung wird:
+
+- Die **Registrierung ist gebaut, getestet und zu**. Der Schalter ist
+  `REGISTRATION_OPEN` (siehe `config/runtime.exs`), Standard `false`.
+  Aufmachen ist eine Umgebungsvariable, kein Umbau.
+- **Kein Anmelde-Link in der Navigation.** Der Weg hinein ist `/users/log-in`.
+- **Admin ist ein Flag auf `users`**, kein Rollensystem. Es gibt genau eine
+  Sonderrolle; sobald es mehr gibt als "Admin oder nicht", wird daraus eine
+  eigene Tabelle – vorher wäre sie leerer Aufwand.
+- **Admin wird man nur über `mix kitrank.admin <email>`.** Kein Changeset castet
+  `is_admin`, es gibt also keinen Weg, sich über ein Formular zu befördern. Die
+  Task gibt einen fertigen Anmelde-Link aus, damit der erste Admin auch ohne
+  eingerichteten Mailversand hineinkommt.
+
+### 9.2 Reveal-Host: übertragbar, aber mit Rückfalltür
+
+Die Steuerung lässt sich an einen Teilnehmer abgeben
+(`Reveal.transfer_host/2`), etwa wenn der Ersteller nur zuschaut oder das Gerät
+wechselt.
+
+Das `host_token` des Erstellers **bleibt daneben gültig**. Sonst wäre ein Raum
+unsteuerbar, sobald der neue Host sein Handy weglegt, und niemand könnte ihn
+retten. Das Recht hängt damit am Link – dieselbe Logik wie beim `edit_token`
+einer Rangliste. `Reveal.reclaim_host/1` holt die Steuerung zurück.
+
+Verlässt der Host-Teilnehmer den Raum, fällt `host_participant_id` per
+`on_delete: :nilify_all` auf `nil` zurück, und der Ersteller ist wieder dran.
+
+### 9.3 Mobile-Layout Reveal: nebeneinander, horizontal wischbar
+
+Bei 4+ Teilnehmern werden die Trikot-Karten **nicht untereinander gestapelt**,
+sondern bleiben nebeneinander und lassen sich horizontal wischen
+(Scroll-Snap pro Karte).
+
+Der Grund ist der Zweck des Formats: Bei jedem Schritt geht es um den
+*Vergleich* dessen, was alle auf diesem Rang haben. Untereinander gestapelt
+sieht man nie zwei Karten gleichzeitig, und genau das ist der Moment, um den es
+geht. Lieber eine Wischgeste als ein verlorener Vergleich.
 
 ## 10. Noch offen
 
-- Admin-Auth: reicht `Plug.BasicAuth` (ein geteiltes Passwort) oder soll es ein echter `mix phx.gen.auth`-Login werden?
-- Reveal-Host-Rolle: fest an den Ersteller gebunden, oder soll die Steuerung übertragbar sein (falls der Host das Gerät wechselt)?
-- Mobile-Layout für Reveal bei 4+ Teilnehmern: horizontales Swipen pro Schritt, oder lieber untereinander stapeln?
+- Reveal: Soll ein Raum nach `expires_at` per Oban-Job oder simplem Cron
+  aufgeräumt werden? `Reveal.delete_expired_rooms/1` ist da, ruft aber noch
+  niemand periodisch auf.
+- Mailversand in Produktion: welcher Adapter (Resend, Postmark, SMTP)? Lokal
+  läuft alles über `/dev/mailbox`, für Fly fehlt die Entscheidung.
 
 ## 11. Erweiterbarkeit: Mehrsaison, weitere Ligen, andere Sportarten
 

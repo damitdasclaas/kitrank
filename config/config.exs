@@ -7,6 +7,19 @@
 # General application configuration
 import Config
 
+config :kitrank, :scopes,
+  user: [
+    default: true,
+    module: Kitrank.Accounts.Scope,
+    assign_key: :current_scope,
+    access_path: [:user, :id],
+    schema_key: :user_id,
+    schema_type: :id,
+    schema_table: :users,
+    test_data_fixture: Kitrank.AccountsFixtures,
+    test_setup_helper: :register_and_log_in_user
+  ]
+
 config :kitrank,
   ecto_repos: [Kitrank.Repo],
   generators: [timestamp_type: :utc_datetime]
@@ -48,6 +61,17 @@ config :tailwind,
     cd: Path.expand("..", __DIR__),
     env: %{"NODE_PATH" => [Path.expand("../deps", __DIR__), Mix.Project.build_path()]}
   ]
+
+# Mails des Logins (Magic Link, Bestaetigung, Adresswechsel). Lokal landen sie
+# im Postfach unter /dev/mailbox, in Produktion setzt runtime.exs einen echten
+# Adapter.
+config :kitrank, Kitrank.Mailer, adapter: Swoosh.Adapters.Local
+config :swoosh, api_client: Swoosh.ApiClient.Req
+
+# Neue Nutzerkonten sind standardmaessig zu. Der Login funktioniert, aber
+# registrieren kann sich niemand – aufgemacht wird ueber die Umgebungsvariable
+# REGISTRATION_OPEN (siehe config/runtime.exs).
+config :kitrank, :registration_open, false
 
 # Configure Elixir's Logger
 config :logger, :default_formatter,

@@ -64,12 +64,75 @@ defmodule Kitrank.Reveal do
 
   def fetch_room(_), do: {:error, :not_found}
 
-  @doc "Darf dieses Token den Raum steuern?"
-  def host?(%Room{host_token: host_token}, token) when is_binary(token) do
+  @doc """
+  Darf gesteuert werden – entweder mit dem Ersteller-Token oder als der
+  Teilnehmer, an den die Steuerung uebergeben wurde.
+
+  Das Ersteller-Token bleibt auch nach einer Uebergabe gueltig. Sonst waere ein
+  Raum unsteuerbar, sobald der neue Host das Handy weglegt, und niemand koennte
+  ihn retten. Der Ersteller ist der Eigentuemer des Raums – wie beim
+  `edit_token` einer Rangliste haengt das Recht am Link.
+  """
+  def host?(room, token \\ nil, participant_id \\ nil) do
+    owner?(room, token) or designated_host?(room, participant_id)
+  end
+
+  @doc "Haelt jemand das Ersteller-Token?"
+  def owner?(%Room{host_token: host_token}, token) when is_binary(token) do
     Plug.Crypto.secure_compare(host_token, token)
   end
 
-  def host?(_room, _token), do: false
+  def owner?(_room, _token), do: false
+
+  @doc "Ist dieser Teilnehmer der Host, an den uebergeben wurde?"
+  def designated_host?(%Room{host_participant_id: nil}, _participant_id), do: false
+  def designated_host?(_room, nil), do: false
+
+  def designated_host?(%Room{host_participant_id: host_id}, participant_id),
+    do: host_id == participant_id
+
+  @doc """
+  Gibt die Steuerung an einen Teilnehmer des Raums ab.
+
+  Broadcastet `{:host_changed, participant_id}`, damit die Steuerelemente bei
+  allen sofort dort auftauchen, wo sie hingehoeren.
+  """
+  def transfer_host(%Room{} = room, participant_id) do
+    if participant_in_room?(room, participant_id) do
+      room
+      |> Room.host_changeset(participant_id)
+      |> Repo.update()
+      |> case do
+        {:ok, room} ->
+          broadcast(room, {:host_changed, room.host_participant_id})
+          {:ok, room}
+
+        {:error, changeset} ->
+          {:error, changeset}
+      end
+    else
+      {:error, :not_a_participant}
+    end
+  end
+
+  @doc "Der Ersteller holt sich die Steuerung zurueck."
+  def reclaim_host(%Room{} = room) do
+    room
+    |> Room.host_changeset(nil)
+    |> Repo.update()
+    |> case do
+      {:ok, room} ->
+        broadcast(room, {:host_changed, nil})
+        {:ok, room}
+
+      {:error, changeset} ->
+        {:error, changeset}
+    end
+  end
+
+  defp participant_in_room?(%Room{id: room_id}, participant_id) do
+    Repo.exists?(from p in Participant, where: p.id == ^participant_id and p.room_id == ^room_id)
+  end
 
   def list_participants(%Room{id: room_id}), do: list_participants(room_id)
 

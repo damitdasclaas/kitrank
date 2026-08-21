@@ -28,6 +28,10 @@ defmodule Kitrank.Reveal.Room do
 
     has_many :participants, Kitrank.Reveal.Participant, foreign_key: :room_id
 
+    # Wer die Steuerung gerade hat, wenn sie abgegeben wurde. `nil` heisst:
+    # sie liegt noch beim Ersteller.
+    belongs_to :host_participant, Kitrank.Reveal.Participant
+
     timestamps(type: :utc_datetime)
   end
 
@@ -52,6 +56,13 @@ defmodule Kitrank.Reveal.Room do
     |> cast(attrs, [:status, :current_step])
     |> validate_inclusion(:status, @statuses)
     |> validate_number(:current_step, greater_than: 0)
+  end
+
+  @doc "Changeset fuer die Uebergabe der Steuerung."
+  def host_changeset(room, participant_id) do
+    room
+    |> cast(%{host_participant_id: participant_id}, [:host_participant_id])
+    |> assoc_constraint(:host_participant)
   end
 
   @doc "PubSub-Topic und Presence-Topic eines Raums."

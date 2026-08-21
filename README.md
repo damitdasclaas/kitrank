@@ -12,8 +12,48 @@ Die vollständige Architektur steht in [`architecture.md`](architecture.md).
 
 ## Stand
 
-Fertig: Datenmodell und Contexts (Schritt 1 der Architektur) sowie die **Übersicht** (Schritt 1, zweiter Teil) — Team-Raster nach Liga, Team-Detail als Modal und ein Direktvergleich für zwei bis drei Trikots.
-Noch offen: Admin-UI, Ranking und Reveal.
+Fertig: Datenmodell und Contexts, die **Übersicht** (Team-Raster, Team-Detail, Direktvergleich für zwei bis drei Trikots), **Login** und die **Admin-UI** zur Datenpflege.
+Noch offen: Ranking und Reveal.
+
+## Anmelden
+
+Es gibt einen vollwertigen Login, aber **die Registrierung ist zu** — die App hat
+heute nur Admins. Den ersten legst du auf der Kommandozeile an:
+
+```bash
+mix kitrank.admin du@example.com     # anlegen oder befördern
+mix kitrank.admin --list             # alle Admins zeigen
+mix kitrank.admin du@example.com --revoke
+```
+
+Die Task gibt einen fertigen Anmelde-Link aus. Das ist Absicht: beim ersten Admin
+gibt es niemanden, der eine Einladung verschicken könnte, und in Produktion steht
+oft noch kein Mailer. Danach läuft die Anmeldung über `/users/log-in` per
+Magic Link — lokal landen die Mails unter `/dev/mailbox`.
+
+`is_admin` wird von keinem Changeset gecastet. Es gibt also keinen Weg, sich über
+ein Formular selbst zu befördern.
+
+Wenn die App später normale Nutzerkonten bekommen soll, ist das ein Schalter,
+kein Umbau — der ganze Registrierungs-Ablauf ist gebaut und getestet:
+
+```bash
+fly secrets set REGISTRATION_OPEN=true
+```
+
+## Datenpflege
+
+`/admin` (nur für Admins) hat CRUD für Sportarten, Ligen, Vereine,
+Saison-Zuordnungen und Trikots. Die Reihenfolge, in der man vorgeht:
+
+1. **Sportart** → **Liga** anlegen
+2. **Vereine** mit Kürzel und Vereinsfarbe
+3. **Saison**: welcher Verein spielt dieses Jahr in welcher Liga (hier pflegst du Auf- und Abstieg)
+4. **Trikots** pro Verein und Saison, mit Bild- und Shop-Links
+
+Ohne Schritt 3 bleibt die Übersicht leer — die Gruppierung kommt aus
+`team_seasons`, nicht aus einem Feld am Verein. Das Dashboard unter `/admin`
+zeigt, was fehlt.
 
 ## Setup
 
@@ -66,8 +106,12 @@ lib/kitrank/
   rankings/         # Ranking (edit_token + share_slug), RankingEntry
   reveal.ex         # Räume, Beitritt, Schritt-für-Schritt-Aufdecken, PubSub
   reveal/           # Room, Participant
+lib/kitrank/
+  accounts.ex       # Login, Konten, Admin-Rechte (mix phx.gen.auth)
 lib/kitrank_web/
   live/overview_live.ex        # Raster, Team-Modal und Direktvergleich
+  live/admin/                  # Datenpflege, nur für Admins
+  user_auth.ex                 # Session, Admin-Schranke, Registrierungs-Schalter
   components/kit_components.ex # Trikot-Darstellung und Modal-Hülle
   color.ex                     # Kontrast- und Mischrechnung für Vereinsfarben
   presence.ex                  # wer ist gerade in einem Reveal-Raum online

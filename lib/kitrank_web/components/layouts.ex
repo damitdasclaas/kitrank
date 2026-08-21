@@ -5,6 +5,8 @@ defmodule KitrankWeb.Layouts do
   """
   use KitrankWeb, :html
 
+  alias Kitrank.Accounts.Scope
+
   # Embed all files in layouts/* within this module.
   # The default root.html.heex file contains the HTML
   # skeleton of your application, namely HTML headers
@@ -42,6 +44,30 @@ defmodule KitrankWeb.Layouts do
         </a>
         <p class="kr-eyebrow hidden sm:block">Trikots der 1. und 2. Bundesliga</p>
         <div class="ml-auto flex items-center gap-3">
+          <%!-- Kein Anmelde-Link: Konten sind noch nicht offen, der Weg hinein
+                ist /users/log-in. Wer angemeldet ist, sieht seine Wege. --%>
+          <.link
+            :if={Scope.admin?(@current_scope)}
+            navigate={~p"/admin"}
+            class="rounded-md border border-line px-3 py-1.5 text-xs font-medium transition hover:border-ink"
+          >
+            Admin
+          </.link>
+          <.link
+            :if={@current_scope}
+            navigate={~p"/users/settings"}
+            class="text-xs text-soft hover:text-ink"
+          >
+            Konto
+          </.link>
+          <.link
+            :if={@current_scope}
+            href={~p"/users/log-out"}
+            method="delete"
+            class="text-xs text-soft hover:text-ink"
+          >
+            Abmelden
+          </.link>
           <.theme_toggle />
         </div>
       </div>

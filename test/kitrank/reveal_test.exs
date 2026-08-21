@@ -72,6 +72,87 @@ defmodule Kitrank.RevealTest do
       refute Reveal.host?(room, "falsch")
       refute Reveal.host?(room, nil)
     end
+
+    test "ohne Uebergabe macht kein Teilnehmer den Host" do
+      room = room_fixture()
+      {:ok, participant} = Reveal.join(room, ranking_with(1).share_slug, "Tom")
+
+      refute Reveal.host?(room, nil, participant.id)
+    end
+  end
+
+  describe "transfer_host/2" do
+    setup do
+      room = room_fixture()
+      {:ok, tom} = Reveal.join(room, ranking_with(2).share_slug, "Tom")
+      {:ok, anna} = Reveal.join(room, ranking_with(2).share_slug, "Anna")
+      %{room: room, tom: tom, anna: anna}
+    end
+
+    test "gibt die Steuerung an einen Teilnehmer ab", %{room: room, anna: anna} do
+      assert {:ok, room} = Reveal.transfer_host(room, anna.id)
+
+      assert Reveal.host?(room, nil, anna.id)
+      assert Reveal.designated_host?(room, anna.id)
+    end
+
+    test "nimmt dem vorigen Host die uebergebene Rolle", %{room: room, tom: tom, anna: anna} do
+      {:ok, room} = Reveal.transfer_host(room, tom.id)
+      {:ok, room} = Reveal.transfer_host(room, anna.id)
+
+      refute Reveal.designated_host?(room, tom.id)
+      assert Reveal.designated_host?(room, anna.id)
+    end
+
+    test "der Ersteller behaelt seinen Schluessel, damit kein Raum haengenbleibt", %{
+      room: room,
+      anna: anna
+    } do
+      {:ok, room} = Reveal.transfer_host(room, anna.id)
+
+      assert Reveal.owner?(room, room.host_token)
+      assert Reveal.host?(room, room.host_token)
+    end
+
+    test "holt der Ersteller die Steuerung zurueck", %{room: room, anna: anna} do
+      {:ok, room} = Reveal.transfer_host(room, anna.id)
+      assert {:ok, room} = Reveal.reclaim_host(room)
+
+      refute Reveal.designated_host?(room, anna.id)
+      assert room.host_participant_id == nil
+    end
+
+    test "gibt nichts an Fremde ab", %{room: room} do
+      anderer_raum = room_fixture()
+      {:ok, fremder} = Reveal.join(anderer_raum, ranking_with(1).share_slug, "Fremd")
+
+      assert {:error, :not_a_participant} = Reveal.transfer_host(room, fremder.id)
+      assert {:error, :not_a_participant} = Reveal.transfer_host(room, 999_999)
+    end
+
+    test "broadcastet den Wechsel", %{room: room, anna: anna} do
+      Reveal.subscribe(room)
+
+      {:ok, _room} = Reveal.transfer_host(room, anna.id)
+      assert_receive {:host_changed, host_id}
+      assert host_id == anna.id
+
+      {:ok, room} = Reveal.fetch_room(room.room_code)
+      {:ok, _room} = Reveal.reclaim_host(room)
+      assert_receive {:host_changed, nil}
+    end
+
+    test "verliert der Host-Teilnehmer seinen Platz, faellt die Steuerung zurueck", %{
+      room: room,
+      anna: anna
+    } do
+      {:ok, room} = Reveal.transfer_host(room, anna.id)
+      Repo.delete!(anna)
+
+      {:ok, room} = Reveal.fetch_room(room.room_code)
+      assert room.host_participant_id == nil
+      assert Reveal.host?(room, room.host_token)
+    end
   end
 
   describe "join/3" do

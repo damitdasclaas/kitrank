@@ -1,5 +1,8 @@
 import Config
 
+# Only in tests, remove the complexity from the password hashing algorithm
+config :bcrypt_elixir, :log_rounds, 1
+
 # Configure your database
 #
 # The MIX_TEST_PARTITION environment variable can be used
@@ -19,6 +22,16 @@ config :kitrank, KitrankWeb.Endpoint,
   http: [ip: {127, 0, 0, 1}, port: 4002],
   secret_key_base: "TaXf8falY+MmDZ4brdPS7OTaIA1efk2IN2bqM/OECoLlp2fT1O6rVVtTaSUVU21A",
   server: false
+
+# Im Test ist die Registrierung offen, damit der komplette Ablauf geprueft wird –
+# er soll ja funktionieren, wenn der Schalter spaeter umgelegt wird. Dass sie in
+# Produktion zu ist und das Umschalten wirkt, prueft
+# KitrankWeb.RegistrationGateTest ausdruecklich fuer beide Zustaende.
+config :kitrank, :registration_open, true
+
+# Mails werden im Test nur gesammelt, nicht verschickt.
+config :kitrank, Kitrank.Mailer, adapter: Swoosh.Adapters.Test
+config :swoosh, :api_client, false
 
 # Print only warnings and errors during test
 config :logger, level: :warning

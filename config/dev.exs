@@ -72,3 +72,6 @@ config :phoenix_live_view,
   debug_attributes: true,
   # Enable helpful, but potentially expensive runtime checks
   enable_expensive_runtime_checks: true
+
+# Mails gehen lokal nicht raus, sondern ins Postfach unter /dev/mailbox.
+config :swoosh, :api_client, false

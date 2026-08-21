@@ -40,6 +40,15 @@ if config_env() == :dev do
     ]
 end
 
+# Neue Nutzerkonten sind zu, solange das hier nicht ausdruecklich aufgemacht
+# wird. Auf Fly: fly secrets set REGISTRATION_OPEN=true
+#
+# Nur uebersteuern, wenn die Variable wirklich gesetzt ist – runtime.exs laeuft
+# in jeder Umgebung und wuerde sonst den Wert aus config/test.exs erschlagen.
+if registration = System.get_env("REGISTRATION_OPEN") do
+  config :kitrank, :registration_open, registration == "true"
+end
+
 if config_env() == :prod do
   database_url =
     System.get_env("DATABASE_URL") ||

@@ -40,6 +40,7 @@ defmodule Kitrank.MixProject do
   # Type `mix help deps` for examples and options.
   defp deps do
     [
+      {:bcrypt_elixir, "~> 3.0"},
       {:phoenix, "~> 1.8.9"},
       {:phoenix_ecto, "~> 4.5"},
       {:ecto_sql, "~> 3.13"},
@@ -70,7 +71,11 @@ defmodule Kitrank.MixProject do
       {:gettext, "~> 1.0"},
       {:jason, "~> 1.2"},
       {:dns_cluster, "~> 0.2.0"},
-      {:bandit, "~> 1.5"}
+      {:bandit, "~> 1.5"},
+      # Wird fuer die Magic-Link-Mails des Logins gebraucht. Lokal landen sie
+      # in /dev/mailbox, in Produktion braucht es einen echten Adapter.
+      {:swoosh, "~> 1.16"},
+      {:req, "~> 0.5"}
     ]
   end
 

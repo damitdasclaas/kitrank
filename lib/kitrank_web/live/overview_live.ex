@@ -172,7 +172,7 @@ defmodule KitrankWeb.OverviewLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash}>
+    <Layouts.app flash={@flash} current_scope={@current_scope}>
       <div class="mx-auto max-w-[1500px] px-4 pb-32 pt-10 sm:px-6 lg:px-8">
         <.page_intro
           season={@season}
