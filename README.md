@@ -131,6 +131,7 @@ Saison nicht gibt, fallen still weg statt leere Karten zu erzeugen.
 
 - **Fehlt ein Trikotbild, wird das Trikot gezeichnet** statt einen grauen Kasten zu zeigen — als SVG in der Vereinsfarbe, gemustert nach Kit-Typ. Das ist der Normalfall und nicht der Ausnahmefall, weil Bilder verlinkt und nicht gehostet werden.
 - **Die App hat keine eigene Akzentfarbe.** 36 Vereinsfarben tragen die Sättigung der Seite; ausgewählte Zustände nehmen die Farbe des jeweiligen Vereins an, statt mit ihr zu konkurrieren.
+- **Ein Klick auf jede Trikot-Fläche zeigt es groß** — mit Pfeiltasten durch die Bilder, Escape zurück. Escape schließt dabei erst die große Ansicht und nicht gleich das Modal darunter. Funktioniert auch bei Trikots ohne Foto, dort eben mit der Zeichnung.
 - **Die Trikot-Fläche bleibt in beiden Themes hell.** Trikots sind Produktfotos, und die liegen auf Weiß — im Dunkelmodus wirkt das wie ein Leuchtkasten statt wie ein invertiertes Foto.
 - Kontraste (Schrift auf Vereinsfarbe, Ärmelabstufungen) rechnet `KitrankWeb.Color` über die WCAG-Leuchtdichte aus, nicht über einen Helligkeits-Daumenwert. Sonst kippt es genau bei Dortmund-Gelb und Schalke-Blau in die falsche Richtung.
 

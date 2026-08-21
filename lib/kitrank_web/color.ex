@@ -58,6 +58,20 @@ defmodule KitrankWeb.Color do
     if luminance(hex) > 0.5, do: darken(hex, amount), else: lighten(hex, amount)
   end
 
+  @doc """
+  Variante von `hex`, die auf dunklem Grund lesbar bleibt.
+
+  Ein fester Aufhell-Wert reicht nicht: bei Gladbach-Schwarz käme sonst ein
+  Grau heraus, das auf dem abgedunkelten Hintergrund der großen Ansicht
+  untergeht. Deshalb wird so weit aufgehellt, bis die Leuchtdichte stimmt.
+  """
+  def on_dark(hex) do
+    Enum.reduce_while([0.0, 0.25, 0.45, 0.65, 0.8], hex, fn amount, _acc ->
+      candidate = lighten(hex, amount)
+      if luminance(candidate) >= 0.45, do: {:halt, candidate}, else: {:cont, candidate}
+    end)
+  end
+
   @doc "Dieselbe Farbe mit Alpha, als `rgb(… / …)` für CSS."
   def alpha(hex, opacity) do
     {r, g, b} = to_rgb(hex)

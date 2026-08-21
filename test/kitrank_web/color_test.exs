@@ -36,6 +36,22 @@ defmodule KitrankWeb.ColorTest do
     end
   end
 
+  describe "on_dark/1" do
+    test "hellt jede Vereinsfarbe so weit auf, dass sie auf dunklem Grund trägt" do
+      # Schwarz und Dunkelblau sind die Faelle, an denen ein fester Aufhell-Wert
+      # scheitern wuerde.
+      for color <- ["#000000", "#005CA9", "#DC052D", "#1D9053", "#6B4423"] do
+        assert Color.luminance(Color.on_dark(color)) >= 0.45,
+               "#{color} bleibt zu dunkel: #{Color.on_dark(color)}"
+      end
+    end
+
+    test "lässt schon helle Farben in Ruhe" do
+      assert Color.on_dark("#FDE100") == "#FDE100"
+      assert Color.on_dark("#FFFFFF") == "#FFFFFF"
+    end
+  end
+
   describe "team_color/1" do
     test "nutzt die Vereinsfarbe, wenn es eine gibt" do
       assert Color.team_color(%{primary_color: "#DC052D"}) == "#DC052D"

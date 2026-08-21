@@ -109,6 +109,146 @@ defmodule KitrankWeb.OverviewLiveTest do
     end
   end
 
+  describe "Große Ansicht" do
+    setup do
+      %{teams: [team], kits: [kit]} =
+        league_fixture(season: Kits.current_season(), team_count: 1, kit_types: ["home"])
+
+      {:ok, kit} =
+        Kits.update_kit(kit, %{
+          cutout_url: "https://example.com/cutout.jpg",
+          model_image_urls: ["https://example.com/model-a.jpg", "https://example.com/model-b.jpg"]
+        })
+
+      %{team: team, kit: kit}
+    end
+
+    test "öffnet sich aus dem Team-Modal", %{conn: conn, team: team, kit: kit} do
+      {:ok, view, _html} = live(conn, ~p"/teams/#{team.id}")
+
+      html =
+        view |> element(~s{button[phx-click="zoom"][phx-value-id="#{kit.id}"]}) |> render_click()
+
+      assert html =~ ~s(id="kit-lightbox")
+      assert html =~ "https://example.com/cutout.jpg"
+      assert html =~ "1 / 3"
+    end
+
+    test "startet bei dem Bild, das die kleine Ansicht gerade zeigt", %{
+      conn: conn,
+      team: team,
+      kit: kit
+    } do
+      {:ok, view, _html} = live(conn, ~p"/teams/#{team.id}")
+
+      # Auf das zweite Bild umschalten, dann vergroessern.
+      view
+      |> element(~s{button[phx-click="select_image"][phx-value-index="1"]})
+      |> render_click()
+
+      html =
+        view |> element(~s{button[phx-click="zoom"][phx-value-id="#{kit.id}"]}) |> render_click()
+
+      assert html =~ "2 / 3"
+      assert html =~ "https://example.com/model-a.jpg"
+    end
+
+    test "blättert vor und zurück und läuft dabei um", %{conn: conn, team: team, kit: kit} do
+      {:ok, view, _html} = live(conn, ~p"/teams/#{team.id}")
+      view |> element(~s{button[phx-click="zoom"][phx-value-id="#{kit.id}"]}) |> render_click()
+
+      html = view |> element(~s{button[phx-value-delta="1"]}) |> render_click()
+      assert html =~ "2 / 3"
+
+      html = view |> element(~s{button[phx-value-delta="1"]}) |> render_click()
+      assert html =~ "3 / 3"
+
+      # Ueber das Ende hinaus geht es wieder von vorn los.
+      html = view |> element(~s{button[phx-value-delta="1"]}) |> render_click()
+      assert html =~ "1 / 3"
+
+      html = view |> element(~s{button[phx-value-delta="-1"]}) |> render_click()
+      assert html =~ "3 / 3"
+    end
+
+    test "die kleine Ansicht steht danach auf demselben Bild", %{
+      conn: conn,
+      team: team,
+      kit: kit
+    } do
+      {:ok, view, _html} = live(conn, ~p"/teams/#{team.id}")
+      view |> element(~s{button[phx-click="zoom"][phx-value-id="#{kit.id}"]}) |> render_click()
+      view |> element(~s{button[phx-value-delta="1"]}) |> render_click()
+
+      html = view |> element(~s{button[phx-click="zoom_close"]}) |> render_click()
+
+      refute html =~ ~s(id="kit-lightbox")
+      # Der zweite Galerie-Punkt ist jetzt der aktive.
+      assert html =~ ~s(phx-value-index="1" class="h-1.5 flex-1 rounded-full transition bg-ink)
+    end
+
+    test "Escape schließt erst die große Ansicht, nicht gleich das Modal", %{
+      conn: conn,
+      team: team,
+      kit: kit
+    } do
+      {:ok, view, html} = live(conn, ~p"/teams/#{team.id}")
+      # Solange nichts darueber liegt, schliesst Escape das Modal.
+      assert html =~ ~s(phx-key="Escape")
+
+      html =
+        view |> element(~s{button[phx-click="zoom"][phx-value-id="#{kit.id}"]}) |> render_click()
+
+      # Jetzt nicht mehr – sonst waeren beide gleichzeitig weg.
+      refute html =~ ~s(phx-key="Escape")
+
+      html = view |> element("#kit-lightbox") |> render_keydown(%{"key" => "Escape"})
+
+      refute html =~ ~s(id="kit-lightbox")
+      assert html =~ ~s(aria-modal="true")
+      assert html =~ team.name
+    end
+
+    test "Pfeiltasten blättern", %{conn: conn, team: team, kit: kit} do
+      {:ok, view, _html} = live(conn, ~p"/teams/#{team.id}")
+      view |> element(~s{button[phx-click="zoom"][phx-value-id="#{kit.id}"]}) |> render_click()
+
+      html = view |> element("#kit-lightbox") |> render_keydown(%{"key" => "ArrowRight"})
+      assert html =~ "2 / 3"
+
+      html = view |> element("#kit-lightbox") |> render_keydown(%{"key" => "ArrowLeft"})
+      assert html =~ "1 / 3"
+    end
+
+    test "funktioniert auch für Trikots ohne Foto", %{conn: conn} do
+      %{teams: [team], kits: [kit]} =
+        league_fixture(season: Kits.current_season(), team_count: 1, kit_types: ["away"])
+
+      {:ok, view, _html} = live(conn, ~p"/teams/#{team.id}")
+
+      html =
+        view |> element(~s{button[phx-click="zoom"][phx-value-id="#{kit.id}"]}) |> render_click()
+
+      assert html =~ ~s(id="kit-lightbox")
+      assert html =~ "noch kein Foto hinterlegt"
+      # Kein Blaettern, wenn es nur die Zeichnung gibt.
+      refute html =~ ~s(phx-value-delta="1")
+    end
+
+    test "lässt sich auch aus dem Vergleich öffnen", %{conn: conn, kit: kit} do
+      %{kits: [other]} =
+        league_fixture(season: Kits.current_season(), team_count: 1, kit_types: ["home"])
+
+      {:ok, view, _html} = live(conn, "/vergleich?trikots=#{kit.id},#{other.id}")
+
+      html =
+        view |> element(~s{button[phx-click="zoom"][phx-value-id="#{kit.id}"]}) |> render_click()
+
+      assert html =~ ~s(id="kit-lightbox")
+      assert html =~ "https://example.com/cutout.jpg"
+    end
+  end
+
   describe "Vergleich" do
     setup do
       %{kits: [a, b, c, d]} = league(team_count: 4, kit_types: ["home"])

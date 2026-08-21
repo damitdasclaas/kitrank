@@ -76,6 +76,66 @@ defmodule KitrankWeb.OverviewLive do
     {:noreply, assign(socket, :image_choice, choices)}
   end
 
+  # Startet dort, wo die kleine Ansicht gerade steht – wer Bild 2 anschaut und
+  # vergroessert, will Bild 2 gross sehen, nicht wieder Bild 1.
+  def handle_event("zoom", %{"id" => id}, socket) do
+    id = String.to_integer(id)
+
+    case Map.get(socket.assigns.kits_by_id, id) do
+      nil ->
+        {:noreply, socket}
+
+      entry ->
+        {:noreply, assign(socket, :zoom, %{kit_id: id, index: current_index(socket, entry)})}
+    end
+  end
+
+  def handle_event("zoom_close", _params, socket), do: {:noreply, assign(socket, :zoom, nil)}
+
+  def handle_event("zoom_step", %{"delta" => delta}, socket) do
+    {:noreply, step_zoom(socket, String.to_integer(delta))}
+  end
+
+  def handle_event("zoom_key", %{"key" => key}, socket) do
+    case key do
+      "Escape" -> {:noreply, assign(socket, :zoom, nil)}
+      "ArrowLeft" -> {:noreply, step_zoom(socket, -1)}
+      "ArrowRight" -> {:noreply, step_zoom(socket, 1)}
+      _ -> {:noreply, socket}
+    end
+  end
+
+  # Klick aufs Bild selbst soll die grosse Ansicht nicht schliessen.
+  def handle_event("noop", _params, socket), do: {:noreply, socket}
+
+  defp current_index(socket, entry) do
+    count = entry.kit |> kit_images() |> length()
+    index = Map.get(socket.assigns.image_choice, to_string(entry.kit.id), 0)
+
+    if index < count, do: index, else: 0
+  end
+
+  defp step_zoom(%{assigns: %{zoom: nil}} = socket, _delta), do: socket
+
+  defp step_zoom(%{assigns: %{zoom: zoom}} = socket, delta) do
+    entry = socket.assigns.kits_by_id[zoom.kit_id]
+    count = entry.kit |> kit_images() |> length()
+
+    if count <= 1 do
+      socket
+    else
+      index = Integer.mod(zoom.index + delta, count)
+
+      socket
+      |> assign(:zoom, %{zoom | index: index})
+      # Die kleine Ansicht zieht mit, damit nach dem Schliessen dasselbe Bild steht.
+      |> assign(
+        :image_choice,
+        Map.put(socket.assigns.image_choice, to_string(zoom.kit_id), index)
+      )
+    end
+  end
+
   ## Assigns
 
   defp load_season(socket, season) do
@@ -103,6 +163,7 @@ defmodule KitrankWeb.OverviewLive do
       kit_count: map_size(kits_by_id)
     )
     |> assign_new(:image_choice, fn -> %{} end)
+    |> assign_new(:zoom, fn -> nil end)
     |> assign_new(:compare_ids, fn -> [] end)
     |> assign_new(:open_team, fn -> nil end)
   end
@@ -221,6 +282,7 @@ defmodule KitrankWeb.OverviewLive do
         compare_ids={@compare_ids}
         image_choice={@image_choice}
         close_path={index_path(@compare_ids)}
+        zoomed?={@zoom != nil}
       />
 
       <.compare_modal
@@ -229,6 +291,16 @@ defmodule KitrankWeb.OverviewLive do
         kits_by_id={@kits_by_id}
         season={@season}
         close_path={index_path(@compare_ids)}
+        zoomed?={@zoom != nil}
+      />
+
+      <.kit_lightbox
+        :if={@zoom}
+        kit={@kits_by_id[@zoom.kit_id].kit}
+        team={@kits_by_id[@zoom.kit_id].team}
+        images={kit_images(@kits_by_id[@zoom.kit_id].kit)}
+        index={@zoom.index}
+        label={Kit.label(@kits_by_id[@zoom.kit_id].kit.kit_type)}
       />
     </Layouts.app>
     """
@@ -468,6 +540,7 @@ defmodule KitrankWeb.OverviewLive do
   attr :compare_ids, :list, required: true
   attr :image_choice, :map, required: true
   attr :close_path, :string, required: true
+  attr :zoomed?, :boolean, default: false
 
   defp team_modal(assigns) do
     assigns = assign(assigns, :color, Color.team_color(assigns.entry.team))
@@ -478,6 +551,7 @@ defmodule KitrankWeb.OverviewLive do
       close_path={@close_path}
       label={"Trikots von #{@entry.team.name}"}
       size="max-w-5xl"
+      close_on_escape={!@zoomed?}
     >
       <div
         class="border-b border-line px-6 py-5"
@@ -537,12 +611,22 @@ defmodule KitrankWeb.OverviewLive do
 
     ~H"""
     <div class="flex flex-col bg-panel">
-      <div
-        class="relative flex aspect-square items-center justify-center p-8"
+      <button
+        type="button"
+        phx-click="zoom"
+        phx-value-id={@kit.id}
+        class="group relative flex aspect-square cursor-zoom-in items-center justify-center p-8"
         style={"background-color: color-mix(in oklab, #{@color} 13%, #FFFFFF)"}
+        aria-label={"#{@team.name} #{Kit.label(@kit.kit_type)} gross ansehen"}
       >
-        <.kit_figure kit={@kit} team={@team} image_url={@active_image} class="h-full w-full" />
-      </div>
+        <.kit_figure
+          kit={@kit}
+          team={@team}
+          image_url={@active_image}
+          class="h-full w-full transition-transform duration-300 group-hover:scale-[1.04]"
+        />
+        <.zoom_hint />
+      </button>
 
       <div :if={length(@images) > 1} class="flex gap-1.5 border-t border-line px-3 py-2">
         <button
@@ -603,12 +687,19 @@ defmodule KitrankWeb.OverviewLive do
   attr :kits_by_id, :map, required: true
   attr :season, :string, required: true
   attr :close_path, :string, required: true
+  attr :zoomed?, :boolean, default: false
 
   defp compare_modal(assigns) do
     assigns = assign(assigns, :entries, Enum.map(assigns.compare_ids, &assigns.kits_by_id[&1]))
 
     ~H"""
-    <.modal id="compare-modal" close_path={@close_path} label="Direktvergleich" size="max-w-6xl">
+    <.modal
+      id="compare-modal"
+      close_path={@close_path}
+      label="Direktvergleich"
+      size="max-w-6xl"
+      close_on_escape={!@zoomed?}
+    >
       <div class="border-b border-line px-6 py-5">
         <p class="kr-eyebrow">Saison {@season}</p>
         <h2 class="kr-display mt-1.5 text-2xl">Direktvergleich</h2>
@@ -631,12 +722,21 @@ defmodule KitrankWeb.OverviewLive do
         >
           <div></div>
           <div :for={entry <- @entries} class="pb-3">
-            <div
-              class="flex aspect-[4/5] items-center justify-center rounded-lg p-6"
+            <button
+              type="button"
+              phx-click="zoom"
+              phx-value-id={entry.kit.id}
+              class="group relative flex aspect-[4/5] w-full cursor-zoom-in items-center justify-center rounded-lg p-6"
               style={"background-color: color-mix(in oklab, #{Color.team_color(entry.team)} 14%, #FFFFFF)"}
+              aria-label={"#{entry.team.name} #{Kit.label(entry.kit.kit_type)} gross ansehen"}
             >
-              <.kit_figure kit={entry.kit} team={entry.team} class="h-full w-full" />
-            </div>
+              <.kit_figure
+                kit={entry.kit}
+                team={entry.team}
+                class="h-full w-full transition-transform duration-300 group-hover:scale-[1.04]"
+              />
+              <.zoom_hint />
+            </button>
           </div>
 
           <.compare_row label="Verein" entries={@entries} first?>

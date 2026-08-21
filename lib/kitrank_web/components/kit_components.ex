@@ -194,6 +194,11 @@ defmodule KitrankWeb.KitComponents do
   attr :close_path, :string, required: true, doc: "Ziel beim Schliessen"
   attr :label, :string, required: true, doc: "Beschriftung fuer Screenreader"
   attr :size, :string, default: "max-w-3xl"
+
+  attr :close_on_escape, :boolean,
+    default: true,
+    doc: "aus, solange etwas darueber liegt – dann schliesst Escape erst das Obere"
+
   slot :inner_block, required: true
 
   @doc "Modal-Huelle: Backdrop, Escape zum Schliessen, Fokus auf dem Dialog."
@@ -205,8 +210,8 @@ defmodule KitrankWeb.KitComponents do
       role="dialog"
       aria-modal="true"
       aria-label={@label}
-      phx-window-keydown={JS.patch(@close_path)}
-      phx-key="Escape"
+      phx-window-keydown={@close_on_escape && JS.patch(@close_path)}
+      phx-key={@close_on_escape && "Escape"}
     >
       <div
         class="fixed inset-0 bg-black/45 backdrop-blur-[2px]"
@@ -231,6 +236,139 @@ defmodule KitrankWeb.KitComponents do
         </div>
       </div>
     </div>
+    """
+  end
+
+  attr :kit, :map, required: true
+  attr :team, :map, required: true
+  attr :images, :list, required: true
+  attr :index, :integer, required: true
+  attr :label, :string, required: true, doc: "z. B. \"Heim\""
+
+  @doc """
+  Trikot gross, ueber allem anderen.
+
+  Die Buehne bleibt hell wie im Raster – ein Produktfoto auf Weiss, nicht auf
+  Schwarz wie in einer Bildergalerie. Kits ohne Foto zeigen hier ihre
+  gezeichnete Darstellung, damit der Zoom ueberall funktioniert und nicht nur
+  bei gepflegten Trikots.
+  """
+  def kit_lightbox(assigns) do
+    assigns =
+      assigns
+      |> assign(:src, Enum.at(assigns.images, assigns.index))
+      |> assign(:many?, length(assigns.images) > 1)
+
+    ~H"""
+    <div
+      id="kit-lightbox"
+      class="fixed inset-0 z-[60] flex flex-col"
+      role="dialog"
+      aria-modal="true"
+      aria-label={"#{@team.name} – #{@label}, grosse Ansicht"}
+      phx-window-keydown="zoom_key"
+      tabindex="-1"
+      phx-mounted={JS.focus()}
+    >
+      <div
+        class="absolute inset-0 bg-black/70 backdrop-blur-sm"
+        phx-click="zoom_close"
+        aria-hidden="true"
+      />
+
+      <div class="relative flex items-center gap-3 px-4 py-3 text-white sm:px-6">
+        <span
+          class="font-mono text-xs font-semibold"
+          style={"color: #{Color.on_dark(Color.team_color(@team))}"}
+        >
+          {@team.short_code}
+        </span>
+        <span class="text-sm">{@team.name} — {@label}</span>
+        <span :if={@many?} class="font-mono text-xs text-white/60">
+          {@index + 1} / {length(@images)}
+        </span>
+        <button
+          type="button"
+          phx-click="zoom_close"
+          class="ml-auto flex h-9 w-9 items-center justify-center rounded-full border border-white/25 text-white/80 transition hover:bg-white/10 hover:text-white"
+          aria-label="Grosse Ansicht schliessen"
+        >
+          <.icon name="hero-x-mark" class="size-5" />
+        </button>
+      </div>
+
+      <div class="relative flex min-h-0 flex-1 items-center justify-center px-4 pb-6 sm:px-6">
+        <button
+          :if={@many?}
+          type="button"
+          phx-click="zoom_step"
+          phx-value-delta="-1"
+          class="absolute left-2 z-10 flex h-11 w-11 items-center justify-center rounded-full border border-white/25 text-white/80 transition hover:bg-white/10 hover:text-white sm:left-6"
+          aria-label="Vorheriges Bild"
+        >
+          <.icon name="hero-chevron-left" class="size-5" />
+        </button>
+
+        <%!-- Klick auf die Flaeche neben dem Bild schliesst, Klick aufs Bild nicht. --%>
+        <div
+          class="flex h-full w-full items-center justify-center"
+          phx-click="zoom_close"
+        >
+          <div
+            class="flex max-h-full max-w-[min(1000px,92vw)] items-center justify-center rounded-xl p-4 sm:p-8"
+            style={"background-color: color-mix(in oklab, #{Color.team_color(@team)} 12%, #FFFFFF)"}
+            phx-click="noop"
+          >
+            <img
+              :if={@src}
+              src={@src}
+              alt={"#{@team.name} – #{@label}"}
+              class="max-h-[72vh] w-auto max-w-full object-contain"
+            />
+            <div
+              :if={!@src}
+              class="flex aspect-square w-full max-w-[min(560px,70vh)] items-center justify-center"
+            >
+              <.kit_silhouette kit={@kit} color={Color.team_color(@team)} />
+            </div>
+          </div>
+        </div>
+
+        <button
+          :if={@many?}
+          type="button"
+          phx-click="zoom_step"
+          phx-value-delta="1"
+          class="absolute right-2 z-10 flex h-11 w-11 items-center justify-center rounded-full border border-white/25 text-white/80 transition hover:bg-white/10 hover:text-white sm:right-6"
+          aria-label="Naechstes Bild"
+        >
+          <.icon name="hero-chevron-right" class="size-5" />
+        </button>
+      </div>
+
+      <p :if={!@src} class="relative pb-6 text-center text-xs text-white/50">
+        Für dieses Trikot ist noch kein Foto hinterlegt.
+      </p>
+    </div>
+    """
+  end
+
+  attr :class, :string, default: nil
+
+  @doc "Lupe, die beim Ueberfahren einer Trikot-Flaeche erscheint."
+  def zoom_hint(assigns) do
+    ~H"""
+    <span
+      class={[
+        "pointer-events-none absolute bottom-2 right-2 flex h-7 w-7 items-center justify-center",
+        "rounded-full bg-white/85 text-black/60 opacity-0 backdrop-blur transition",
+        "group-hover:opacity-100 group-focus-within:opacity-100",
+        @class
+      ]}
+      aria-hidden="true"
+    >
+      <.icon name="hero-magnifying-glass-plus-mini" class="size-3.5" />
+    </span>
     """
   end
 
