@@ -1,0 +1,209 @@
+defmodule Kitrank.Kits do
+  @moduledoc """
+  Stammdaten: Sportarten, Wettbewerbe, Teams, Saison-Zugehörigkeiten und Trikots.
+
+  Liefert die Daten für die Übersicht und ist gleichzeitig die Schreib-Schicht
+  hinter der Admin-UI – ein eigener Admin-Context wäre nur eine Hülle um dieselben
+  Funktionen.
+  """
+
+  import Ecto.Query, warn: false
+
+  alias Kitrank.Repo
+  alias Kitrank.Kits.{Competition, Kit, Season, Sport, Team, TeamSeason}
+
+  # Sortiert Trikots nach fachlicher Reihenfolge statt alphabetisch, damit "away"
+  # nicht vor "home" landet. Als Makro, weil es in mehreren Queries auftaucht.
+  defmacrop kit_type_order(kit) do
+    quote do
+      fragment(
+        "array_position(ARRAY['home','away','third','special']::varchar[], ?)",
+        unquote(kit).kit_type
+      )
+    end
+  end
+
+  @doc "Die aktuelle Saison im Format \"2026/27\" (Stichtag 1. Juli)."
+  defdelegate current_season(), to: Season, as: :current
+
+  ## Übersicht
+
+  @doc """
+  Alle Ligen einer Saison mit ihren Teams und deren Trikots, fertig sortiert für
+  die Übersicht: Ligen nach `tier`, Teams alphabetisch, Trikots in der Reihenfolge
+  Heim → Auswärts → Ausweich → Sonder.
+
+  Gibt eine Liste `{competition, [{team, [kit]}]}` zurück. Ligen ohne Teams in
+  dieser Saison fallen raus.
+  """
+  def overview(season \\ current_season()) do
+    team_seasons =
+      from(ts in TeamSeason,
+        where: ts.season == ^season,
+        join: t in assoc(ts, :team),
+        join: c in assoc(ts, :competition),
+        order_by: [asc: c.tier, asc: c.name, asc: t.name],
+        preload: [team: t, competition: c]
+      )
+      |> Repo.all()
+
+    kits_by_team = kits_by_team(Enum.map(team_seasons, & &1.team_id), season)
+
+    team_seasons
+    |> Enum.chunk_by(& &1.competition_id)
+    |> Enum.map(fn [%{competition: competition} | _] = group ->
+      teams = Enum.map(group, fn ts -> {ts.team, Map.get(kits_by_team, ts.team_id, [])} end)
+      {competition, teams}
+    end)
+  end
+
+  @doc """
+  Alle Trikots einer Saison, flach und in Übersichts-Reihenfolge – die Grundmenge,
+  aus der eine Rangliste gebaut wird. Teams sind vorgeladen.
+  """
+  def list_rankable_kits(season \\ current_season()) do
+    from(k in Kit,
+      join: t in assoc(k, :team),
+      join: ts in TeamSeason,
+      on: ts.team_id == k.team_id and ts.season == k.season,
+      join: c in assoc(ts, :competition),
+      where: k.season == ^season,
+      order_by: [asc: c.tier, asc: c.name, asc: t.name, asc: kit_type_order(k)],
+      preload: [team: t]
+    )
+    |> Repo.all()
+  end
+
+  defp kits_by_team([], _season), do: %{}
+
+  defp kits_by_team(team_ids, season) do
+    from(k in Kit,
+      where: k.team_id in ^team_ids and k.season == ^season,
+      order_by: [asc: kit_type_order(k)]
+    )
+    |> Repo.all()
+    |> Enum.group_by(& &1.team_id)
+  end
+
+  ## Sports
+
+  def list_sports, do: Repo.all(from s in Sport, order_by: s.name)
+  def get_sport!(id), do: Repo.get!(Sport, id)
+  def get_sport_by_slug(slug), do: Repo.get_by(Sport, slug: slug)
+
+  def create_sport(attrs) do
+    %Sport{} |> Sport.changeset(attrs) |> Repo.insert()
+  end
+
+  def update_sport(%Sport{} = sport, attrs) do
+    sport |> Sport.changeset(attrs) |> Repo.update()
+  end
+
+  def delete_sport(%Sport{} = sport), do: Repo.delete(sport)
+  def change_sport(%Sport{} = sport, attrs \\ %{}), do: Sport.changeset(sport, attrs)
+
+  ## Competitions
+
+  def list_competitions do
+    from(c in Competition, order_by: [asc: c.tier, asc: c.name], preload: :sport)
+    |> Repo.all()
+  end
+
+  def get_competition!(id), do: Repo.get!(Competition, id) |> Repo.preload(:sport)
+
+  def create_competition(attrs) do
+    %Competition{} |> Competition.changeset(attrs) |> Repo.insert()
+  end
+
+  def update_competition(%Competition{} = competition, attrs) do
+    competition |> Competition.changeset(attrs) |> Repo.update()
+  end
+
+  def delete_competition(%Competition{} = competition), do: Repo.delete(competition)
+
+  def change_competition(%Competition{} = competition, attrs \\ %{}),
+    do: Competition.changeset(competition, attrs)
+
+  ## Teams
+
+  def list_teams, do: Repo.all(from t in Team, order_by: t.name)
+  def get_team!(id), do: Repo.get!(Team, id)
+
+  @doc "Team samt seiner Trikots für eine Saison – für das Detail-Modal der Übersicht."
+  def get_team_with_kits!(id, season \\ current_season()) do
+    kits_query = from(k in Kit, where: k.season == ^season, order_by: [asc: kit_type_order(k)])
+
+    Team
+    |> Repo.get!(id)
+    |> Repo.preload(kits: kits_query)
+  end
+
+  def create_team(attrs) do
+    %Team{} |> Team.changeset(attrs) |> Repo.insert()
+  end
+
+  def update_team(%Team{} = team, attrs) do
+    team |> Team.changeset(attrs) |> Repo.update()
+  end
+
+  def delete_team(%Team{} = team), do: Repo.delete(team)
+  def change_team(%Team{} = team, attrs \\ %{}), do: Team.changeset(team, attrs)
+
+  ## TeamSeasons
+
+  def list_team_seasons(season \\ current_season()) do
+    from(ts in TeamSeason,
+      where: ts.season == ^season,
+      join: t in assoc(ts, :team),
+      order_by: t.name,
+      preload: [team: t, competition: :sport]
+    )
+    |> Repo.all()
+  end
+
+  @doc "Alle Saisons, für die überhaupt Daten existieren – neueste zuerst."
+  def list_seasons do
+    from(ts in TeamSeason, select: ts.season, distinct: true, order_by: [desc: ts.season])
+    |> Repo.all()
+  end
+
+  def get_team_season!(id), do: Repo.get!(TeamSeason, id)
+
+  def create_team_season(attrs) do
+    %TeamSeason{} |> TeamSeason.changeset(attrs) |> Repo.insert()
+  end
+
+  def update_team_season(%TeamSeason{} = team_season, attrs) do
+    team_season |> TeamSeason.changeset(attrs) |> Repo.update()
+  end
+
+  def delete_team_season(%TeamSeason{} = team_season), do: Repo.delete(team_season)
+
+  def change_team_season(%TeamSeason{} = team_season, attrs \\ %{}),
+    do: TeamSeason.changeset(team_season, attrs)
+
+  ## Kits
+
+  def list_kits(season \\ current_season()) do
+    from(k in Kit,
+      where: k.season == ^season,
+      join: t in assoc(k, :team),
+      order_by: [asc: t.name, asc: kit_type_order(k)],
+      preload: [team: t]
+    )
+    |> Repo.all()
+  end
+
+  def get_kit!(id), do: Repo.get!(Kit, id) |> Repo.preload(:team)
+
+  def create_kit(attrs) do
+    %Kit{} |> Kit.changeset(attrs) |> Repo.insert()
+  end
+
+  def update_kit(%Kit{} = kit, attrs) do
+    kit |> Kit.changeset(attrs) |> Repo.update()
+  end
+
+  def delete_kit(%Kit{} = kit), do: Repo.delete(kit)
+  def change_kit(%Kit{} = kit, attrs \\ %{}), do: Kit.changeset(kit, attrs)
+end

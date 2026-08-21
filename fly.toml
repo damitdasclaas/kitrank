@@ -1,0 +1,40 @@
+# Fly.io-Konfiguration für KitRank.
+#
+# Vor dem ersten Deploy:
+#   fly launch --no-deploy --copy-config   # legt die App an, Region fra
+#   fly postgres create --name kitrank-db --region fra
+#   fly postgres attach kitrank-db         # setzt DATABASE_URL als Secret
+#   fly secrets set SECRET_KEY_BASE=$(mix phx.gen.secret)
+#   fly deploy
+#
+# Migrationen laufen beim Start automatisch über rel/overlays/bin/migrate
+# (siehe release_command unten).
+
+app = 'kitrank'
+primary_region = 'fra'
+
+[build]
+  dockerfile = 'Dockerfile'
+
+[deploy]
+  # Läuft einmal pro Deploy, bevor die neue Version Traffic bekommt.
+  release_command = '/app/bin/migrate'
+
+[env]
+  PHX_HOST = 'kitrank.fly.dev'
+  PORT = '8080'
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  # Reveal-Räume hängen an WebSockets – die Maschine darf schlafen, aber der
+  # erste Request muss sie wieder wecken.
+  auto_stop_machines = 'stop'
+  auto_start_machines = true
+  min_machines_running = 0
+
+[[vm]]
+  size = 'shared-cpu-1x'
+  memory = '512mb'
+  cpus = 1
+  memory_mb = 512

@@ -1,0 +1,50 @@
+# Lokale Entwicklung. Zwei Wege:
+#
+#   docker compose up -d postgres      # nur die Datenbank, App läuft nativ per
+#                                      # mix phx.server (schnellster Dev-Loop)
+#
+#   docker compose --profile app up    # zusätzlich die App im Release-Container,
+#                                      # also exakt das Image, das nach Fly geht
+#
+# Test-Datenbank legt Ecto selbst an (mix test), dafür braucht es hier nichts.
+
+services:
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_DB: kitrank_dev
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      # Ab Postgres 18 gehört der Mount auf /var/lib/postgresql (nicht .../data) –
+      # die Daten landen dort in einem Unterordner pro Major-Version, sonst
+      # startet der Container gar nicht erst.
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    profiles: ["app"]
+    build: .
+    image: kitrank
+    ports:
+      - "4000:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: "ecto://postgres:postgres@postgres/kitrank_dev"
+      PHX_HOST: "localhost"
+      PORT: "8080"
+      # Kommt aus .env (siehe .env.example). Fehlt der Wert, bricht runtime.exs
+      # beim Start mit einer klaren Meldung ab – deshalb hier nur ein Default,
+      # damit "compose up postgres" ohne .env funktioniert.
+      SECRET_KEY_BASE: "${SECRET_KEY_BASE:-}"
+
+volumes:
+  postgres_data:
