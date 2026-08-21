@@ -35,38 +35,28 @@ defmodule KitrankWeb.Layouts do
 
   def app(assigns) do
     ~H"""
-    <header class="navbar px-4 sm:px-6 lg:px-8">
-      <div class="flex-1">
-        <a href="/" class="flex-1 flex w-fit items-center gap-2">
-          <img src={~p"/images/logo.svg"} width="36" />
-          <span class="text-sm font-semibold">v{Application.spec(:phoenix, :vsn)}</span>
+    <header class="sticky top-0 z-30 border-b border-line bg-chalk/90 backdrop-blur">
+      <div class="mx-auto flex h-14 max-w-[1500px] items-center gap-4 px-4 sm:px-6 lg:px-8">
+        <a href={~p"/"} class="kr-display text-lg leading-none">
+          Kit<span class="font-normal">Rank</span>
         </a>
-      </div>
-      <div class="flex-none">
-        <ul class="flex flex-column px-1 space-x-4 items-center">
-          <li>
-            <a href="https://phoenixframework.org/" class="btn btn-ghost">Website</a>
-          </li>
-          <li>
-            <a href="https://github.com/phoenixframework/phoenix" class="btn btn-ghost">GitHub</a>
-          </li>
-          <li>
-            <.theme_toggle />
-          </li>
-          <li>
-            <a href="https://phoenix.hexdocs.pm/overview.html" class="btn btn-primary">
-              Get Started <span aria-hidden="true">&rarr;</span>
-            </a>
-          </li>
-        </ul>
+        <p class="kr-eyebrow hidden sm:block">Trikots der 1. und 2. Bundesliga</p>
+        <div class="ml-auto flex items-center gap-3">
+          <.theme_toggle />
+        </div>
       </div>
     </header>
 
-    <main class="px-4 py-20 sm:px-6 lg:px-8">
-      <div class="mx-auto max-w-2xl space-y-4">
-        {render_slot(@inner_block)}
-      </div>
+    <main>
+      {render_slot(@inner_block)}
     </main>
+
+    <footer class="border-t border-line">
+      <div class="mx-auto max-w-[1500px] px-4 py-8 text-xs text-soft sm:px-6 lg:px-8">
+        Trikotbilder werden verlinkt, nicht gehostet. Fehlt ein Bild, zeichnet KitRank
+        das Trikot in den Vereinsfarben.
+      </div>
+    </footer>
 
     <.flash_group flash={@flash} />
     """

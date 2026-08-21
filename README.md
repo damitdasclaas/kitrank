@@ -12,8 +12,8 @@ Die vollständige Architektur steht in [`architecture.md`](architecture.md).
 
 ## Stand
 
-Fertig: Datenmodell und Contexts (Schritt 1 aus Abschnitt 8 der Architektur) — Migrations, Schemas, Queries, Seeds, Tests.
-Noch offen: Übersicht-, Ranking-, Reveal- und Admin-LiveViews.
+Fertig: Datenmodell und Contexts (Schritt 1 der Architektur) sowie die **Übersicht** (Schritt 1, zweiter Teil) — Team-Raster nach Liga, Team-Detail als Modal und ein Direktvergleich für zwei bis drei Trikots.
+Noch offen: Admin-UI, Ranking und Reveal.
 
 ## Setup
 
@@ -67,8 +67,28 @@ lib/kitrank/
   reveal.ex         # Räume, Beitritt, Schritt-für-Schritt-Aufdecken, PubSub
   reveal/           # Room, Participant
 lib/kitrank_web/
-  presence.ex       # wer ist gerade in einem Reveal-Raum online
+  live/overview_live.ex        # Raster, Team-Modal und Direktvergleich
+  components/kit_components.ex # Trikot-Darstellung und Modal-Hülle
+  color.ex                     # Kontrast- und Mischrechnung für Vereinsfarben
+  presence.ex                  # wer ist gerade in einem Reveal-Raum online
 ```
+
+## Zur Oberfläche
+
+Die Übersicht liegt auf `/`, ein Team auf `/teams/:id`, der Vergleich auf `/vergleich`
+— alle drei bedient derselbe LiveView über `live_action`.
+
+Die Vergleichsauswahl steht im Query-Parameter `trikots`, nicht im Socket-State.
+Das macht sie teilbar (`/vergleich?trikots=12,40,7`), lässt den Zurück-Button
+richtig funktionieren und überlebt einen Reload. IDs, die es in der angezeigten
+Saison nicht gibt, fallen still weg statt leere Karten zu erzeugen.
+
+**Zur Gestaltung**, weil es dem Code sonst wie Willkür aussieht:
+
+- **Fehlt ein Trikotbild, wird das Trikot gezeichnet** statt einen grauen Kasten zu zeigen — als SVG in der Vereinsfarbe, gemustert nach Kit-Typ. Das ist der Normalfall und nicht der Ausnahmefall, weil Bilder verlinkt und nicht gehostet werden.
+- **Die App hat keine eigene Akzentfarbe.** 36 Vereinsfarben tragen die Sättigung der Seite; ausgewählte Zustände nehmen die Farbe des jeweiligen Vereins an, statt mit ihr zu konkurrieren.
+- **Die Trikot-Fläche bleibt in beiden Themes hell.** Trikots sind Produktfotos, und die liegen auf Weiß — im Dunkelmodus wirkt das wie ein Leuchtkasten statt wie ein invertiertes Foto.
+- Kontraste (Schrift auf Vereinsfarbe, Ärmelabstufungen) rechnet `KitrankWeb.Color` über die WCAG-Leuchtdichte aus, nicht über einen Helligkeits-Daumenwert. Sonst kippt es genau bei Dortmund-Gelb und Schalke-Blau in die falsche Richtung.
 
 Ein paar Entscheidungen, die man dem Code sonst nicht ansieht:
 

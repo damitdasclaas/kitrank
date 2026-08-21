@@ -103,3 +103,95 @@
 [data-phx-session], [data-phx-teleported-src] { display: contents }
 
 /* This file is for your main application CSS */
+
+/* ── KitRank ──────────────────────────────────────────────────────────────
+   Die App hat bewusst keine eigene Akzentfarbe. Der Grund steht in der
+   Uebersicht: 36 Vereinsfarben tragen die gesamte Saettigung der Seite, und
+   jeder weitere gesaettigte Ton wuerde mit ihnen konkurrieren. Ausgewaehlte
+   Zustaende nehmen deshalb die Farbe des jeweiligen Vereins an.
+   ──────────────────────────────────────────────────────────────────────── */
+
+:root {
+  --kr-chalk: #f1f3ef;  /* Seitengrund, kuehles Kreideweiss */
+  --kr-panel: #ffffff;  /* Kartenflaeche, wie ein Produktfoto */
+  --kr-sunk: #e7eae5;   /* eingelassene Flaechen */
+  --kr-line: #d6dbd4;   /* Haarlinien */
+  --kr-ink: #131815;    /* Text */
+  --kr-soft: #5d665f;   /* Sekundaertext */
+}
+
+[data-theme="dark"] {
+  --kr-chalk: #0f1311;
+  --kr-panel: #181d1a;
+  --kr-sunk: #121714;
+  --kr-line: #2a312c;
+  --kr-ink: #eaeee9;
+  --kr-soft: #8f9992;
+}
+
+@theme inline {
+  --font-display: "Archivo", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace;
+
+  --color-chalk: var(--kr-chalk);
+  --color-panel: var(--kr-panel);
+  --color-sunk: var(--kr-sunk);
+  --color-line: var(--kr-line);
+  --color-ink: var(--kr-ink);
+  --color-soft: var(--kr-soft);
+}
+
+body {
+  background-color: var(--kr-chalk);
+  color: var(--kr-ink);
+  font-family: var(--font-sans);
+}
+
+/* Die Displayschrift laeuft breit statt schmal – die Umkehrung des
+   erwartbaren Sport-Condensed, naeher am Namenszug auf einem Trikotruecken. */
+.kr-display {
+  font-family: var(--font-display);
+  font-variation-settings: "wdth" 118;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+}
+
+.kr-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--kr-soft);
+}
+
+/* Sichtbarer Fokus ueberall, auch auf Vereinsfarbe. */
+:where(a, button, [tabindex]):focus-visible {
+  outline: 2px solid var(--kr-ink);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@keyframes kr-rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes kr-tray {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+.kr-rise { animation: kr-rise 180ms ease-out both; }
+.kr-tray { animation: kr-tray 220ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }

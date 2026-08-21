@@ -17,7 +17,12 @@ defmodule KitrankWeb.Router do
   scope "/", KitrankWeb do
     pipe_through :browser
 
-    get "/", PageController, :home
+    # Drei Routen, ein LiveView: Raster, Team-Detail als Modal darueber und der
+    # Direktvergleich. Team und Vergleich sind eigene URLs, damit beides
+    # verlinkbar bleibt und der Zurueck-Button tut, was man erwartet.
+    live "/", OverviewLive, :index
+    live "/teams/:id", OverviewLive, :team
+    live "/vergleich", OverviewLive, :compare
   end
 
   # Other scopes may use custom stacks.
