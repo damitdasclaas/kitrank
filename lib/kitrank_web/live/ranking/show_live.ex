@@ -10,22 +10,22 @@ defmodule KitrankWeb.Ranking.ShowLive do
 
   import KitrankWeb.KitComponents
 
-  alias Kitrank.Kits.Kit
   alias Kitrank.Rankings
   alias KitrankWeb.Color
+  alias KitrankWeb.KitLabel
 
   @impl true
   def mount(%{"share_slug" => slug}, _session, socket) do
     case Rankings.get_ranking_by_share_slug(slug) do
       nil ->
-        raise KitrankWeb.NotFoundError, "Rangliste nicht gefunden"
+        raise KitrankWeb.NotFoundError, gettext("Rangliste nicht gefunden")
 
       ranking ->
         entries = Rankings.list_entries(ranking)
 
         {:ok,
          assign(socket,
-           page_title: ranking.display_name || "Rangliste",
+           page_title: ranking.display_name || gettext("Rangliste"),
            ranking: ranking,
            entries: entries,
            zoom: nil
@@ -80,7 +80,7 @@ defmodule KitrankWeb.Ranking.ShowLive do
     <Layouts.app flash={@flash} current_scope={@current_scope}>
       <div class="mx-auto max-w-3xl px-4 py-12 sm:px-6">
         <p class="kr-eyebrow">
-          Rangliste · {length(@entries)} {if length(@entries) == 1, do: "Trikot", else: "Trikots"}
+          {ngettext("Rangliste · %{count} Trikot", "Rangliste · %{count} Trikots", length(@entries))}
         </p>
         <h1 class="kr-display mt-2 text-4xl leading-[0.95]">
           {@ranking.display_name || "Ohne Namen"}
@@ -90,7 +90,7 @@ defmodule KitrankWeb.Ranking.ShowLive do
           :if={@entries == []}
           class="mt-10 rounded-lg border border-dashed border-line p-12 text-center"
         >
-          <p class="text-sm text-soft">Diese Rangliste ist noch leer.</p>
+          <p class="text-sm text-soft">{gettext("Diese Rangliste ist noch leer.")}</p>
         </div>
 
         <ol :if={@entries != []} class="mt-10 space-y-3">
@@ -99,13 +99,13 @@ defmodule KitrankWeb.Ranking.ShowLive do
 
         <div class="mt-14 border-t border-line pt-6">
           <p class="text-sm text-soft">
-            Eigene Rangliste bauen?
-            <.link navigate={~p"/rankings/new"} class="text-ink underline underline-offset-4">
-              Hier entlang
-            </.link>
-            — oder erst mal <.link navigate={~p"/"} class="text-ink underline underline-offset-4">
-              alle Trikots ansehen
-            </.link>.
+            {gettext("Eigene Rangliste bauen?")}
+            <.link navigate={~p"/rankings/new"} class="text-ink underline underline-offset-4">{gettext(
+              "Hier entlang"
+            )}</.link> {gettext("— oder erst mal")} <.link
+              navigate={~p"/"}
+              class="text-ink underline underline-offset-4"
+            > {gettext("alle Trikots ansehen")} </.link>.
           </p>
         </div>
       </div>
@@ -116,7 +116,7 @@ defmodule KitrankWeb.Ranking.ShowLive do
         team={@zoom.kit.team}
         images={kit_images(@zoom.kit)}
         index={@zoom.index}
-        label={Kit.display_label(@zoom.kit)}
+        label={KitLabel.display(@zoom.kit)}
       />
     </Layouts.app>
     """
@@ -142,7 +142,12 @@ defmodule KitrankWeb.Ranking.ShowLive do
             phx-value-id={@entry.kit_id}
             class="group relative flex h-20 w-20 shrink-0 cursor-zoom-in items-center justify-center rounded-md"
             style={"background-color: color-mix(in oklab, #{@color} 14%, #FFFFFF)"}
-            aria-label={"#{@entry.kit.team.name} #{Kit.display_label(@entry.kit)} gross ansehen"}
+            aria-label={
+              gettext("%{verein} %{trikot} groß ansehen",
+                verein: @entry.kit.team.name,
+                trikot: KitLabel.display(@entry.kit)
+              )
+            }
           >
             <.kit_figure
               kit={@entry.kit}
@@ -159,7 +164,7 @@ defmodule KitrankWeb.Ranking.ShowLive do
                 {@entry.kit.team.short_code}
               </span>
               <span class="text-sm font-medium">{@entry.kit.team.name}</span>
-              <span class="text-xs text-soft">{Kit.display_label(@entry.kit)}</span>
+              <span class="text-xs text-soft">{KitLabel.display(@entry.kit)}</span>
             </p>
 
             <p :if={@entry.note} class="mt-1.5 text-sm leading-relaxed text-soft">
@@ -173,7 +178,8 @@ defmodule KitrankWeb.Ranking.ShowLive do
               rel="noopener noreferrer"
               class="mt-2 inline-flex items-center gap-1 text-[11px] text-soft underline underline-offset-4 hover:text-ink"
             >
-              Zum Vereinsshop <.icon name="hero-arrow-top-right-on-square-mini" class="size-3" />
+              {gettext("Zum Vereinsshop")}
+              <.icon name="hero-arrow-top-right-on-square-mini" class="size-3" />
             </a>
           </div>
         </div>

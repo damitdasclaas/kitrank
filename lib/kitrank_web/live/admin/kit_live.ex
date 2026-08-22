@@ -9,7 +9,7 @@ defmodule KitrankWeb.Admin.KitLive do
   use KitrankWeb, :live_view
 
   import KitrankWeb.Admin.Components
-  import KitrankWeb.KitComponents, only: [kit_figure: 1, kit_badge: 1, image_role: 1]
+  import KitrankWeb.KitComponents, only: [kit_figure: 1, kit_badge: 1]
 
   alias Kitrank.Kits
   alias Kitrank.Kits.Kit
@@ -20,6 +20,7 @@ defmodule KitrankWeb.Admin.KitLive do
   # austauschbar.
   @images Application.compile_env(:kitrank, :product_images, ProductImages)
   alias KitrankWeb.Color
+  alias KitrankWeb.KitLabel
 
   @impl true
   def mount(_params, _session, socket) do
@@ -253,7 +254,7 @@ defmodule KitrankWeb.Admin.KitLive do
       seasons: Enum.uniq([socket.assigns.season, Kits.current_season()] ++ Kits.list_seasons()),
       teams: teams,
       team_options: Enum.map(teams, &{"#{&1.name} (#{&1.short_code})", &1.id}),
-      type_options: Enum.map(Kit.kit_types(), &{Kit.label(&1), &1})
+      type_options: Enum.map(Kit.kit_types(), &{KitLabel.label(&1), &1})
     )
   end
 
@@ -353,7 +354,7 @@ defmodule KitrankWeb.Admin.KitLive do
           <:col :let={%{kit: kit}} label="Typ">
             <span class="inline-flex items-center gap-2">
               <.kit_badge kit_type={kit.kit_type} class="bg-sunk text-soft" />
-              {Kit.display_label(kit)}
+              {KitLabel.display(kit)}
             </span>
           </:col>
           <:col :let={%{kit: kit}} label="Bilder" class="text-soft">
@@ -369,7 +370,7 @@ defmodule KitrankWeb.Admin.KitLive do
             <.edit_link navigate={~p"/admin/trikots/#{kit.id}"} />
             <.delete_button
               id={kit.id}
-              confirm={"#{kit.team.name} #{Kit.display_label(kit)} löschen?"}
+              confirm={"#{kit.team.name} #{KitLabel.display(kit)} löschen?"}
             />
           </:actions>
         </.admin_table>
@@ -538,7 +539,7 @@ defmodule KitrankWeb.Admin.KitLive do
               </span>
             </button>
             <p :if={url in @picked} class="mt-1 text-center text-[10px] text-ink">
-              {image_role(Enum.find_index(@picked, &(&1 == url)))}
+              {KitLabel.image_role(Enum.find_index(@picked, &(&1 == url)))}
             </p>
             <%!-- Manche Shops beschreiben ihre Bilder selbst ("Vorderansicht").
                   Das nimmt beim Auswaehlen das Raten ab. --%>

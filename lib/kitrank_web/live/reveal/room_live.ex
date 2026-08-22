@@ -24,10 +24,10 @@ defmodule KitrankWeb.Reveal.RoomLive do
   def mount(%{"room_code" => code}, _session, socket) do
     case Reveal.fetch_room(code) do
       {:error, :not_found} ->
-        raise KitrankWeb.NotFoundError, "Diesen Raum gibt es nicht."
+        raise KitrankWeb.NotFoundError, gettext("Diesen Raum gibt es nicht.")
 
       {:error, :expired} ->
-        raise KitrankWeb.NotFoundError, "Dieser Raum ist abgelaufen."
+        raise KitrankWeb.NotFoundError, gettext("Dieser Raum ist abgelaufen.")
 
       {:ok, room} ->
         if connected?(socket) do
@@ -38,7 +38,7 @@ defmodule KitrankWeb.Reveal.RoomLive do
         {:ok,
          socket
          |> assign(
-           page_title: "Reveal #{room.room_code}",
+           page_title: gettext("Reveal %{code}", code: room.room_code),
            room: room,
            # Wird gleich vom ClaimHost-Hook aus dem Browser nachgereicht.
            host_token: nil,
@@ -68,7 +68,7 @@ defmodule KitrankWeb.Reveal.RoomLive do
       |> Enum.filter(&(&1.id in room.competition_ids))
       |> Enum.map_join(", ", & &1.name)
 
-    typen = Enum.map_join(room.kit_types, ", ", &Kitrank.Kits.Kit.label/1)
+    typen = Enum.map_join(room.kit_types, ", ", &KitrankWeb.KitLabel.label/1)
 
     [ligen, typen] |> Enum.reject(&(&1 == "")) |> Enum.join(" · ")
   end
@@ -120,7 +120,9 @@ defmodule KitrankWeb.Reveal.RoomLive do
          assign(
            socket,
            :join_error,
-           "Für den Ausschnitt dieses Raums gibt es keine Trikots — da lässt sich nichts ranken."
+           gettext(
+             "Für den Ausschnitt dieses Raums gibt es keine Trikots — da lässt sich nichts ranken."
+           )
          )}
 
       {:error, reason} ->
@@ -184,8 +186,11 @@ defmodule KitrankWeb.Reveal.RoomLive do
   def handle_event("transfer_host", %{"id" => id}, socket) do
     if host?(socket) do
       case Reveal.transfer_host(socket.assigns.room, String.to_integer(id)) do
-        {:ok, _room} -> {:noreply, socket}
-        {:error, _} -> {:noreply, put_flash(socket, :error, "Übergabe hat nicht geklappt.")}
+        {:ok, _room} ->
+          {:noreply, socket}
+
+        {:error, _} ->
+          {:noreply, put_flash(socket, :error, gettext("Übergabe hat nicht geklappt."))}
       end
     else
       {:noreply, socket}
@@ -247,7 +252,7 @@ defmodule KitrankWeb.Reveal.RoomLive do
       # Der Raum ist waehrend der Sitzung abgelaufen oder verschwunden.
       {:error, _reason} ->
         socket
-        |> put_flash(:error, "Dieser Raum ist abgelaufen.")
+        |> put_flash(:error, gettext("Dieser Raum ist abgelaufen."))
         |> push_navigate(to: ~p"/")
     end
   end
@@ -294,19 +299,22 @@ defmodule KitrankWeb.Reveal.RoomLive do
   end
 
   defp join_message(:unknown_share_slug),
-    do: "Diesen Teilen-Link kennen wir nicht. Er sieht so aus: /r/AbCd1234"
+    do: gettext("Diesen Teilen-Link kennen wir nicht. Er sieht so aus: /r/AbCd1234")
 
-  defp join_message(:room_full), do: "Der Raum ist voll."
-  defp join_message(:already_started), do: "Das Reveal läuft schon — zu spät für einen Beitritt."
-  defp join_message(:expired), do: "Dieser Raum ist abgelaufen."
+  defp join_message(:room_full), do: gettext("Der Raum ist voll.")
+
+  defp join_message(:already_started),
+    do: gettext("Das Reveal läuft schon — zu spät für einen Beitritt.")
+
+  defp join_message(:expired), do: gettext("Dieser Raum ist abgelaufen.")
 
   defp join_message(%Ecto.Changeset{} = changeset) do
     if changeset.errors[:room_id],
-      do: "Diese Rangliste ist schon dabei.",
-      else: "Bitte einen Namen angeben."
+      do: gettext("Diese Rangliste ist schon dabei."),
+      else: gettext("Bitte einen Namen angeben.")
   end
 
-  defp join_message(_other), do: "Das hat nicht geklappt."
+  defp join_message(_other), do: gettext("Das hat nicht geklappt.")
 
   ## Render
 

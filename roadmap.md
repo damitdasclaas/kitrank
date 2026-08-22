@@ -42,7 +42,7 @@ kennen, ist interessant** — und das ist strukturell unsere Seite.
 
 ## 2. Reihenfolge
 
-### Schritt 1 — Abschluss-Ansicht des Reveals
+### Schritt 1 — Abschluss-Ansicht des Reveals ✅ erledigt
 
 Das Reveal hört auf, wenn es interessant wird: nach Platz 1 steht „Fertig" und
 sonst nichts. Genau da ist die Gruppe am aufmerksamsten.
@@ -59,7 +59,7 @@ Warum zuerst: sitzt auf vorhandenen Daten, erzeugt das Ding, das die App
 verlässt, und ist der Unterschied, den niemand nachbauen kann, ohne LiveView-
 Räume zu haben.
 
-### Schritt 2 — Beitreten ohne Vorbereitung
+### Schritt 2 — Beitreten ohne Vorbereitung ✅ erledigt
 
 Heute muss jede:r **vorher** eine Rangliste gebaut und den Teilen-Link parat
 haben. Für eine spontane Runde ist das zu viel; trikotranking.de braucht nur
@@ -69,16 +69,16 @@ Ziel: einem Raum beitreten und die Rangliste **darin** bauen — mit dem
 Ausschnitt des Raums, per Duell. Entscheidet, ob ein Abend überhaupt zustande
 kommt.
 
-### Schritt 3 — Vereinsshop sichtbar machen
+### Schritt 3 — Vereinsshop sichtbar machen ✅ erledigt
 
 „Im Shop ansehen" → „Zum Vereinsshop", plus ein Satz, dass KitRank an keinem
 Kauf mitverdient. Zwanzig Minuten, und die glaubwürdigste Aussage, die eine
 Ranking-Seite treffen kann: wer an Käufen verdient, hat ein Interesse daran, wie
 das Ranking ausgeht.
 
-### Schritt 4 — Datenpflege automatisieren (siehe 3.1)
+### Schritt 4 — Datenpflege automatisieren (siehe 3.1) ⟵ als nächstes
 
-### Schritt 5 — Zweisprachigkeit (siehe 3.3)
+### Schritt 5 — Zweisprachigkeit (siehe 3.3) ✅ erledigt
 
 ### Schritt 6 — Weitere Sportarten (siehe 3.2)
 
@@ -136,35 +136,64 @@ Tage.
 **Nicht vorher bauen.** Ohne einen konkreten zweiten Sport rät man, welche
 Kit-Typen es braucht. Architektur Abschnitt 11 sagt das ausdrücklich.
 
-### 3.3 Deutsch/Englisch umschaltbar?
+### 3.3 Deutsch/Englisch umschaltbar? ✅ gebaut
 
-**Möglich, aber es ist Fleißarbeit, kein Schalter.**
+**Ja — und es war Fleißarbeit, kein Schalter.** Wie geschätzt: 274 Meldungen,
+verteilt über 16 Dateien.
 
-Gettext ist im Projekt (`KitrankWeb.Gettext`, `priv/gettext/en/`), wird aber nur
-in den generierten Dateien benutzt. **Meine Oberfläche hat praktisch keine
-gettext-Aufrufe** — alle Texte stehen fest auf Deutsch im Template. Grobe
-Zählung: rund 70 Textzeilen in Templates, mit Attributen, Platzhaltern und
-aria-Labels realistisch 150 bis 250 übersetzbare Zeichenketten.
+Wie es funktioniert:
 
-Nötig:
+- **Deutsch ist die Quellsprache.** Die `msgid` im Code *ist* der deutsche Text.
+  Ein nicht übersetzter Text erscheint dadurch automatisch auf Deutsch statt
+  als leerer Kasten — und es gibt keinen deutschen Katalog zu pflegen. Siehe
+  `priv/gettext/README.md`.
+- **Sprache steht in der Sitzung**, nicht im Pfad (`/sprache/de`, `/sprache/en`).
+  Ein URL-Präfix hätte jede Route umgebaut; für zwei Sprachen zahlt sich das
+  nicht aus. Ohne eigene Wahl entscheidet `Accept-Language`.
+- **Plug *und* `on_mount`-Hook** (`KitrankWeb.Locale`). Das ist die Stelle, an
+  der Zweisprachigkeit in LiveView-Anwendungen fast immer bricht:
+  `Gettext.put_locale/1` gilt pro Prozess, und der LiveView-Prozess ist nicht
+  der Request-Prozess. Nur mit Plug wäre die erste Seite richtig und alles
+  danach deutsch.
+- **Trikot-Bezeichnungen** liegen jetzt in `KitrankWeb.KitLabel`, nicht mehr im
+  Schema. Welche Trikot-Typen es gibt, ist Sache der Domäne; wie sie heißen,
+  Sache der Darstellung. Sonst müsste `Kitrank.Kits.Kit` die Sprache des
+  Betrachters kennen.
 
-1. Jede Zeichenkette in `gettext(...)` wickeln — der Aufwand, verteilt über ~15
-   Dateien
-2. `mix gettext.extract --merge`, dann übersetzen
-3. Locale bestimmen (URL-Präfix, Session oder `Accept-Language`) plus
-   `on_mount`-Hook und Umschalter in der Kopfzeile
-4. Kit-Typ-Labels aus dem Modul in Gettext holen (überschneidet sich mit 3.2)
+Zwei Dinge, die dabei aufgefallen sind und mit erledigt wurden:
 
-**Zwei Dinge, die keine Übersetzung sind:** Vereinsnamen sind Eigennamen und
-bleiben. Namen von Sondertrikots („125 Jahre") sind Nutzerdaten — die kann
-niemand automatisch übersetzen.
+- **Die Anmeldeseiten waren englisch**, der Rest deutsch — `phx.gen.auth`
+  generiert englische Texte. Jetzt deutsch in der Quelle, englisch im Katalog.
+- **Ecto-Fehlermeldungen** („can't be blank") kommen englisch aus der
+  Bibliothek. Für die ist Deutsch *nicht* die Quellsprache, deshalb hat die
+  Domäne `errors` als einzige auch einen deutschen Katalog.
 
-**Und eine Produktfrage, keine technische:** Die deutschen Texte sind bewusst
-gesprochen („Ranken, teilen, streiten", „sieht scheiße aus wegen…"). Das gut ins
-Englische zu bringen ist Schreiben, nicht Übersetzen. Wenn die Stärke der
-gemeinsame Abend in einer Freundesgruppe ist, ist die Zielgruppe vermutlich
-deutschsprachig — Englisch öffnet dagegen internationale Ligen. Das ist eine
-Richtungsentscheidung, die vor der Fleißarbeit stehen sollte.
+**Was bewusst deutsch bleibt:** der Admin-Bereich. Ihn benutzt die Datenpflege,
+nicht die Besucher. Die Texte dort sind nicht gewickelt und erscheinen in jeder
+Sprache auf Deutsch.
+
+**Zwei Wächter**, weil ein fehlender `gettext`-Aufruf nichts kaputtmacht und
+deshalb kein Test ihn von selbst findet:
+
+- `test/kitrank_web/untranslated_text_test.exs` rendert jede Besucher-Seite auf
+  Englisch und schlägt an, wenn ein Umlaut übrig ist — inklusive Gegenprobe,
+  dass der Wächter greift.
+- `test/kitrank_web/locale_test.exs` prüft die Erkennung, das Umschalten, das
+  Halten über das Verbinden *und über ein Ereignis hinaus* und dass kein
+  `msgstr` leer oder `fuzzy` ist.
+
+**Offene Altlast: Satzfragmente.** Wo im Text ein `<span>` mitten im Satz sitzt,
+sind daraus zwei Meldungen geworden („Du brauchst den" + „deiner Rangliste — den
+mit"). Für Englisch geht das auf, weil die Wortstellung ähnlich ist; für eine
+Sprache mit anderer Satzstellung nicht. Zu beheben, indem die betroffenen
+Absätze auf *eine* Meldung mit Bindings umgestellt werden — so wie es die
+Hauptzeile und die Einleitung jetzt schon sind. Rund ein Dutzend Stellen, kein
+Vorrang, solange es bei de/en bleibt.
+
+**Die Produktfrage bleibt offen** und ist keine technische: Die deutschen Texte
+sind bewusst gesprochen. Die englische Fassung ist mit derselben Tonlage
+geschrieben, aber von mir — nicht von jemandem, dessen Muttersprache das ist.
+Wenn Englisch ernst gemeint ist, sollte da mal jemand drüberlesen.
 
 ## 4. Bewusst nicht jetzt
 

@@ -8,14 +8,15 @@ defmodule KitrankWeb.KitComponents do
   dass Heim, Auswärts, Ausweich und Sonder auch ohne Foto unterscheidbar sind.
   """
   use Phoenix.Component
+  use Gettext, backend: KitrankWeb.Gettext
 
   alias Phoenix.LiveView.JS
 
   import KitrankWeb.CoreComponents, only: [icon: 1]
 
   alias Kitrank.Kits.ImageVariant
-  alias Kitrank.Kits.Kit
   alias KitrankWeb.Color
+  alias KitrankWeb.KitLabel
 
   # Trikot-Silhouette auf 100x110: Kragen, Schultern, Ärmel, leicht taillierter
   # Rumpf. Ein Pfad für die Gesamtform, ein zweiter Satz für die Ärmel, damit
@@ -51,7 +52,12 @@ defmodule KitrankWeb.KitComponents do
       <img
         :if={@src}
         src={@src}
-        alt={"#{@team.name} – #{Kit.display_label(@kit)}"}
+        alt={
+          gettext("%{verein} – %{trikot}",
+            verein: @team.name,
+            trikot: KitLabel.display(@kit)
+          )
+        }
         loading="lazy"
         decoding="async"
         class="h-full w-full object-contain"
@@ -85,7 +91,9 @@ defmodule KitrankWeb.KitComponents do
       viewBox="0 0 100 110"
       class="h-full w-full"
       role="img"
-      aria-label={"#{Kit.display_label(@kit)} (Platzhalter, kein Foto hinterlegt)"}
+      aria-label={
+        gettext("%{trikot} (Platzhalter, kein Foto hinterlegt)", trikot: KitLabel.display(@kit))
+      }
     >
       <defs :if={@palette.band}>
         <clipPath id={@uid}>
@@ -195,9 +203,9 @@ defmodule KitrankWeb.KitComponents do
         phx-click={@event}
         phx-value-index={i}
         phx-value-kit-id={Map.get(@extra, :kit_id)}
-        aria-label={"#{image_role(i)} zeigen"}
+        aria-label={"#{KitLabel.image_role(i)} zeigen"}
         aria-current={to_string(i == @index)}
-        title={image_role(i)}
+        title={KitLabel.image_role(i)}
         class={[
           "relative h-14 w-14 shrink-0 overflow-hidden rounded-md border-2 bg-white transition",
           i == @index && "border-ink",
@@ -218,16 +226,6 @@ defmodule KitrankWeb.KitComponents do
     """
   end
 
-  @doc """
-  Was an einer Bildposition erwartet wird.
-
-  Konvention der Datenpflege: 1 Vorderseite, 2 Rückseite, ab 3 Model-Bilder.
-  Erzwungen wird das nicht — die Reihenfolge legt fest, wer pflegt.
-  """
-  def image_role(0), do: "Vorderseite"
-  def image_role(1), do: "Rückseite"
-  def image_role(index), do: "Model #{index - 1}"
-
   attr :kit_type, :string, required: true
   attr :class, :string, default: nil
 
@@ -240,7 +238,7 @@ defmodule KitrankWeb.KitComponents do
         "font-semibold leading-none tracking-tight",
         @class
       ]}
-      title={Kit.label(@kit_type)}
+      title={KitLabel.label(@kit_type)}
     >
       {short_badge(@kit_type)}
     </span>
@@ -309,7 +307,7 @@ defmodule KitrankWeb.KitComponents do
             type="button"
             phx-click={@close}
             class="absolute right-3 top-3 z-10 flex h-8 w-8 items-center justify-center rounded-full border border-line bg-panel text-soft transition hover:text-ink"
-            aria-label="Schliessen"
+            aria-label={gettext("Schließen")}
           >
             <.icon name="hero-x-mark-mini" class="size-4" />
           </button>
@@ -376,7 +374,7 @@ defmodule KitrankWeb.KitComponents do
           type="button"
           phx-click="zoom_close"
           class="ml-auto flex h-9 w-9 items-center justify-center rounded-full border border-white/25 text-white/80 transition hover:bg-white/10 hover:text-white"
-          aria-label="Grosse Ansicht schliessen"
+          aria-label={gettext("Große Ansicht schließen")}
         >
           <.icon name="hero-x-mark" class="size-5" />
         </button>
@@ -389,7 +387,7 @@ defmodule KitrankWeb.KitComponents do
           phx-click="zoom_step"
           phx-value-delta="-1"
           class="absolute left-2 z-10 flex h-11 w-11 items-center justify-center rounded-full border border-white/25 text-white/80 transition hover:bg-white/10 hover:text-white sm:left-6"
-          aria-label="Vorheriges Bild"
+          aria-label={gettext("Vorheriges Bild")}
         >
           <.icon name="hero-chevron-left" class="size-5" />
         </button>
@@ -426,14 +424,14 @@ defmodule KitrankWeb.KitComponents do
           phx-click="zoom_step"
           phx-value-delta="1"
           class="absolute right-2 z-10 flex h-11 w-11 items-center justify-center rounded-full border border-white/25 text-white/80 transition hover:bg-white/10 hover:text-white sm:right-6"
-          aria-label="Naechstes Bild"
+          aria-label={gettext("Nächstes Bild")}
         >
           <.icon name="hero-chevron-right" class="size-5" />
         </button>
       </div>
 
       <p :if={!@src} class="relative pb-6 text-center text-xs text-white/50">
-        Für dieses Trikot ist noch kein Foto hinterlegt.
+        {gettext("Für dieses Trikot ist noch kein Foto hinterlegt.")}
       </p>
     </div>
     """

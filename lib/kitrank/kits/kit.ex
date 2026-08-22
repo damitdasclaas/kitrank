@@ -11,29 +11,6 @@ defmodule Kitrank.Kits.Kit do
   @kit_types ~w(home away third special)
   def kit_types, do: @kit_types
 
-  @labels %{
-    "home" => "Heim",
-    "away" => "Auswärts",
-    "third" => "Ausweich",
-    "special" => "Sonder"
-  }
-
-  @doc "Deutsches Label für einen Kit-Typ, für die Anzeige in der UI."
-  def label(kit_type), do: Map.get(@labels, kit_type, kit_type)
-
-  @doc """
-  Beschriftung eines konkreten Trikots.
-
-  Sondertrikots gibt es pro Saison beliebig viele – ohne ihren Namen stünde in
-  jeder Liste mehrfach dasselbe "Sonder". Bei Heim, Auswärts und Ausweich ist
-  der Name überflüssig, dort bleibt es beim Typ.
-  """
-  def display_label(%__MODULE__{kit_type: kit_type, name: name}) when is_binary(name) do
-    if String.trim(name) == "", do: label(kit_type), else: "#{label(kit_type)} · #{name}"
-  end
-
-  def display_label(%__MODULE__{kit_type: kit_type}), do: label(kit_type)
-
   schema "kits" do
     field :season, :string
     field :kit_type, :string

@@ -17,8 +17,8 @@ defmodule KitrankWeb.OverviewLive do
   import KitrankWeb.KitComponents
 
   alias Kitrank.Kits
-  alias Kitrank.Kits.Kit
   alias KitrankWeb.Color
+  alias KitrankWeb.KitLabel
 
   @max_compare 3
 
@@ -73,7 +73,7 @@ defmodule KitrankWeb.OverviewLive do
          put_flash(
            socket,
            :error,
-           "Im Vergleich haben drei Trikots Platz. Nimm erst eins heraus."
+           gettext("Im Vergleich haben drei Trikots Platz. Nimm erst eins heraus.")
          )}
 
       true ->
@@ -225,8 +225,8 @@ defmodule KitrankWeb.OverviewLive do
     title =
       case {socket.assigns.live_action, socket.assigns.open_team} do
         {:team, %{team: team}} -> team.name
-        {:compare, _} -> "Direktvergleich"
-        _ -> "Übersicht"
+        {:compare, _} -> gettext("Direktvergleich")
+        _ -> gettext("Übersicht")
       end
 
     assign(socket, :page_title, title)
@@ -270,9 +270,11 @@ defmodule KitrankWeb.OverviewLive do
           :if={@overview == []}
           class="mt-16 rounded-lg border border-dashed border-line p-12 text-center"
         >
-          <p class="kr-display text-xl">Noch keine Trikots für {@season}</p>
+          <p class="kr-display text-xl">
+            {gettext("Noch keine Trikots für %{saison}", saison: @season)}
+          </p>
           <p class="mx-auto mt-2 max-w-md text-sm text-soft">
-            Trag Ligen, Teams und Trikots im Admin ein — dann füllt sich diese Seite.
+            {gettext("Trag Ligen, Teams und Trikots im Admin ein — dann füllt sich diese Seite.")}
           </p>
         </div>
 
@@ -332,7 +334,7 @@ defmodule KitrankWeb.OverviewLive do
         team={@kits_by_id[@zoom.kit_id].team}
         images={kit_images(@kits_by_id[@zoom.kit_id].kit)}
         index={@zoom.index}
-        label={Kit.display_label(@kits_by_id[@zoom.kit_id].kit)}
+        label={KitLabel.display(@kits_by_id[@zoom.kit_id].kit)}
       />
     </Layouts.app>
     """
@@ -349,25 +351,31 @@ defmodule KitrankWeb.OverviewLive do
     ~H"""
     <div class="flex flex-col gap-6 border-b border-line pb-8 md:flex-row md:items-end md:justify-between">
       <div>
-        <p class="kr-eyebrow">Saison {@season}</p>
+        <p class="kr-eyebrow">{gettext("Saison %{jahr}", jahr: @season)}</p>
         <%!-- Die Frage, um die es geht – und nicht der Name der Ligen, die
-              gerade in der Datenbank stehen. --%>
-        <h1 class="kr-display mt-2 text-4xl leading-[0.95] sm:text-5xl">
-          Welches Trikot<br />ist das schönste?
+              gerade in der Datenbank stehen.
+
+              Ein Satz, keine zwei Meldungen: der Umbruch war vorher ein <br/>
+              mitten im Satz, und wohin er in einer anderen Sprache gehoert,
+              kann die Uebersetzung nicht entscheiden. Das macht jetzt
+              text-wrap: balance. --%>
+        <h1 class="kr-display mt-2 max-w-[14ch] text-4xl leading-[0.95] text-balance sm:text-5xl">
+          {gettext("Welches Trikot ist das schönste?")}
         </h1>
         <p class="mt-4 max-w-md text-sm leading-relaxed text-soft">
-          {@kit_count} Trikots von {@team_count} Vereinen. Verein antippen für alle Varianten,
-          zwei bis drei nebeneinanderlegen — oder gleich <.link
-            navigate={~p"/rankings/new"}
-            class="text-ink underline underline-offset-4"
-          >
-            eine eigene Rangliste bauen
+          {gettext(
+            "%{trikots} Trikots von %{vereine} Vereinen. Verein antippen für alle Varianten, zwei bis drei nebeneinanderlegen — oder gleich",
+            trikots: @kit_count,
+            vereine: @team_count
+          )}
+          <.link navigate={~p"/rankings/new"} class="text-ink underline underline-offset-4">
+            {gettext("eine eigene Rangliste bauen")}
           </.link>.
         </p>
       </div>
 
       <div :if={length(@seasons) > 1} class="flex items-center gap-2">
-        <span class="kr-eyebrow">Saison</span>
+        <span class="kr-eyebrow">{gettext("Saison")}</span>
         <div class="flex gap-1 rounded-lg border border-line bg-sunk p-1">
           <button
             :for={option <- @seasons}
@@ -411,8 +419,15 @@ defmodule KitrankWeb.OverviewLive do
           class="size-5 shrink-0 text-soft"
         />
         <span class="kr-display text-xl leading-none">{@competition.name}</span>
-        <span class="kr-eyebrow">{@competition.country} · Liga {@competition.tier}</span>
-        <span class="ml-auto shrink-0 font-mono text-xs text-soft">{@team_count} Vereine</span>
+        <span class="kr-eyebrow">
+          {gettext("%{land} · Liga %{stufe}",
+            land: @competition.country,
+            stufe: @competition.tier
+          )}
+        </span>
+        <span class="ml-auto shrink-0 font-mono text-xs text-soft">
+          {gettext("%{anzahl} Vereine", anzahl: @team_count)}
+        </span>
       </button>
     </h2>
     """
@@ -446,7 +461,7 @@ defmodule KitrankWeb.OverviewLive do
           class="h-full w-full transition-transform duration-300 group-hover:-translate-y-1"
           size={:thumb}
         />
-        <span :if={!@lead_kit} class="font-mono text-[11px] text-black/40">kein Trikot</span>
+        <span :if={!@lead_kit} class="font-mono text-[11px] text-black/40">{gettext("kein Trikot")}</span>
 
         <button
           :if={@lead_kit}
@@ -468,15 +483,23 @@ defmodule KitrankWeb.OverviewLive do
           aria-pressed={to_string(@lead_kit.id in @compare_ids)}
           aria-label={
             if @lead_kit.id in @compare_ids,
-              do: "#{@team.name} #{Kit.display_label(@lead_kit)} aus dem Vergleich nehmen",
-              else: "#{@team.name} #{Kit.display_label(@lead_kit)} vergleichen"
+              do:
+                gettext("%{verein} %{trikot} aus dem Vergleich nehmen",
+                  verein: @team.name,
+                  trikot: KitLabel.display(@lead_kit)
+                ),
+              else:
+                gettext("%{verein} %{trikot} vergleichen",
+                  verein: @team.name,
+                  trikot: KitLabel.display(@lead_kit)
+                )
           }
         >
           <.icon
             name={if @lead_kit.id in @compare_ids, do: "hero-check-mini", else: "hero-plus-mini"}
             class="size-3"
           />
-          {if @lead_kit.id in @compare_ids, do: "Drin", else: "Vergleich"}
+          {if @lead_kit.id in @compare_ids, do: gettext("Drin"), else: gettext("Vergleich")}
         </button>
       </div>
 
@@ -498,7 +521,11 @@ defmodule KitrankWeb.OverviewLive do
       </div>
 
       <%!-- Liegt unter den echten Buttons, deckt aber die ganze Kachel ab. --%>
-      <.link patch={@href} class="absolute inset-0 z-10" aria-label={"#{@team.name} — alle Trikots"}>
+      <.link
+        patch={@href}
+        class="absolute inset-0 z-10"
+        aria-label={gettext("%{verein} — alle Trikots", verein: @team.name)}
+      >
         <span class="sr-only">{@team.name}</span>
       </.link>
     </div>
@@ -520,23 +547,21 @@ defmodule KitrankWeb.OverviewLive do
     ~H"""
     <div class="kr-tray fixed inset-x-0 bottom-0 z-40 border-t border-line bg-panel/95 backdrop-blur">
       <div class="mx-auto flex max-w-[1500px] items-center gap-3 px-4 py-3 sm:px-6 lg:px-8">
-        <span class="kr-eyebrow hidden shrink-0 sm:block">Vergleich</span>
+        <span class="kr-eyebrow hidden shrink-0 sm:block">{gettext("Vergleich")}</span>
 
         <ul class="flex flex-1 items-center gap-2 overflow-x-auto">
           <li :for={id <- @compare_ids} class="shrink-0">
             <.tray_chip entry={@kits_by_id[id]} />
           </li>
           <li :if={length(@compare_ids) < 3} class="shrink-0 font-mono text-[11px] text-soft">
-            noch {3 - length(@compare_ids)} möglich
+            {gettext("noch %{anzahl} möglich", anzahl: 3 - length(@compare_ids))}
           </li>
         </ul>
 
         <.link
           patch={@clear_path}
           class="shrink-0 font-mono text-[11px] text-soft underline-offset-4 hover:text-ink hover:underline"
-        >
-          Leeren
-        </.link>
+        >{gettext("Leeren")}</.link>
 
         <.link
           :if={length(@compare_ids) >= 2}
@@ -549,9 +574,7 @@ defmodule KitrankWeb.OverviewLive do
         <span
           :if={length(@compare_ids) < 2}
           class="shrink-0 font-mono text-[11px] text-soft"
-        >
-          noch eins dazu
-        </span>
+        >{gettext("noch eins dazu")}</span>
       </div>
     </div>
     """
@@ -573,14 +596,19 @@ defmodule KitrankWeb.OverviewLive do
       <span class="font-mono text-[11px] font-semibold" style={"color: #{@color}"}>
         {@entry.team.short_code}
       </span>
-      <span class="text-[11px] text-soft">{Kit.display_label(@entry.kit)}</span>
+      <span class="text-[11px] text-soft">{KitLabel.display(@entry.kit)}</span>
       <button
         type="button"
         phx-click="toggle_compare"
         phx-value-id={@entry.kit.id}
         data-role="tray-remove"
         class="text-soft transition hover:text-ink"
-        aria-label={"#{@entry.team.name} #{Kit.display_label(@entry.kit)} aus dem Vergleich nehmen"}
+        aria-label={
+          gettext("%{verein} %{trikot} aus dem Vergleich nehmen",
+            verein: @entry.team.name,
+            trikot: KitLabel.display(@entry.kit)
+          )
+        }
       >
         <.icon name="hero-x-mark-mini" class="size-3.5" />
       </button>
@@ -604,7 +632,7 @@ defmodule KitrankWeb.OverviewLive do
     <.modal
       id="team-modal"
       close_path={@close_path}
-      label={"Trikots von #{@entry.team.name}"}
+      label={gettext("Trikots von %{verein}", verein: @entry.team.name)}
       size="max-w-5xl"
       close_on_escape={!@zoomed?}
     >
@@ -612,7 +640,9 @@ defmodule KitrankWeb.OverviewLive do
         class="border-b border-line px-6 py-5"
         style={"background-color: color-mix(in oklab, #{@color} 8%, transparent)"}
       >
-        <p class="kr-eyebrow">{@entry.competition.name} · Saison {@season}</p>
+        <p class="kr-eyebrow">
+          {gettext("%{liga} · Saison %{saison}", liga: @entry.competition.name, saison: @season)}
+        </p>
         <div class="mt-1.5 flex flex-wrap items-baseline gap-3">
           <h2 class="kr-display text-2xl">{@entry.team.name}</h2>
           <span class="font-mono text-sm font-semibold" style={"color: #{@color}"}>
@@ -626,13 +656,16 @@ defmodule KitrankWeb.OverviewLive do
           rel="noopener noreferrer"
           class="mt-2 inline-flex items-center gap-1 text-xs text-soft underline underline-offset-4 hover:text-ink"
         >
-          Vereinsshop <.icon name="hero-arrow-top-right-on-square-mini" class="size-3" />
+          {gettext("Vereinsshop")} <.icon name="hero-arrow-top-right-on-square-mini" class="size-3" />
         </a>
       </div>
 
       <div :if={@entry.kits == []} class="px-6 py-12 text-center">
         <p class="text-sm text-soft">
-          Für {@entry.team.name} sind in {@season} noch keine Trikots hinterlegt.
+          {gettext("Für %{verein} sind in %{saison} noch keine Trikots hinterlegt.",
+            verein: @entry.team.name,
+            saison: @season
+          )}
         </p>
       </div>
 
@@ -672,7 +705,12 @@ defmodule KitrankWeb.OverviewLive do
         phx-value-id={@kit.id}
         class="group relative flex aspect-square cursor-zoom-in items-center justify-center p-8"
         style={"background-color: color-mix(in oklab, #{@color} 13%, #FFFFFF)"}
-        aria-label={"#{@team.name} #{Kit.display_label(@kit)} gross ansehen"}
+        aria-label={
+          gettext("%{verein} %{trikot} groß ansehen",
+            verein: @team.name,
+            trikot: KitLabel.display(@kit)
+          )
+        }
       >
         <.kit_figure
           kit={@kit}
@@ -696,7 +734,7 @@ defmodule KitrankWeb.OverviewLive do
 
       <div class="flex items-center gap-2 border-t border-line px-4 py-3">
         <div class="min-w-0">
-          <p class="text-sm font-medium">{Kit.display_label(@kit)}</p>
+          <p class="text-sm font-medium">{KitLabel.display(@kit)}</p>
           <a
             :if={@kit.source_shop_url}
             href={@kit.source_shop_url}
@@ -704,10 +742,11 @@ defmodule KitrankWeb.OverviewLive do
             rel="noopener noreferrer"
             class="mt-0.5 inline-flex items-center gap-1 text-[11px] text-soft underline underline-offset-4 hover:text-ink"
           >
-            Zum Vereinsshop <.icon name="hero-arrow-top-right-on-square-mini" class="size-3" />
+            {gettext("Zum Vereinsshop")}
+            <.icon name="hero-arrow-top-right-on-square-mini" class="size-3" />
           </a>
           <p :if={!@kit.source_shop_url} class="mt-0.5 text-[11px] text-soft">
-            Kein Shop-Link hinterlegt
+            {gettext("Kein Shop-Link hinterlegt")}
           </p>
         </div>
 
@@ -723,7 +762,7 @@ defmodule KitrankWeb.OverviewLive do
           style={@selected && "background-color: #{@color}; color: #{Color.readable_on(@color)}"}
           aria-pressed={to_string(@selected)}
         >
-          {if @selected, do: "Im Vergleich", else: "Vergleichen"}
+          {if @selected, do: gettext("Im Vergleich"), else: gettext("Vergleichen")}
         </button>
       </div>
     </div>
@@ -750,17 +789,21 @@ defmodule KitrankWeb.OverviewLive do
       close_on_escape={!@zoomed?}
     >
       <div class="border-b border-line px-6 py-5">
-        <p class="kr-eyebrow">Saison {@season}</p>
-        <h2 class="kr-display mt-1.5 text-2xl">Direktvergleich</h2>
+        <p class="kr-eyebrow">{gettext("Saison %{jahr}", jahr: @season)}</p>
+        <h2 class="kr-display mt-1.5 text-2xl">{gettext("Direktvergleich")}</h2>
         <p class="mt-1 text-sm text-soft">
-          {length(@entries)} Trikots nebeneinander. Die Zeilen liegen auf einer Höhe, damit
-          sich Verein, Typ und Shop direkt gegenüberstehen.
+          {gettext(
+            "%{anzahl} Trikots nebeneinander. Die Zeilen liegen auf einer Höhe, damit sich Verein, Typ und Shop direkt gegenüberstehen.",
+            anzahl: length(@entries)
+          )}
         </p>
       </div>
 
       <div :if={@entries == []} class="px-6 py-16 text-center">
         <p class="text-sm text-soft">
-          Noch nichts ausgewählt. Tipp in der Übersicht auf „Vergleich“ bei zwei oder drei Trikots.
+          {gettext(
+            "Noch nichts ausgewählt. Tipp in der Übersicht auf „Vergleich“ bei zwei oder drei Trikots."
+          )}
         </p>
       </div>
 
@@ -777,7 +820,12 @@ defmodule KitrankWeb.OverviewLive do
               phx-value-id={entry.kit.id}
               class="group relative flex aspect-[4/5] w-full cursor-zoom-in items-center justify-center rounded-lg p-6"
               style={"background-color: color-mix(in oklab, #{Color.team_color(entry.team)} 14%, #FFFFFF)"}
-              aria-label={"#{entry.team.name} #{Kit.display_label(entry.kit)} gross ansehen"}
+              aria-label={
+                gettext("%{verein} %{trikot} groß ansehen",
+                  verein: entry.team.name,
+                  trikot: KitLabel.display(entry.kit)
+                )
+              }
             >
               <.kit_figure
                 kit={entry.kit}
@@ -801,7 +849,7 @@ defmodule KitrankWeb.OverviewLive do
           </.compare_row>
 
           <.compare_row label="Trikot" entries={@entries}>
-            <:cell :let={entry}>{Kit.display_label(entry.kit)}</:cell>
+            <:cell :let={entry}>{KitLabel.display(entry.kit)}</:cell>
           </.compare_row>
 
           <.compare_row label="Liga" entries={@entries}>
@@ -817,7 +865,8 @@ defmodule KitrankWeb.OverviewLive do
                 rel="noopener noreferrer"
                 class="inline-flex items-center gap-1 underline underline-offset-4 hover:opacity-70"
               >
-                Vereinsshop <.icon name="hero-arrow-top-right-on-square-mini" class="size-3" />
+                {gettext("Vereinsshop")}
+                <.icon name="hero-arrow-top-right-on-square-mini" class="size-3" />
               </a>
               <span :if={!entry.kit.source_shop_url} class="text-soft">—</span>
             </:cell>
@@ -830,9 +879,7 @@ defmodule KitrankWeb.OverviewLive do
               phx-click="toggle_compare"
               phx-value-id={entry.kit.id}
               class="w-full rounded-md border border-line px-3 py-2 font-mono text-[11px] text-soft transition hover:border-ink hover:text-ink"
-            >
-              Herausnehmen
-            </button>
+            >{gettext("Herausnehmen")}</button>
           </div>
         </div>
       </div>

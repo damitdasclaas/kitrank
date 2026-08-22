@@ -10,16 +10,16 @@ defmodule KitrankWeb.UserLive.Login do
       <div class="mx-auto max-w-sm space-y-4">
         <div class="text-center">
           <.header>
-            <p>Log in</p>
+            <p>{gettext("Anmelden")}</p>
             <:subtitle>
               <%= if @current_scope do %>
-                You need to reauthenticate to perform sensitive actions on your account.
+                {gettext("Für Änderungen an deinem Konto musst du dich erneut anmelden.")}
               <% else %>
-                Don't have an account? <.link
+                {gettext("Noch kein Konto?")} <.link
                   navigate={~p"/users/register"}
                   class="font-semibold text-brand hover:underline"
                   phx-no-format
-                >Sign up</.link> for an account now.
+                >{gettext("Registrieren")}</.link> {gettext("und leg eines an.")}
               <% end %>
             </:subtitle>
           </.header>
@@ -28,9 +28,9 @@ defmodule KitrankWeb.UserLive.Login do
         <div :if={local_mail_adapter?()} class="alert alert-info">
           <.icon name="hero-information-circle" class="size-6 shrink-0" />
           <div>
-            <p>You are running the local mail adapter.</p>
+            <p>{gettext("Hier läuft der lokale Mailversand.")}</p>
             <p>
-              To see sent emails, visit <.link href="/dev/mailbox" class="underline">the mailbox page</.link>.
+              {gettext("Verschickte Mails liegen im")} <.link href="/dev/mailbox" class="underline">{gettext("Postfach")}</.link>.
             </p>
           </div>
         </div>
@@ -46,18 +46,18 @@ defmodule KitrankWeb.UserLive.Login do
             readonly={!!@current_scope}
             field={f[:email]}
             type="email"
-            label="Email"
+            label={gettext("E-Mail")}
             autocomplete="username"
             spellcheck="false"
             required
             phx-mounted={JS.focus()}
           />
           <.button class="btn btn-primary w-full">
-            Log in with email <span aria-hidden="true">→</span>
+            {gettext("Per E-Mail anmelden")} <span aria-hidden="true">→</span>
           </.button>
         </.form>
 
-        <div class="divider">or</div>
+        <div class="divider">{gettext("oder")}</div>
 
         <.form
           :let={f}
@@ -71,7 +71,7 @@ defmodule KitrankWeb.UserLive.Login do
             readonly={!!@current_scope}
             field={f[:email]}
             type="email"
-            label="Email"
+            label={gettext("E-Mail")}
             autocomplete="username"
             spellcheck="false"
             required
@@ -79,16 +79,14 @@ defmodule KitrankWeb.UserLive.Login do
           <.input
             field={@form[:password]}
             type="password"
-            label="Password"
+            label={gettext("Passwort")}
             autocomplete="current-password"
             spellcheck="false"
           />
           <.button class="btn btn-primary w-full" name={@form[:remember_me].name} value="true">
-            Log in and stay logged in <span aria-hidden="true">→</span>
+            {gettext("Anmelden und angemeldet bleiben")} <span aria-hidden="true">→</span>
           </.button>
-          <.button class="btn btn-primary btn-soft w-full mt-2">
-            Log in only this time
-          </.button>
+          <.button class="btn btn-primary btn-soft w-full mt-2">{gettext("Nur dieses Mal anmelden")}</.button>
         </.form>
       </div>
     </Layouts.app>

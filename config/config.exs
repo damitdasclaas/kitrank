@@ -73,6 +73,10 @@ config :swoosh, api_client: Swoosh.ApiClient.Req
 # REGISTRATION_OPEN (siehe config/runtime.exs).
 config :kitrank, :registration_open, false
 
+# Deutsch ist die Quellsprache: die msgid im Code *ist* der deutsche Text.
+# Das haelt die Templates lesbar und vermeidet eine zweite Uebersetzungsebene.
+config :kitrank, KitrankWeb.Gettext, default_locale: "de", locales: ~w(de en)
+
 # Configure Elixir's Logger
 config :logger, :default_formatter,
   format: "$time $metadata[$level] $message\n",

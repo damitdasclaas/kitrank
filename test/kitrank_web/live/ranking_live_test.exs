@@ -563,7 +563,7 @@ defmodule KitrankWeb.RankingLiveTest do
       |> element(~s{button[data-role="detail-figure"][phx-value-id="#{kit.id}"]})
       |> render_click()
 
-      html = view |> element(~s{#entry-detail button[aria-label="Schliessen"]}) |> render_click()
+      html = view |> element(~s{#entry-detail button[aria-label="Schließen"]}) |> render_click()
 
       refute html =~ ~s(id="entry-detail")
     end

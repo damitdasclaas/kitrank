@@ -11,6 +11,7 @@ defmodule KitrankWeb.Router do
     plug :protect_from_forgery
     plug :put_secure_browser_headers
     plug :fetch_current_scope_for_user
+    plug KitrankWeb.Locale
   end
 
   pipeline :api do
@@ -23,7 +24,10 @@ defmodule KitrankWeb.Router do
     # Drei Routen, ein LiveView: Raster, Team-Detail als Modal darueber und der
     # Direktvergleich. Team und Vergleich sind eigene URLs, damit beides
     # verlinkbar bleibt und der Zurueck-Button tut, was man erwartet.
-    live_session :public, on_mount: [{KitrankWeb.UserAuth, :mount_current_scope}] do
+    get "/sprache/:locale", LocaleController, :update
+
+    live_session :public,
+      on_mount: [{KitrankWeb.UserAuth, :mount_current_scope}, KitrankWeb.Locale] do
       live "/", OverviewLive, :index
       live "/teams/:id", OverviewLive, :team
       live "/vergleich", OverviewLive, :compare
@@ -52,7 +56,8 @@ defmodule KitrankWeb.Router do
     live_session :admin,
       on_mount: [
         {KitrankWeb.UserAuth, :require_authenticated},
-        {KitrankWeb.UserAuth, :require_admin}
+        {KitrankWeb.UserAuth, :require_admin},
+        KitrankWeb.Locale
       ] do
       live "/", DashboardLive, :index
 
@@ -106,7 +111,7 @@ defmodule KitrankWeb.Router do
     pipe_through [:browser, :require_authenticated_user]
 
     live_session :require_authenticated_user,
-      on_mount: [{KitrankWeb.UserAuth, :require_authenticated}] do
+      on_mount: [{KitrankWeb.UserAuth, :require_authenticated}, KitrankWeb.Locale] do
       live "/users/settings", UserLive.Settings, :edit
       live "/users/settings/confirm-email/:token", UserLive.Settings, :confirm_email
     end
@@ -120,12 +125,12 @@ defmodule KitrankWeb.Router do
     # Die Registrierung ist vollstaendig gebaut, aber zu – siehe
     # Kitrank.Accounts.registration_open?/0. Aufmachen ist ein Schalter.
     live_session :registration,
-      on_mount: [{KitrankWeb.UserAuth, :require_open_registration}] do
+      on_mount: [{KitrankWeb.UserAuth, :require_open_registration}, KitrankWeb.Locale] do
       live "/users/register", UserLive.Registration, :new
     end
 
     live_session :current_user,
-      on_mount: [{KitrankWeb.UserAuth, :mount_current_scope}] do
+      on_mount: [{KitrankWeb.UserAuth, :mount_current_scope}, KitrankWeb.Locale] do
       live "/users/log-in", UserLive.Login, :new
       live "/users/log-in/:token", UserLive.Confirmation, :new
     end

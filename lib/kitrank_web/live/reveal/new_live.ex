@@ -15,6 +15,7 @@ defmodule KitrankWeb.Reveal.NewLive do
   alias Kitrank.Kits
   alias Kitrank.Kits.Kit
   alias Kitrank.Reveal
+  alias KitrankWeb.KitLabel
 
   @impl true
   def mount(_params, _session, socket) do
@@ -53,10 +54,11 @@ defmodule KitrankWeb.Reveal.NewLive do
         {:noreply, push_navigate(socket, to: ~p"/reveal/#{room.room_code}")}
 
       {:error, :expired} ->
-        {:noreply, assign(socket, :code_error, "Dieser Raum ist abgelaufen.")}
+        {:noreply, assign(socket, :code_error, gettext("Dieser Raum ist abgelaufen."))}
 
       {:error, :not_found} ->
-        {:noreply, assign(socket, :code_error, "Diesen Code kennen wir nicht. Vertippt?")}
+        {:noreply,
+         assign(socket, :code_error, gettext("Diesen Code kennen wir nicht. Vertippt?"))}
     end
   end
 
@@ -64,10 +66,10 @@ defmodule KitrankWeb.Reveal.NewLive do
   def handle_event("create", %{"max_participants" => max}, socket) do
     cond do
       MapSet.size(socket.assigns.chosen_leagues) == 0 ->
-        {:noreply, assign(socket, :scope_error, "Wähl mindestens eine Liga.")}
+        {:noreply, assign(socket, :scope_error, gettext("Wähl mindestens eine Liga."))}
 
       MapSet.size(socket.assigns.chosen_types) == 0 ->
-        {:noreply, assign(socket, :scope_error, "Wähl mindestens einen Trikot-Typ.")}
+        {:noreply, assign(socket, :scope_error, gettext("Wähl mindestens einen Trikot-Typ."))}
 
       true ->
         create_room(socket, max)
@@ -84,10 +86,12 @@ defmodule KitrankWeb.Reveal.NewLive do
 
     case Reveal.create_room(attrs) do
       {:ok, room} ->
-        {:noreply, assign(socket, room: room, page_title: "Raum #{room.room_code}")}
+        {:noreply,
+         assign(socket, room: room, page_title: gettext("Raum %{code}", code: room.room_code))}
 
       {:error, _changeset} ->
-        {:noreply, assign(socket, :scope_error, "Der Raum ließ sich nicht anlegen. Nochmal?")}
+        {:noreply,
+         assign(socket, :scope_error, gettext("Der Raum ließ sich nicht anlegen. Nochmal?"))}
     end
   end
 
@@ -110,10 +114,11 @@ defmodule KitrankWeb.Reveal.NewLive do
     <Layouts.app flash={@flash} current_scope={@current_scope}>
       <div class="mx-auto max-w-xl px-4 py-16 sm:px-6">
         <p class="kr-eyebrow">Reveal</p>
-        <h1 class="kr-display mt-2 text-4xl leading-[0.95]">Gemeinsam aufdecken</h1>
+        <h1 class="kr-display mt-2 text-4xl leading-[0.95]">{gettext("Gemeinsam aufdecken")}</h1>
         <p class="mt-4 text-sm leading-relaxed text-soft">
-          Ihr geht eure Ranglisten Platz für Platz durch — vom letzten Rang nach vorn. Bei jedem
-          Schritt deckt jede:r das eigene Trikot selbst auf.
+          {gettext(
+            "Ihr geht eure Ranglisten Platz für Platz durch — vom letzten Rang nach vorn. Bei jedem Schritt deckt jede:r das eigene Trikot selbst auf."
+          )}
         </p>
 
         <div :if={!@room} class="mt-8 grid gap-4 sm:grid-cols-2">
@@ -141,11 +146,11 @@ defmodule KitrankWeb.Reveal.NewLive do
   defp join_form(assigns) do
     ~H"""
     <div class="rounded-xl border border-line bg-panel p-5">
-      <h2 class="kr-display text-lg">Raum beitreten</h2>
-      <p class="mt-1 text-xs text-soft">Du hast einen Code bekommen?</p>
+      <h2 class="kr-display text-lg">{gettext("Raum beitreten")}</h2>
+      <p class="mt-1 text-xs text-soft">{gettext("Du hast einen Code bekommen?")}</p>
 
       <form phx-submit="join" class="mt-4">
-        <label for="room_code" class="sr-only">Raumcode</label>
+        <label for="room_code" class="sr-only">{gettext("Raumcode")}</label>
         <input
           id="room_code"
           name="room_code"
@@ -154,7 +159,7 @@ defmodule KitrankWeb.Reveal.NewLive do
           autocomplete="off"
           autocapitalize="characters"
           spellcheck="false"
-          placeholder="ABC23"
+          placeholder={gettext("ABC23")}
           class="kr-display w-full rounded-md border border-line bg-panel px-3 py-3 text-center text-2xl tracking-[0.2em] uppercase placeholder:text-soft/40"
         />
         <p :if={@error} class="mt-2 text-xs text-red-600">{@error}</p>
@@ -163,9 +168,7 @@ defmodule KitrankWeb.Reveal.NewLive do
           type="submit"
           phx-disable-with="Suche …"
           class="mt-3 w-full rounded-md border border-ink px-4 py-2.5 text-sm font-semibold transition hover:bg-sunk"
-        >
-          Beitreten
-        </button>
+        >{gettext("Beitreten")}</button>
       </form>
     </div>
     """
@@ -182,8 +185,8 @@ defmodule KitrankWeb.Reveal.NewLive do
   defp setup_form(assigns) do
     ~H"""
     <form phx-submit="create" class="rounded-xl border border-line bg-panel p-5">
-      <h2 class="kr-display text-lg">Raum erstellen</h2>
-      <p class="mt-1 text-xs text-soft">Du bekommst einen Code zum Weitergeben.</p>
+      <h2 class="kr-display text-lg">{gettext("Raum erstellen")}</h2>
+      <p class="mt-1 text-xs text-soft">{gettext("Du bekommst einen Code zum Weitergeben.")}</p>
 
       <%!-- Der Ausschnitt ist das Wichtigste an dieser Seite: er sorgt dafuer,
             dass "Platz 3" spaeter bei allen dasselbe bedeutet. --%>
@@ -207,20 +210,21 @@ defmodule KitrankWeb.Reveal.NewLive do
             event="toggle_type"
             value={type}
             key="type"
-            label={Kit.label(type)}
+            label={KitLabel.label(type)}
             on?={MapSet.member?(@chosen_types, type)}
           />
         </div>
 
         <p class="mt-2 text-xs text-soft">
-          Alle Ranglisten werden auf diesen Ausschnitt gefiltert — dadurch vergleicht ihr
-          dieselben Trikots, egal wie lang eure Listen sind.
+          {gettext(
+            "Alle Ranglisten werden auf diesen Ausschnitt gefiltert — dadurch vergleicht ihr dieselben Trikots, egal wie lang eure Listen sind."
+          )}
         </p>
       </fieldset>
 
       <p :if={@error} class="mt-2 text-xs text-red-600">{@error}</p>
 
-      <label for="max" class="mt-4 block text-xs font-medium">Wie viele macht ihr mit?</label>
+      <label for="max" class="mt-4 block text-xs font-medium">{gettext("Wie viele macht ihr mit?")}</label>
       <select
         id="max"
         name="max_participants"
@@ -228,17 +232,13 @@ defmodule KitrankWeb.Reveal.NewLive do
       >
         <option :for={n <- 2..12} value={n} selected={n == @max}>{n} Personen</option>
       </select>
-      <p class="mt-1.5 text-xs text-soft">
-        Lässt sich später nicht ändern.
-      </p>
+      <p class="mt-1.5 text-xs text-soft">{gettext("Lässt sich später nicht ändern.")}</p>
 
       <button
         type="submit"
-        phx-disable-with="Raum wird geöffnet …"
+        phx-disable-with={gettext("Raum wird geöffnet …")}
         class="mt-3 w-full rounded-md bg-ink px-4 py-2.5 text-sm font-semibold text-chalk transition hover:opacity-90"
-      >
-        Raum öffnen
-      </button>
+      >{gettext("Raum öffnen")}</button>
     </form>
     """
   end
@@ -271,20 +271,28 @@ defmodule KitrankWeb.Reveal.NewLive do
   defp how_it_works(assigns) do
     ~H"""
     <div class="mt-8 rounded-lg border border-line p-5">
-      <h2 class="kr-eyebrow">So läuft es ab</h2>
+      <h2 class="kr-eyebrow">{gettext("So läuft es ab")}</h2>
       <ol class="mt-3 space-y-2 text-sm text-soft">
-        <li><span class="text-ink">1.</span> Du bekommst einen Raumcode und gibst ihn weiter.</li>
         <li>
-          <span class="text-ink">2.</span>
-          Alle treten mit dem Teilen-Link ihrer Rangliste bei — nicht mit dem Bearbeiten-Link.
+          <span class="text-ink">1.</span> {gettext(
+            "Du bekommst einen Raumcode und gibst ihn weiter."
+          )}
         </li>
         <li>
-          <span class="text-ink">3.</span> Du startest, und alle sehen jeden Schritt gleichzeitig.
+          <span class="text-ink">2.</span> {gettext(
+            "Alle treten mit dem Teilen-Link ihrer Rangliste bei — nicht mit dem Bearbeiten-Link."
+          )}
+        </li>
+        <li>
+          <span class="text-ink">3.</span> {gettext(
+            "Du startest, und alle sehen jeden Schritt gleichzeitig."
+          )}
         </li>
       </ol>
       <p class="mt-3 text-xs text-soft">
-        Der Raum läuft nach zwölf Stunden ab. Du kannst die Steuerung im Raum an jemand
-        anderen abgeben.
+        {gettext(
+          "Der Raum läuft nach zwölf Stunden ab. Du kannst die Steuerung im Raum an jemand anderen abgeben."
+        )}
       </p>
     </div>
     """
@@ -305,7 +313,7 @@ defmodule KitrankWeb.Reveal.NewLive do
     </div>
 
     <div class="kr-rise mt-8 rounded-xl border border-line bg-panel p-6 text-center">
-      <p class="kr-eyebrow">Raumcode</p>
+      <p class="kr-eyebrow">{gettext("Raumcode")}</p>
       <p class="kr-display mt-2 text-6xl tracking-[0.15em]">{@room.room_code}</p>
 
       <div class="mt-5 flex flex-wrap items-center justify-center gap-2">
@@ -316,7 +324,7 @@ defmodule KitrankWeb.Reveal.NewLive do
           data-copy={@room.room_code}
           class="rounded-md border border-line px-3 py-2 text-xs font-medium transition hover:border-ink"
         >
-          <span data-copy-label>Code kopieren</span>
+          <span data-copy-label>{gettext("Code kopieren")}</span>
         </button>
         <button
           type="button"
@@ -325,20 +333,19 @@ defmodule KitrankWeb.Reveal.NewLive do
           data-copy={url(~p"/reveal/#{@room.room_code}")}
           class="rounded-md border border-line px-3 py-2 text-xs font-medium transition hover:border-ink"
         >
-          <span data-copy-label>Link kopieren</span>
+          <span data-copy-label>{gettext("Link kopieren")}</span>
         </button>
       </div>
 
       <.link
         navigate={~p"/reveal/#{@room.room_code}"}
         class="mt-6 block w-full rounded-md bg-ink px-4 py-3 text-sm font-semibold text-chalk transition hover:opacity-90"
-      >
-        Raum betreten
-      </.link>
+      >{gettext("Raum betreten")}</.link>
 
       <p class="mt-4 text-xs text-soft">
-        Du steuerst das Reveal. Das merkt sich dein Browser — auf einem anderen Gerät musst du
-        die Steuerung im Raum übernehmen lassen.
+        {gettext(
+          "Du steuerst das Reveal. Das merkt sich dein Browser — auf einem anderen Gerät musst du die Steuerung im Raum übernehmen lassen."
+        )}
       </p>
     </div>
     """

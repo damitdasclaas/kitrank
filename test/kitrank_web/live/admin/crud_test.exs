@@ -34,7 +34,7 @@ defmodule KitrankWeb.Admin.CrudTest do
         |> form("#sport-form", sport: %{name: "", slug: "Groß Geschrieben"})
         |> render_submit()
 
-      assert html =~ "can&#39;t be blank"
+      assert html =~ "darf nicht leer sein"
       assert Kits.list_sports() == []
     end
   end

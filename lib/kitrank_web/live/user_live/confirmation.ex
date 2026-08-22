@@ -25,14 +25,12 @@ defmodule KitrankWeb.UserLive.Confirmation do
           <.button
             name={@form[:remember_me].name}
             value="true"
-            phx-disable-with="Confirming..."
+            phx-disable-with="Wird bestätigt …"
             class="btn btn-primary w-full"
-          >
-            Confirm and stay logged in
-          </.button>
-          <.button phx-disable-with="Confirming..." class="btn btn-primary btn-soft w-full mt-2">
-            Confirm and log in only this time
-          </.button>
+          >{gettext("Bestätigen und angemeldet bleiben")}</.button>
+          <.button phx-disable-with="Wird bestätigt …" class="btn btn-primary btn-soft w-full mt-2">{gettext(
+            "Bestätigen und nur dieses Mal anmelden"
+          )}</.button>
         </.form>
 
         <.form
@@ -46,26 +44,27 @@ defmodule KitrankWeb.UserLive.Confirmation do
         >
           <input type="hidden" name={@form[:token].name} value={@form[:token].value} />
           <%= if @current_scope do %>
-            <.button phx-disable-with="Logging in..." class="btn btn-primary w-full">
-              Log in
-            </.button>
+            <.button phx-disable-with="Anmeldung läuft …" class="btn btn-primary w-full">{gettext(
+              "Anmelden"
+            )}</.button>
           <% else %>
             <.button
               name={@form[:remember_me].name}
               value="true"
-              phx-disable-with="Logging in..."
+              phx-disable-with="Anmeldung läuft …"
               class="btn btn-primary w-full"
-            >
-              Keep me logged in on this device
-            </.button>
-            <.button phx-disable-with="Logging in..." class="btn btn-primary btn-soft w-full mt-2">
-              Log me in only this time
-            </.button>
+            >{gettext("Auf diesem Gerät angemeldet bleiben")}</.button>
+            <.button
+              phx-disable-with="Anmeldung läuft …"
+              class="btn btn-primary btn-soft w-full mt-2"
+            >{gettext("Nur dieses Mal anmelden")}</.button>
           <% end %>
         </.form>
 
         <p :if={!@user.confirmed_at} class="alert alert-outline mt-8">
-          Tip: If you prefer passwords, you can enable them in the user settings.
+          {gettext(
+            "Wenn du lieber ein Passwort nutzt, kannst du es in den Kontoeinstellungen setzen."
+          )}
         </p>
       </div>
     </Layouts.app>

@@ -12,8 +12,8 @@ defmodule KitrankWeb.UserLive.SettingsTest do
         |> log_in_user(user_fixture())
         |> live(~p"/users/settings")
 
-      assert html =~ "Change Email"
-      assert html =~ "Save Password"
+      assert html =~ "E-Mail ändern"
+      assert html =~ "Passwort speichern"
     end
 
     test "redirects if user is not logged in", %{conn: conn} do
@@ -70,7 +70,7 @@ defmodule KitrankWeb.UserLive.SettingsTest do
           "user" => %{"email" => "with spaces"}
         })
 
-      assert result =~ "Change Email"
+      assert result =~ "E-Mail ändern"
       assert result =~ "must have the @ sign and no spaces"
     end
 
@@ -84,7 +84,7 @@ defmodule KitrankWeb.UserLive.SettingsTest do
         })
         |> render_submit()
 
-      assert result =~ "Change Email"
+      assert result =~ "E-Mail ändern"
       assert result =~ "did not change"
     end
   end
@@ -136,8 +136,8 @@ defmodule KitrankWeb.UserLive.SettingsTest do
           }
         })
 
-      assert result =~ "Save Password"
-      assert result =~ "should be at least 12 character(s)"
+      assert result =~ "Passwort speichern"
+      assert result =~ "muss mindestens 12 Zeichen lang sein"
       assert result =~ "does not match password"
     end
 
@@ -154,8 +154,8 @@ defmodule KitrankWeb.UserLive.SettingsTest do
         })
         |> render_submit()
 
-      assert result =~ "Save Password"
-      assert result =~ "should be at least 12 character(s)"
+      assert result =~ "Passwort speichern"
+      assert result =~ "muss mindestens 12 Zeichen lang sein"
       assert result =~ "does not match password"
     end
   end

@@ -8,9 +8,9 @@ defmodule KitrankWeb.UserLive.LoginTest do
     test "renders login page", %{conn: conn} do
       {:ok, _lv, html} = live(conn, ~p"/users/log-in")
 
-      assert html =~ "Log in"
-      assert html =~ "Sign up"
-      assert html =~ "Log in with email"
+      assert html =~ "Anmelden"
+      assert html =~ "Registrieren"
+      assert html =~ "Per E-Mail anmelden"
     end
   end
 
@@ -81,11 +81,11 @@ defmodule KitrankWeb.UserLive.LoginTest do
 
       {:ok, _login_live, login_html} =
         lv
-        |> element("main a", "Sign up")
+        |> element("main a", "Registrieren")
         |> render_click()
         |> follow_redirect(conn, ~p"/users/register")
 
-      assert login_html =~ "Register"
+      assert login_html =~ "Konto anlegen"
     end
   end
 
@@ -98,9 +98,9 @@ defmodule KitrankWeb.UserLive.LoginTest do
     test "shows login page with email filled in", %{conn: conn, user: user} do
       {:ok, _lv, html} = live(conn, ~p"/users/log-in")
 
-      assert html =~ "You need to reauthenticate"
-      refute html =~ "Register"
-      assert html =~ "Log in with email"
+      assert html =~ "Für Änderungen an deinem Konto"
+      refute html =~ "Konto anlegen"
+      assert html =~ "Per E-Mail anmelden"
 
       assert html =~
                ~s(<input type="email" name="user[email]" id="login_form_magic_email" value="#{user.email}")

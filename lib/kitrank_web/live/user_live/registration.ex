@@ -11,13 +11,12 @@ defmodule KitrankWeb.UserLive.Registration do
       <div class="mx-auto max-w-sm">
         <div class="text-center">
           <.header>
-            Register for an account
+            {gettext("Konto anlegen")}
             <:subtitle>
-              Already registered?
-              <.link navigate={~p"/users/log-in"} class="font-semibold text-brand hover:underline">
-                Log in
-              </.link>
-              to your account now.
+              {gettext("Schon registriert?")}
+              <.link navigate={~p"/users/log-in"} class="font-semibold text-brand hover:underline">{gettext(
+                "Anmelden"
+              )}</.link> {gettext("dich hier an.")}
             </:subtitle>
           </.header>
         </div>
@@ -26,16 +25,16 @@ defmodule KitrankWeb.UserLive.Registration do
           <.input
             field={@form[:email]}
             type="email"
-            label="Email"
+            label={gettext("E-Mail")}
             autocomplete="username"
             spellcheck="false"
             required
             phx-mounted={JS.focus()}
           />
 
-          <.button phx-disable-with="Creating account..." class="btn btn-primary w-full">
-            Create an account
-          </.button>
+          <.button phx-disable-with="Konto wird angelegt …" class="btn btn-primary w-full">{gettext(
+            "Konto anlegen"
+          )}</.button>
         </.form>
       </div>
     </Layouts.app>

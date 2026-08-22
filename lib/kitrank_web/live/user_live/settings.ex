@@ -11,8 +11,8 @@ defmodule KitrankWeb.UserLive.Settings do
     <Layouts.app flash={@flash} current_scope={@current_scope}>
       <div class="text-center">
         <.header>
-          Account Settings
-          <:subtitle>Manage your account email address and password settings</:subtitle>
+          {gettext("Kontoeinstellungen")}
+          <:subtitle>{gettext("E-Mail-Adresse und Passwort deines Kontos")}</:subtitle>
         </.header>
       </div>
 
@@ -20,12 +20,12 @@ defmodule KitrankWeb.UserLive.Settings do
         <.input
           field={@email_form[:email]}
           type="email"
-          label="Email"
+          label={gettext("E-Mail")}
           autocomplete="username"
           spellcheck="false"
           required
         />
-        <.button variant="primary" phx-disable-with="Changing...">Change Email</.button>
+        <.button variant="primary" phx-disable-with="Wird geändert …">{gettext("E-Mail ändern")}</.button>
       </.form>
 
       <div class="divider" />
@@ -49,7 +49,7 @@ defmodule KitrankWeb.UserLive.Settings do
         <.input
           field={@password_form[:password]}
           type="password"
-          label="New password"
+          label={gettext("Neues Passwort")}
           autocomplete="new-password"
           spellcheck="false"
           required
@@ -57,13 +57,13 @@ defmodule KitrankWeb.UserLive.Settings do
         <.input
           field={@password_form[:password_confirmation]}
           type="password"
-          label="Confirm new password"
+          label={gettext("Neues Passwort wiederholen")}
           autocomplete="new-password"
           spellcheck="false"
         />
-        <.button variant="primary" phx-disable-with="Saving...">
-          Save Password
-        </.button>
+        <.button variant="primary" phx-disable-with="Wird gespeichert …">{gettext(
+          "Passwort speichern"
+        )}</.button>
       </.form>
     </Layouts.app>
     """

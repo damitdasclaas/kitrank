@@ -12,9 +12,9 @@ defmodule KitrankWeb.Reveal.Components do
 
   import KitrankWeb.KitComponents, only: [kit_figure: 1]
 
-  alias Kitrank.Kits.Kit
   alias Kitrank.Rankings.Duel
   alias KitrankWeb.Color
+  alias KitrankWeb.KitLabel
 
   attr :room, :map, required: true
   attr :host?, :boolean, required: true
@@ -25,12 +25,12 @@ defmodule KitrankWeb.Reveal.Components do
     ~H"""
     <div class="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-line pb-5">
       <div>
-        <p class="kr-eyebrow">Raumcode</p>
+        <p class="kr-eyebrow">{gettext("Raumcode")}</p>
         <p class="kr-display text-3xl tracking-[0.12em]">{@room.room_code}</p>
       </div>
 
       <p :if={@scope} class="min-w-0 text-xs text-soft">
-        <span class="kr-eyebrow block">Ausschnitt</span>
+        <span class="kr-eyebrow block">{gettext("Ausschnitt")}</span>
         {@scope}
       </p>
 
@@ -39,9 +39,9 @@ defmodule KitrankWeb.Reveal.Components do
           <span class="h-2 w-2 rounded-full bg-emerald-500" aria-hidden="true" />
           {@online} online
         </span>
-        <span :if={@host?} class="rounded-full border border-ink px-2.5 py-1 font-mono text-[10px]">
-          Du steuerst
-        </span>
+        <span :if={@host?} class="rounded-full border border-ink px-2.5 py-1 font-mono text-[10px]">{gettext(
+          "Du steuerst"
+        )}</span>
       </div>
     </div>
     """
@@ -54,36 +54,38 @@ defmodule KitrankWeb.Reveal.Components do
   def join_panel(assigns) do
     ~H"""
     <div class="mt-8 rounded-xl border border-line bg-panel p-6">
-      <h2 class="kr-display text-xl">Mitmachen</h2>
+      <h2 class="kr-display text-xl">{gettext("Mitmachen")}</h2>
       <p class="mt-1.5 text-sm text-soft">
-        Du brauchst den <span class="text-ink">Teilen-Link</span>
-        deiner Rangliste — den mit <code class="font-mono text-xs">/r/</code>, nicht den zum Bearbeiten.
+        {gettext("Du brauchst den")}
+        <span class="text-ink">{gettext("Teilen-Link")}</span> {gettext("deiner Rangliste — den mit")} <code class="font-mono text-xs">/r/</code>{gettext(
+          ", nicht den zum Bearbeiten."
+        )}
       </p>
 
       <p :if={@full?} class="mt-4 rounded-md border border-line bg-sunk px-3 py-2 text-sm">
-        Der Raum ist voll.
+        {gettext("Der Raum ist voll.")}
       </p>
 
       <form :if={!@full?} phx-submit="join" class="mt-5 grid gap-3 sm:grid-cols-[1fr_auto]">
         <div class="grid gap-3 sm:grid-cols-2">
           <div>
-            <label for="display_name" class="kr-eyebrow">Dein Name</label>
+            <label for="display_name" class="kr-eyebrow">{gettext("Dein Name")}</label>
             <input
               id="display_name"
               name="display_name"
               required
               maxlength="40"
-              placeholder="Tom"
+              placeholder={gettext("Tom")}
               class="mt-1.5 w-full rounded-md border border-line bg-panel px-3 py-2.5 text-sm"
             />
           </div>
           <div>
-            <label for="share_slug" class="kr-eyebrow">Teilen-Link</label>
+            <label for="share_slug" class="kr-eyebrow">{gettext("Teilen-Link")}</label>
             <input
               id="share_slug"
               name="share_slug"
               required
-              placeholder="/r/AbCd1234"
+              placeholder={gettext("/r/AbCd1234")}
               class="mt-1.5 w-full rounded-md border border-line bg-panel px-3 py-2.5 font-mono text-xs"
             />
           </div>
@@ -93,9 +95,7 @@ defmodule KitrankWeb.Reveal.Components do
           type="submit"
           phx-disable-with="Trete bei …"
           class="self-end rounded-md bg-ink px-5 py-2.5 text-sm font-semibold text-chalk transition hover:opacity-90"
-        >
-          Beitreten
-        </button>
+        >{gettext("Beitreten")}</button>
       </form>
 
       <p :if={@error} class="mt-3 text-sm text-red-600">{@error}</p>
@@ -104,29 +104,28 @@ defmodule KitrankWeb.Reveal.Components do
             Rangliste gebaut und den Link parat haben. Fuer eine spontane Runde
             ist das zu viel. --%>
       <div :if={!@full?} class="mt-6 border-t border-line pt-5">
-        <h3 class="kr-display text-base">Noch keine Rangliste?</h3>
+        <h3 class="kr-display text-base">{gettext("Noch keine Rangliste?")}</h3>
         <p class="mt-1 text-sm text-soft">
-          Dann bau sie hier. Du bekommst alle Trikots des Raums und sortierst sie gleich
-          im Raum — Name reicht.
+          {gettext(
+            "Dann bau sie hier. Du bekommst alle Trikots des Raums und sortierst sie gleich im Raum — Name reicht."
+          )}
         </p>
 
         <form phx-submit="join_new" class="mt-3 flex flex-wrap gap-2">
-          <label for="neu_name" class="sr-only">Dein Name</label>
+          <label for="neu_name" class="sr-only">{gettext("Dein Name")}</label>
           <input
             id="neu_name"
             name="display_name"
             required
             maxlength="40"
-            placeholder="Tom"
+            placeholder={gettext("Tom")}
             class="min-w-0 flex-1 rounded-md border border-line bg-panel px-3 py-2.5 text-sm"
           />
           <button
             type="submit"
             phx-disable-with="Legt an …"
             class="shrink-0 rounded-md border border-ink px-4 py-2.5 text-sm font-semibold transition hover:bg-sunk"
-          >
-            Ohne Rangliste beitreten
-          </button>
+          >{gettext("Ohne Rangliste beitreten")}</button>
         </form>
       </div>
     </div>
@@ -146,14 +145,15 @@ defmodule KitrankWeb.Reveal.Components do
     ~H"""
     <div class="mt-8">
       <div class="flex items-baseline gap-3">
-        <h2 class="kr-display text-xl">Wer ist dabei</h2>
+        <h2 class="kr-display text-xl">{gettext("Wer ist dabei")}</h2>
         <span class="font-mono text-xs text-soft">
           {length(@participants)} / {@room.max_participants}
         </span>
       </div>
 
       <p :if={@participants == []} class="mt-4 text-sm text-soft">
-        Noch niemand. Gib den Code <span class="font-mono text-ink">{@room.room_code}</span> weiter.
+        {gettext("Noch niemand. Gib den Code")}
+        <span class="font-mono text-ink">{@room.room_code}</span> {gettext("weiter.")}
       </p>
 
       <ul :if={@participants != []} class="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
@@ -172,37 +172,31 @@ defmodule KitrankWeb.Reveal.Components do
           />
           <span class="min-w-0 flex-1 truncate text-sm">
             {participant.display_name}
-            <span :if={participant.id == @me} class="text-soft">(du)</span>
+            <span :if={participant.id == @me} class="text-soft">{gettext("(du)")}</span>
           </span>
           <span
             :if={@room.host_participant_id == participant.id}
             class="shrink-0 font-mono text-[10px] text-soft"
-          >
-            steuert
-          </span>
+          >{gettext("steuert")}</span>
           <button
             :if={@host? && @room.host_participant_id != participant.id}
             type="button"
             phx-click="transfer_host"
             phx-value-id={participant.id}
             class="shrink-0 text-[11px] text-soft underline-offset-4 hover:text-ink hover:underline"
-          >
-            Steuerung geben
-          </button>
+          >{gettext("Steuerung geben")}</button>
         </li>
       </ul>
 
       <.fit_warning :if={@fit && length(@participants) > 1} fit={@fit} />
 
       <p :if={@owner? && @room.host_participant_id} class="mt-4 text-xs text-soft">
-        Die Steuerung liegt gerade bei jemand anderem.
+        {gettext("Die Steuerung liegt gerade bei jemand anderem.")}
         <button
           type="button"
           phx-click="reclaim_host"
           class="text-ink underline underline-offset-4"
-        >
-          Zurückholen
-        </button>
+        >{gettext("Zurückholen")}</button>
       </p>
     </div>
     """
@@ -218,7 +212,7 @@ defmodule KitrankWeb.Reveal.Components do
   defp fit_warning(assigns) do
     ~H"""
     <div class="mt-5 rounded-lg border border-line bg-sunk p-4">
-      <p class="kr-eyebrow">Abdeckung des Ausschnitts</p>
+      <p class="kr-eyebrow">{gettext("Abdeckung des Ausschnitts")}</p>
 
       <ul class="mt-2 space-y-1 text-sm">
         <li :for={{name, count} <- @fit.lengths} class="flex items-baseline gap-2">
@@ -234,10 +228,12 @@ defmodule KitrankWeb.Reveal.Components do
         noch seine Rangliste.
       </p>
       <p :if={@fit.longest == @fit.shortest and @fit.longest > 0} class="mt-2 text-xs text-soft">
-        Alle haben gleich viele Trikots im Ausschnitt. Kann losgehen.
+        {gettext("Alle haben gleich viele Trikots im Ausschnitt. Kann losgehen.")}
       </p>
       <p :if={@fit.longest == 0} class="mt-2 text-xs text-red-600">
-        Niemand hat ein Trikot aus diesem Ausschnitt bewertet — so gibt es nichts aufzudecken.
+        {gettext(
+          "Niemand hat ein Trikot aus diesem Ausschnitt bewertet — so gibt es nichts aufzudecken."
+        )}
       </p>
     </div>
     """
@@ -263,7 +259,7 @@ defmodule KitrankWeb.Reveal.Components do
         aria-expanded={to_string(@open?)}
         class="flex w-full items-center gap-2 text-left"
       >
-        <h2 class="kr-display text-lg">Gesamtübersicht</h2>
+        <h2 class="kr-display text-lg">{gettext("Gesamtübersicht")}</h2>
         <span class="font-mono text-[11px] text-soft">
           {length(@board.rows)} {if length(@board.rows) == 1, do: "Platz", else: "Plätze"} offen
         </span>
@@ -277,13 +273,15 @@ defmodule KitrankWeb.Reveal.Components do
         <table class="w-full min-w-max border-collapse text-sm">
           <thead>
             <tr class="border-b border-line bg-sunk">
-              <th class="kr-eyebrow sticky left-0 z-10 bg-sunk px-3 py-2.5 text-left">Platz</th>
+              <th class="kr-eyebrow sticky left-0 z-10 bg-sunk px-3 py-2.5 text-left">
+                {gettext("Platz")}
+              </th>
               <th
                 :for={participant <- @board.participants}
                 class="kr-eyebrow min-w-[9rem] px-3 py-2.5 text-left"
               >
                 {participant.name}
-                <span :if={participant.id == @me} class="normal-case">(du)</span>
+                <span :if={participant.id == @me} class="normal-case">{gettext("(du)")}</span>
               </th>
             </tr>
           </thead>
@@ -309,7 +307,7 @@ defmodule KitrankWeb.Reveal.Components do
 
     ~H"""
     <td class="px-3 py-2 align-middle">
-      <span :if={!@cell.visible?} class="font-mono text-xs text-soft/60">verdeckt</span>
+      <span :if={!@cell.visible?} class="font-mono text-xs text-soft/60">{gettext("verdeckt")}</span>
       <span :if={@cell.visible? && !@cell.kit} class="font-mono text-xs text-soft/60">—</span>
 
       <span :if={@cell.visible? && @cell.kit} class="flex items-center gap-2">
@@ -323,7 +321,7 @@ defmodule KitrankWeb.Reveal.Components do
           <span class="block font-mono text-[11px] font-semibold" style={"color: #{@color}"}>
             {@cell.kit.team.short_code}
           </span>
-          <span class="block text-[11px] text-soft">{Kit.display_label(@cell.kit)}</span>
+          <span class="block text-[11px] text-soft">{KitLabel.display(@cell.kit)}</span>
         </span>
       </span>
     </td>
@@ -349,13 +347,16 @@ defmodule KitrankWeb.Reveal.Components do
     ~H"""
     <div class="mt-8 rounded-xl border border-line bg-panel p-5">
       <div class="flex flex-wrap items-baseline gap-3">
-        <h2 class="kr-display text-lg">Deine Rangliste</h2>
+        <h2 class="kr-display text-lg">{gettext("Deine Rangliste")}</h2>
         <p :if={@frage != :done} class="text-sm text-soft">
-          Welches gefällt dir besser?
+          {gettext("Welches gefällt dir besser?")}
         </p>
-        <p :if={@frage == :done} class="text-sm text-soft">Steht — du bist bereit.</p>
+        <p :if={@frage == :done} class="text-sm text-soft">{gettext("Steht — du bist bereit.")}</p>
         <p class="ml-auto font-mono text-[11px] text-soft">
-          {@fortschritt.placed} von {@fortschritt.total} eingeordnet
+          {gettext("%{platziert} von %{gesamt} eingeordnet",
+            platziert: @fortschritt.placed,
+            gesamt: @fortschritt.total
+          )}
         </p>
       </div>
 
@@ -373,19 +374,17 @@ defmodule KitrankWeb.Reveal.Components do
           <.own_duel_card kit={@kits[elem(@frage, 1)]} side="existing" />
         </div>
         <p class="mt-3 text-center text-[11px] text-soft">
-          Pfeiltasten links und rechts gehen auch. Jede Antwort wird gespeichert.
+          {gettext("Pfeiltasten links und rechts gehen auch. Jede Antwort wird gespeichert.")}
         </p>
       </div>
 
       <p :if={@frage == :done} class="mt-4 text-xs text-soft">
-        Wenn der Host startet, zählt diese Reihenfolge.
+        {gettext("Wenn der Host startet, zählt diese Reihenfolge.")}
         <button
           type="button"
           phx-click="own_duel_restart"
           class="underline underline-offset-4 hover:text-ink"
-        >
-          Nochmal durchgehen
-        </button>
+        >{gettext("Nochmal durchgehen")}</button>
       </p>
     </div>
     """
@@ -420,7 +419,7 @@ defmodule KitrankWeb.Reveal.Components do
             {@kit.team.short_code}
           </span>
           <span class="truncate text-xs">{@kit.team.name}</span>
-          <span class="text-[11px] text-soft">{Kit.display_label(@kit)}</span>
+          <span class="text-[11px] text-soft">{KitLabel.display(@kit)}</span>
         </p>
       </div>
     </button>
@@ -439,18 +438,20 @@ defmodule KitrankWeb.Reveal.Components do
   def result_panel(assigns) do
     ~H"""
     <div class="mt-10 border-t border-line pt-8">
-      <p class="kr-eyebrow">Auswertung</p>
-      <h2 class="kr-display mt-1.5 text-3xl">Wie einig wart ihr?</h2>
+      <p class="kr-eyebrow">{gettext("Auswertung")}</p>
+      <h2 class="kr-display mt-1.5 text-3xl">{gettext("Wie einig wart ihr?")}</h2>
       <p class="mt-2 text-sm text-soft">
-        Verglichen werden die {@result.shared_count} Trikots, die <span class="text-ink">alle</span>
-        bewertet haben.
+        Verglichen werden die {@result.shared_count} Trikots, die
+        <span class="text-ink">{gettext("alle")}</span> {gettext("bewertet haben.")}
       </p>
 
       <div
         :if={@result.shared_count == 0}
         class="mt-6 rounded-lg border border-dashed border-line p-8 text-center text-sm text-soft"
       >
-        Ihr hattet kein einziges Trikot gemeinsam in der Liste — da gibt es nichts zu vergleichen.
+        {gettext(
+          "Ihr hattet kein einziges Trikot gemeinsam in der Liste — da gibt es nichts zu vergleichen."
+        )}
       </div>
 
       <div :if={@result.shared_count > 0} class="mt-6 space-y-8">
@@ -458,41 +459,43 @@ defmodule KitrankWeb.Reveal.Components do
 
         <div class="grid gap-6 sm:grid-cols-2">
           <.consensus_list
-            title="Darauf konntet ihr euch einigen"
+            title={gettext("Darauf konntet ihr euch einigen")}
             kits={@result.consensus_top}
             hint="niedrigster Schnitt"
           />
           <.consensus_list
-            title="Das mochte niemand"
+            title={gettext("Das mochte niemand")}
             kits={@result.consensus_bottom}
-            hint="höchster Schnitt"
+            hint={gettext("höchster Schnitt")}
           />
         </div>
 
         <div :if={@result.pairs != []}>
-          <h3 class="kr-eyebrow">Wer liegt beieinander</h3>
+          <h3 class="kr-eyebrow">{gettext("Wer liegt beieinander")}</h3>
           <ul class="mt-3 space-y-1.5">
             <li :for={paar <- @result.pairs} class="flex items-baseline gap-3 text-sm">
               <span class="min-w-0 flex-1 truncate">
-                {paar.a} <span class="text-soft">und</span> {paar.b}
+                {paar.a} <span class="text-soft">{gettext("und")}</span> {paar.b}
               </span>
               <span class="shrink-0 font-mono tabular-nums text-soft">
-                {:erlang.float_to_binary(paar.distance, decimals: 1)} Plätze auseinander
+                {gettext("%{abstand} Plätze auseinander",
+                  abstand: :erlang.float_to_binary(paar.distance, decimals: 1)
+                )}
               </span>
             </li>
           </ul>
           <p class="mt-2 text-xs text-soft">
-            Mittlerer Abstand der Platzierungen. 0 heißt: identische Ranglisten.
+            {gettext("Mittlerer Abstand der Platzierungen. 0 heißt: identische Ranglisten.")}
           </p>
         </div>
 
         <div :if={@result.notes != []}>
-          <h3 class="kr-eyebrow">Was gesagt wurde</h3>
+          <h3 class="kr-eyebrow">{gettext("Was gesagt wurde")}</h3>
           <ul class="mt-3 space-y-3">
             <li :for={notiz <- @result.notes} class="border-l-2 border-line pl-3">
               <p class="text-sm leading-relaxed">{notiz.note}</p>
               <p class="mt-0.5 text-[11px] text-soft">
-                {notiz.participant_name} · Platz {notiz.position} · {notiz.kit.team.short_code} {Kit.display_label(
+                {notiz.participant_name} · Platz {notiz.position} · {notiz.kit.team.short_code} {KitLabel.display(
                   notiz.kit
                 )}
               </p>
@@ -501,8 +504,10 @@ defmodule KitrankWeb.Reveal.Components do
         </div>
 
         <p class="border-t border-line pt-4 text-xs text-soft">
-          Dieser Raum bleibt unter dem Code <span class="font-mono text-ink">{@room.room_code}</span>
-          erreichbar, bis er abläuft — der Link zeigt weiterhin diese Auswertung.
+          {gettext("Dieser Raum bleibt unter dem Code")}
+          <span class="font-mono text-ink">{@room.room_code}</span> {gettext(
+            "erreichbar, bis er abläuft — der Link zeigt weiterhin diese Auswertung."
+          )}
         </p>
       </div>
     </div>
@@ -516,7 +521,7 @@ defmodule KitrankWeb.Reveal.Components do
 
     ~H"""
     <div :if={@split.spread > 0} class="rounded-xl border border-line bg-panel p-5">
-      <h3 class="kr-eyebrow">Größter Streitfall</h3>
+      <h3 class="kr-eyebrow">{gettext("Größter Streitfall")}</h3>
 
       <div class="mt-3 flex flex-wrap items-center gap-4">
         <span
@@ -532,27 +537,30 @@ defmodule KitrankWeb.Reveal.Components do
               {@split.kit.team.short_code}
             </span>
             <span class="text-sm font-medium">{@split.kit.team.name}</span>
-            <span class="text-xs text-soft">{Kit.display_label(@split.kit)}</span>
+            <span class="text-xs text-soft">{KitLabel.display(@split.kit)}</span>
           </p>
           <p class="mt-1.5 text-sm">
             <span :for={{eintrag, i} <- Enum.with_index(@split.positions)}>
               <span :if={i > 0} class="text-soft"> · </span>
               {eintrag.participant_name}
-              <span class="font-mono tabular-nums text-soft">Platz {eintrag.position}</span>
+              <span class="font-mono tabular-nums text-soft">{gettext("Platz %{nr}",
+                nr: eintrag.position
+              )}</span>
             </span>
           </p>
           <p class="mt-1 font-mono text-[11px] text-soft">
-            {@split.spread} Plätze Unterschied
+            {gettext("%{spanne} Plätze Unterschied", spanne: @split.spread)}
           </p>
         </div>
       </div>
     </div>
 
     <div :if={@split.spread == 0} class="rounded-xl border border-line bg-panel p-5">
-      <h3 class="kr-eyebrow">Kein Streit</h3>
+      <h3 class="kr-eyebrow">{gettext("Kein Streit")}</h3>
       <p class="mt-2 text-sm text-soft">
-        Ihr habt jedes gemeinsame Trikot auf denselben Platz gesetzt. Das ist entweder
-        beeindruckend oder verdächtig.
+        {gettext(
+          "Ihr habt jedes gemeinsame Trikot auf denselben Platz gesetzt. Das ist entweder beeindruckend oder verdächtig."
+        )}
       </p>
     </div>
     """
@@ -581,7 +589,7 @@ defmodule KitrankWeb.Reveal.Components do
           </span>
           <span class="min-w-0 flex-1">
             <span class="block truncate text-sm">{eintrag.kit.team.name}</span>
-            <span class="block text-[11px] text-soft">{Kit.display_label(eintrag.kit)}</span>
+            <span class="block text-[11px] text-soft">{KitLabel.display(eintrag.kit)}</span>
           </span>
           <span class="shrink-0 font-mono text-xs tabular-nums text-soft">
             {:erlang.float_to_binary(eintrag.average, decimals: 1)}
@@ -597,8 +605,9 @@ defmodule KitrankWeb.Reveal.Components do
   def spectator_hint(assigns) do
     ~H"""
     <p class="mt-6 rounded-lg border border-dashed border-line px-4 py-3 text-xs text-soft">
-      Du schaust nur zu — du bist keiner Rangliste in diesem Raum zugeordnet und hast deshalb
-      nichts aufzudecken.
+      {gettext(
+        "Du schaust nur zu — du bist keiner Rangliste in diesem Raum zugeordnet und hast deshalb nichts aufzudecken."
+      )}
     </p>
     """
   end
@@ -619,9 +628,11 @@ defmodule KitrankWeb.Reveal.Components do
     <div class="mt-8">
       <div class="flex flex-wrap items-baseline gap-3">
         <p class="kr-eyebrow">{if @room.status == "done", do: "Fertig", else: "Aufgedeckt"}</p>
-        <h2 class="kr-display text-4xl leading-none">Platz {@room.current_step}</h2>
+        <h2 class="kr-display text-4xl leading-none">
+          {gettext("Platz %{nr}", nr: @room.current_step)}
+        </h2>
         <p :if={@room.status == "done"} class="text-sm text-soft">
-          Das war's — ihr seid durch.
+          {gettext("Das war's — ihr seid durch.")}
         </p>
       </div>
 
@@ -640,9 +651,7 @@ defmodule KitrankWeb.Reveal.Components do
         />
       </div>
 
-      <p class="mt-2 text-xs text-soft sm:hidden">
-        Zum nächsten Teilnehmer wischen.
-      </p>
+      <p class="mt-2 text-xs text-soft sm:hidden">{gettext("Zum nächsten Teilnehmer wischen.")}</p>
     </div>
     """
   end
@@ -676,13 +685,11 @@ defmodule KitrankWeb.Reveal.Components do
         <span class="min-w-0 flex-1 truncate text-sm font-medium">
           {@entry.participant_name}
         </span>
-        <span :if={@mine?} class="shrink-0 font-mono text-[10px] text-soft">du</span>
+        <span :if={@mine?} class="shrink-0 font-mono text-[10px] text-soft">{gettext("du")}</span>
         <span
           :if={!@entry.revealed? && !@mine?}
           class="shrink-0 font-mono text-[10px] text-soft"
-        >
-          verdeckt
-        </span>
+        >{gettext("verdeckt")}</span>
       </div>
 
       <%!-- Verdeckt: nur die eigene Karte hat einen Knopf. Fremde Karten
@@ -698,11 +705,9 @@ defmodule KitrankWeb.Reveal.Components do
           phx-click="reveal_own"
           phx-disable-with="…"
           class="rounded-md bg-ink px-5 py-2.5 text-sm font-semibold text-chalk transition hover:opacity-90"
-        >
-          Aufdecken
-        </button>
+        >{gettext("Aufdecken")}</button>
         <p :if={!@mine?} class="text-xs text-soft">
-          {@entry.participant_name} deckt noch auf
+          {gettext("%{name} deckt noch auf", name: @entry.participant_name)}
         </p>
       </div>
 
@@ -718,7 +723,7 @@ defmodule KitrankWeb.Reveal.Components do
         :if={@entry.revealed? && !@entry.kit}
         class="flex aspect-square items-center justify-center bg-sunk px-6 text-center"
       >
-        <p class="text-xs text-soft">Liste reicht nicht so weit</p>
+        <p class="text-xs text-soft">{gettext("Liste reicht nicht so weit")}</p>
       </div>
 
       <div :if={@entry.revealed? && @entry.kit} class="px-4 py-3">
@@ -727,7 +732,7 @@ defmodule KitrankWeb.Reveal.Components do
             {@entry.kit.team.short_code}
           </span>
           <span class="text-sm">{@entry.kit.team.name}</span>
-          <span class="text-xs text-soft">{Kit.display_label(@entry.kit)}</span>
+          <span class="text-xs text-soft">{KitLabel.display(@entry.kit)}</span>
         </p>
         <p :if={@entry.note} class="mt-2 text-sm leading-relaxed text-soft">
           {@entry.note}
@@ -750,12 +755,12 @@ defmodule KitrankWeb.Reveal.Components do
       <div class="mx-auto flex max-w-[1500px] items-center gap-3 px-4 py-3 sm:px-6 lg:px-8">
         <p class="min-w-0 text-sm">
           <span :if={@room.status == "waiting"} class="text-soft">
-            {if @ready?, do: "Alle da? Dann los.", else: "Warte auf Teilnehmer."}
+            {if @ready?, do: "Alle da? Dann los.", else: gettext("Warte auf Teilnehmer.")}
           </span>
           <span :if={@room.status == "revealing"} class="text-soft">
-            <span class="font-mono tabular-nums text-ink">{@revealed}/{@total}</span>
-            aufgedeckt · noch
-            <span class="font-mono tabular-nums text-ink">{@room.current_step}</span>
+            <span class="font-mono tabular-nums text-ink">{@revealed}/{@total}</span> {gettext(
+              "aufgedeckt · noch"
+            )} <span class="font-mono tabular-nums text-ink">{@room.current_step}</span>
             {if @room.current_step == 1, do: "Platz", else: "Plätze"}
           </span>
         </p>
@@ -773,13 +778,13 @@ defmodule KitrankWeb.Reveal.Components do
           ]}
           title={
             if @room.status != "waiting" && !@all_revealed?,
-              do: "Es haben noch nicht alle aufgedeckt – du kannst trotzdem weiter."
+              do: gettext("Es haben noch nicht alle aufgedeckt – du kannst trotzdem weiter.")
           }
         >
           {cond do
             @room.status == "waiting" -> "Reveal starten"
             @room.current_step == 1 -> "Abschließen"
-            true -> "Nächster Platz"
+            true -> gettext("Nächster Platz")
           end}
         </button>
       </div>

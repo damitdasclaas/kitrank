@@ -186,8 +186,8 @@ defmodule Kitrank.KitsTest do
                  name: "Retro"
                })
 
-      assert Kits.Kit.display_label(mit) == "Heim · Retro"
-      assert Kits.Kit.display_label(ohne) == "Heim"
+      assert KitrankWeb.KitLabel.display(mit) == "Heim · Retro"
+      assert KitrankWeb.KitLabel.display(ohne) == "Heim"
     end
 
     test "lehnt unbekannte Kit-Typen ab" do

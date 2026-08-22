@@ -14,7 +14,7 @@ defmodule KitrankWeb.Ranking.NewLive do
 
     {:ok,
      assign(socket,
-       page_title: "Neue Rangliste",
+       page_title: gettext("Neue Rangliste"),
        season: season,
        kit_count: length(Kits.list_rankable_kits(season)),
        form: to_form(Rankings.change_ranking(%Rankings.Ranking{})),
@@ -73,16 +73,20 @@ defmodule KitrankWeb.Ranking.NewLive do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope}>
       <div class="mx-auto max-w-xl px-4 py-16 sm:px-6">
-        <p class="kr-eyebrow">Saison {@season}</p>
-        <h1 class="kr-display mt-2 text-4xl leading-[0.95]">Deine Ranglisten</h1>
+        <p class="kr-eyebrow">{gettext("Saison %{jahr}", jahr: @season)}</p>
+        <h1 class="kr-display mt-2 text-4xl leading-[0.95]">{gettext("Deine Ranglisten")}</h1>
         <p class="mt-4 text-sm leading-relaxed text-soft">
-          Such dir aus {@kit_count} Trikots die aus, über die du etwas zu sagen hast,
-          und bring sie in eine Reihenfolge. Kein Konto nötig.
+          {gettext(
+            "Such dir aus %{anzahl} Trikots die aus, über die du etwas zu sagen hast, und bring sie in eine Reihenfolge. Kein Konto nötig.",
+            anzahl: @kit_count
+          )}
         </p>
 
         <div id="remembered" phx-hook="RememberedRankings" class="mt-8">
           <div :if={@remembered != []} class="rounded-lg border border-line">
-            <h2 class="kr-eyebrow border-b border-line px-4 py-3">In diesem Browser gemerkt</h2>
+            <h2 class="kr-eyebrow border-b border-line px-4 py-3">
+              {gettext("In diesem Browser gemerkt")}
+            </h2>
             <ul>
               <li
                 :for={%{ranking: ranking, count: count} <- @remembered}
@@ -102,21 +106,19 @@ defmodule KitrankWeb.Ranking.NewLive do
                 <.link
                   navigate={~p"/r/#{ranking.share_slug}"}
                   class="shrink-0 text-[11px] text-soft underline-offset-4 hover:text-ink hover:underline"
-                >
-                  Teilen-Ansicht
-                </.link>
+                >{gettext("Teilen-Ansicht")}</.link>
                 <button
                   type="button"
                   phx-click="forget"
                   phx-value-token={ranking.edit_token}
                   class="shrink-0 text-[11px] text-soft underline-offset-4 hover:text-ink hover:underline"
-                >
-                  Vergessen
-                </button>
+                >{gettext("Vergessen")}</button>
               </li>
             </ul>
             <p class="px-4 py-3 text-xs text-soft">
-              Nur in diesem Browser. Auf einem anderen Gerät brauchst du den Bearbeiten-Link.
+              {gettext(
+                "Nur in diesem Browser. Auf einem anderen Gerät brauchst du den Bearbeiten-Link."
+              )}
             </p>
           </div>
         </div>
@@ -124,32 +126,32 @@ defmodule KitrankWeb.Ranking.NewLive do
         <.form for={@form} id="new-ranking" phx-submit="save" class="mt-8">
           <.input
             field={@form[:display_name]}
-            label="Name der Rangliste"
-            placeholder="Toms Rangliste"
+            label={gettext("Name der Rangliste")}
+            placeholder={gettext("Toms Rangliste")}
           />
           <p class="mt-1.5 text-xs text-soft">
-            Optional. Steht später über deiner Liste und im Reveal neben deinem Namen.
+            {gettext("Optional. Steht später über deiner Liste und im Reveal neben deinem Namen.")}
           </p>
 
           <button
             type="submit"
             phx-disable-with="Wird angelegt …"
             class="mt-6 w-full rounded-md bg-ink px-4 py-3 text-sm font-semibold text-chalk transition hover:opacity-90"
-          >
-            Trikots auswählen
-          </button>
+          >{gettext("Trikots auswählen")}</button>
         </.form>
 
         <div class="mt-10 rounded-lg border border-line p-5">
-          <h2 class="kr-eyebrow">Wie der Zugriff funktioniert</h2>
+          <h2 class="kr-eyebrow">{gettext("Wie der Zugriff funktioniert")}</h2>
           <ul class="mt-3 space-y-2 text-sm text-soft">
             <li>
-              <span class="text-ink">Bearbeiten-Link</span> — geheim. Wer ihn hat, kann deine
-              Rangliste ändern. Leg ihn dir als Lesezeichen an.
+              <span class="text-ink">{gettext("Bearbeiten-Link")}</span> {gettext(
+                "— geheim. Wer ihn hat, kann deine Rangliste ändern. Leg ihn dir als Lesezeichen an."
+              )}
             </li>
             <li>
-              <span class="text-ink">Teilen-Link</span> — öffentlich und nur zum Lesen. Er zeigt
-              immer den aktuellen Stand, du musst nichts erneut verschicken.
+              <span class="text-ink">{gettext("Teilen-Link")}</span> {gettext(
+                "— öffentlich und nur zum Lesen. Er zeigt immer den aktuellen Stand, du musst nichts erneut verschicken."
+              )}
             </li>
           </ul>
         </div>

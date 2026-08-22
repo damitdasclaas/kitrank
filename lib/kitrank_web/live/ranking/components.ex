@@ -7,8 +7,8 @@ defmodule KitrankWeb.Ranking.Components do
 
   import KitrankWeb.KitComponents, only: [kit_figure: 1]
 
-  alias Kitrank.Kits.Kit
   alias KitrankWeb.Color
+  alias KitrankWeb.KitLabel
 
   attr :ranking, :map, required: true
   attr :name_form, :map, required: true
@@ -33,22 +33,24 @@ defmodule KitrankWeb.Ranking.Components do
       >
       </div>
 
-      <p class="kr-eyebrow">Saison {@season} · {@count} Trikots</p>
+      <p class="kr-eyebrow">
+        {gettext("Saison %{saison} · %{anzahl} Trikots", saison: @season, anzahl: @count)}
+      </p>
 
       <.form for={@name_form} id="ranking-name" phx-change="save_name" class="mt-2">
         <input
           type="text"
           name="ranking[display_name]"
           value={@ranking.display_name}
-          placeholder="Deine Rangliste"
+          placeholder={gettext("Deine Rangliste")}
           phx-debounce="600"
-          aria-label="Name der Rangliste"
+          aria-label={gettext("Name der Rangliste")}
           class="kr-display w-full border-0 bg-transparent p-0 text-3xl leading-tight outline-none placeholder:text-soft/50 focus:ring-0 sm:text-4xl"
         />
       </.form>
 
       <div class="mt-5 flex flex-wrap items-center gap-2">
-        <span class="kr-eyebrow">Teilen</span>
+        <span class="kr-eyebrow">{gettext("Teilen")}</span>
         <code class="min-w-0 flex-1 truncate rounded-md bg-sunk px-3 py-2 font-mono text-xs text-soft">
           {@share_url}
         </code>
@@ -59,18 +61,17 @@ defmodule KitrankWeb.Ranking.Components do
           data-copy={@share_url}
           class="shrink-0 rounded-md border border-line px-3 py-2 text-xs font-medium transition hover:border-ink"
         >
-          <span data-copy-label>Link kopieren</span>
+          <span data-copy-label>{gettext("Link kopieren")}</span>
         </button>
         <.link
           navigate={~p"/r/#{@ranking.share_slug}"}
           class="shrink-0 text-xs text-soft underline-offset-4 hover:text-ink hover:underline"
-        >
-          Ansehen
-        </.link>
+        >{gettext("Ansehen")}</.link>
       </div>
       <p class="mt-2 text-xs text-soft">
-        Der Teilen-Link zeigt immer den aktuellen Stand — du musst nichts erneut verschicken.
-        Die Adresse in deiner Adresszeile ist dagegen geheim: wer sie hat, kann mitändern.
+        {gettext(
+          "Der Teilen-Link zeigt immer den aktuellen Stand — du musst nichts erneut verschicken. Die Adresse in deiner Adresszeile ist dagegen geheim: wer sie hat, kann mitändern."
+        )}
       </p>
     </div>
     """
@@ -83,28 +84,31 @@ defmodule KitrankWeb.Ranking.Components do
   @doc "Umschalter zwischen Auswählen und Sortieren."
   def step_nav(assigns) do
     ~H"""
-    <nav class="mt-6 flex gap-1 rounded-lg border border-line bg-sunk p-1" aria-label="Schritte">
+    <nav
+      class="mt-6 flex gap-1 rounded-lg border border-line bg-sunk p-1"
+      aria-label={gettext("Schritte")}
+    >
       <.link
         patch={~p"/rankings/#{@edit_token}/auswahl"}
         class={step_class(@live_action == :select)}
         aria-current={@live_action == :select && "step"}
       >
-        <span class="font-mono text-[11px] opacity-60">1</span> Auswählen
+        <span class="font-mono text-[11px] opacity-60">1</span> {gettext("Auswählen")}
       </.link>
       <.link
         patch={~p"/rankings/#{@edit_token}/duell"}
         class={step_class(@live_action == :duel)}
         aria-current={@live_action == :duel && "step"}
       >
-        <span class="font-mono text-[11px] opacity-60">2</span> Vergleichen
+        <span class="font-mono text-[11px] opacity-60">2</span> {gettext("Vergleichen")}
       </.link>
       <.link
         patch={~p"/rankings/#{@edit_token}/edit"}
         class={step_class(@live_action == :sort)}
         aria-current={@live_action == :sort && "step"}
       >
-        <span class="font-mono text-[11px] opacity-60">3</span>
-        Sortieren <span :if={@count > 0} class="font-mono text-[11px] opacity-60">({@count})</span>
+        <span class="font-mono text-[11px] opacity-60">3</span> {gettext("Sortieren")}
+        <span :if={@count > 0} class="font-mono text-[11px] opacity-60">({@count})</span>
       </.link>
     </nav>
     """
@@ -129,7 +133,11 @@ defmodule KitrankWeb.Ranking.Components do
       <div class="mx-auto flex max-w-[1200px] items-center gap-3 px-4 py-3 sm:px-6 lg:px-8">
         <p class="text-sm">
           <span class="font-mono tabular-nums">{@count}</span>
-          <span class="text-soft">{if @count == 1, do: "Trikot", else: "Trikots"} in der Liste</span>
+          <span class="text-soft">{ngettext(
+            "%{count} Trikot in der Liste",
+            "%{count} Trikots in der Liste",
+            @count
+          )}</span>
         </p>
 
         <%!-- Zwei Wege nach der Auswahl: die Vergleiche liefern einen Entwurf,
@@ -138,29 +146,23 @@ defmodule KitrankWeb.Ranking.Components do
           <.link
             patch={~p"/rankings/#{@edit_token}/edit"}
             class="rounded-md border border-line px-4 py-2 text-sm transition hover:border-ink"
-          >
-            Selbst sortieren
-          </.link>
+          >{gettext("Selbst sortieren")}</.link>
           <.link
             :if={@count > 1}
             patch={~p"/rankings/#{@edit_token}/duell"}
             class="rounded-md bg-ink px-4 py-2 text-sm font-semibold text-chalk transition hover:opacity-90"
-          >
-            Vergleichen lassen
-          </.link>
+          >{gettext("Vergleichen lassen")}</.link>
         </div>
 
         <.link
           :if={@live_action == :sort}
           patch={~p"/rankings/#{@edit_token}/auswahl"}
           class="ml-auto rounded-md border border-line px-4 py-2 text-sm transition hover:border-ink"
-        >
-          Trikots hinzufügen
-        </.link>
+        >{gettext("Trikots hinzufügen")}</.link>
 
-        <span :if={@live_action == :select && @count == 0} class="ml-auto text-xs text-soft">
-          Tipp auf ein Trikot, um es aufzunehmen
-        </span>
+        <span :if={@live_action == :select && @count == 0} class="ml-auto text-xs text-soft">{gettext(
+          "Tipp auf ein Trikot, um es aufzunehmen"
+        )}</span>
       </div>
     </div>
     """
@@ -187,7 +189,7 @@ defmodule KitrankWeb.Ranking.Components do
         type="button"
         data-drag-handle
         class="mt-1 hidden cursor-grab touch-none text-soft transition hover:text-ink active:cursor-grabbing sm:block"
-        aria-label="Zum Umsortieren ziehen"
+        aria-label={gettext("Zum Umsortieren ziehen")}
         tabindex="-1"
       >
         <.icon name="hero-bars-3" class="size-4" />
@@ -204,7 +206,12 @@ defmodule KitrankWeb.Ranking.Components do
         data-role="detail-figure"
         class="group relative flex h-20 w-20 shrink-0 items-center justify-center rounded-md transition sm:h-24 sm:w-24"
         style={"background-color: color-mix(in oklab, #{@color} 14%, #FFFFFF)"}
-        aria-label={"#{@entry.kit.team.name} #{Kit.display_label(@entry.kit)} im Detail"}
+        aria-label={
+          gettext("%{verein} %{trikot} im Detail",
+            verein: @entry.kit.team.name,
+            trikot: KitLabel.display(@entry.kit)
+          )
+        }
       >
         <.kit_figure
           kit={@entry.kit}
@@ -226,16 +233,14 @@ defmodule KitrankWeb.Ranking.Components do
             {@entry.kit.team.short_code}
           </span>
           <span class="text-sm">{@entry.kit.team.name}</span>
-          <span class="text-xs text-soft">{Kit.display_label(@entry.kit)}</span>
+          <span class="text-xs text-soft">{KitLabel.display(@entry.kit)}</span>
           <button
             type="button"
             phx-click="open_detail"
             phx-value-id={@entry.kit_id}
             data-role="detail-link"
             class="text-[11px] text-soft underline-offset-4 hover:text-ink hover:underline"
-          >
-            Detail
-          </button>
+          >{gettext("Detail")}</button>
         </p>
 
         <%!-- Der Server schickt die Notiz nur beim ersten Rendern; sonst wuerde
@@ -248,8 +253,8 @@ defmodule KitrankWeb.Ranking.Components do
               rows="3"
               phx-debounce="600"
               maxlength="500"
-              placeholder="Notiz — warum steht es hier?"
-              aria-label={"Notiz zu #{@entry.kit.team.name} #{Kit.display_label(@entry.kit)}"}
+              placeholder={gettext("Notiz — warum steht es hier?")}
+              aria-label={"Notiz zu #{@entry.kit.team.name} #{KitLabel.display(@entry.kit)}"}
               class="w-full resize-y rounded-md border border-line bg-panel px-2.5 py-1.5 text-xs leading-relaxed placeholder:text-soft/70"
             >{@entry.note}</textarea>
           </form>
@@ -264,7 +269,7 @@ defmodule KitrankWeb.Ranking.Components do
           phx-value-delta="-1"
           disabled={@index == 0}
           class="flex h-6 w-6 items-center justify-center rounded border border-line text-soft transition enabled:hover:border-ink enabled:hover:text-ink disabled:opacity-30"
-          aria-label="Einen Platz nach oben"
+          aria-label={gettext("Einen Platz nach oben")}
         >
           <.icon name="hero-chevron-up-mini" class="size-3.5" />
         </button>
@@ -275,7 +280,7 @@ defmodule KitrankWeb.Ranking.Components do
           phx-value-delta="1"
           disabled={@last?}
           class="flex h-6 w-6 items-center justify-center rounded border border-line text-soft transition enabled:hover:border-ink enabled:hover:text-ink disabled:opacity-30"
-          aria-label="Einen Platz nach unten"
+          aria-label={gettext("Einen Platz nach unten")}
         >
           <.icon name="hero-chevron-down-mini" class="size-3.5" />
         </button>
@@ -284,7 +289,12 @@ defmodule KitrankWeb.Ranking.Components do
           phx-click="remove"
           phx-value-id={@entry.kit_id}
           class="flex h-6 w-6 items-center justify-center rounded border border-line text-soft transition hover:border-red-500 hover:text-red-600"
-          aria-label={"#{@entry.kit.team.name} #{Kit.display_label(@entry.kit)} aus der Liste nehmen"}
+          aria-label={
+            gettext("%{verein} %{trikot} aus der Liste nehmen",
+              verein: @entry.kit.team.name,
+              trikot: KitLabel.display(@entry.kit)
+            )
+          }
         >
           <.icon name="hero-x-mark-mini" class="size-3.5" />
         </button>

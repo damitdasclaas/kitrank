@@ -45,19 +45,19 @@ defmodule KitrankWeb.Layouts do
         <%!-- Bewusst ohne Liga: die App ist darauf angelegt, weitere Ligen und
               Sportarten aufzunehmen (Architektur Abschnitt 11). Ein fester
               Ligenname im Kopf waere dann als erstes falsch. --%>
-        <p class="kr-eyebrow hidden sm:block">Ranken, teilen, streiten</p>
+        <p class="kr-eyebrow hidden sm:block">{gettext("Ranken, teilen, streiten")}</p>
         <div class="ml-auto flex items-center gap-3">
           <.link
             navigate={~p"/rankings/new"}
             class="text-xs text-soft transition hover:text-ink"
           >
-            Ranglisten
+            {gettext("Ranglisten")}
           </.link>
           <.link
             navigate={~p"/reveal/new"}
             class="rounded-md bg-ink px-3 py-1.5 text-xs font-semibold text-chalk transition hover:opacity-90"
           >
-            Reveal
+            {gettext("Reveal")}
           </.link>
           <%!-- Kein Anmelde-Link: Konten sind noch nicht offen, der Weg hinein
                 ist /users/log-in. Wer angemeldet ist, sieht seine Wege. --%>
@@ -66,14 +66,14 @@ defmodule KitrankWeb.Layouts do
             navigate={~p"/admin"}
             class="rounded-md border border-line px-3 py-1.5 text-xs font-medium transition hover:border-ink"
           >
-            Admin
+            {gettext("Admin")}
           </.link>
           <.link
             :if={@current_scope}
             navigate={~p"/users/settings"}
             class="text-xs text-soft hover:text-ink"
           >
-            Konto
+            {gettext("Konto")}
           </.link>
           <.link
             :if={@current_scope}
@@ -81,8 +81,9 @@ defmodule KitrankWeb.Layouts do
             method="delete"
             class="text-xs text-soft hover:text-ink"
           >
-            Abmelden
+            {gettext("Abmelden")}
           </.link>
+          <.locale_switch current={Gettext.get_locale(KitrankWeb.Gettext)} />
           <.theme_toggle />
         </div>
       </div>
@@ -99,21 +100,24 @@ defmodule KitrankWeb.Layouts do
             echte Produkt zu benennen – Wappen und Ligalogos bewusst nicht. --%>
       <div class="mx-auto max-w-[1500px] space-y-2 px-4 py-8 text-xs leading-relaxed text-soft sm:px-6 lg:px-8">
         <p>
-          <span class="text-ink">KitRank ist ein privates Projekt</span> und steht in keiner
-          Verbindung zur DFL oder zu den genannten Vereinen. Vereins- und Liganamen dienen
-          allein dazu, die Trikots zu benennen; die Marken gehören ihren Inhabern.
+          <span class="text-ink">{gettext("KitRank ist ein privates Projekt")}</span>
+          {gettext(
+            "und steht in keiner Verbindung zur DFL oder zu den genannten Vereinen. Vereins- und Liganamen dienen allein dazu, die Trikots zu benennen; die Marken gehören ihren Inhabern."
+          )}
         </p>
         <p>
-          Trikotbilder werden von den Vereinsshops verlinkt, nicht kopiert. Fehlt ein Bild,
-          zeichnet KitRank das Trikot in den Vereinsfarben.
+          {gettext(
+            "Trikotbilder werden von den Vereinsshops verlinkt, nicht kopiert. Fehlt ein Bild, zeichnet KitRank das Trikot in den Vereinsfarben."
+          )}
         </p>
         <p>
           <%!-- Die Shop-Links gehen zum Verein, nicht zu einem Haendler mit
                 Provision. Wer an Kaeufen verdient, hat ein Interesse daran, wie
                 das Ranking ausgeht – deshalb steht das hier. --%>
-          <span class="text-ink">Keine Affiliate-Links, keine Provision.</span>
-          Die Shop-Verweise führen zum jeweiligen Vereinsshop; KitRank verdient an keinem
-          Kauf mit.
+          <span class="text-ink">{gettext("Keine Affiliate-Links, keine Provision.")}</span>
+          {gettext(
+            "Die Shop-Verweise führen zum jeweiligen Vereinsshop; KitRank verdient an keinem Kauf mit."
+          )}
         </p>
       </div>
     </footer>
@@ -141,7 +145,7 @@ defmodule KitrankWeb.Layouts do
       <.flash
         id="client-error"
         kind={:error}
-        title={gettext("We can't find the internet")}
+        title={gettext("Keine Verbindung")}
         phx-disconnected={
           show(".phx-client-error #client-error")
           |> JS.remove_attribute("hidden", to: ".phx-client-error #client-error")
@@ -149,14 +153,14 @@ defmodule KitrankWeb.Layouts do
         phx-connected={hide("#client-error") |> JS.set_attribute({"hidden", ""})}
         hidden
       >
-        {gettext("Attempting to reconnect")}
+        {gettext("Verbindung wird wiederhergestellt")}
         <.icon name="hero-arrow-path" class="ml-1 size-3 motion-safe:animate-spin" />
       </.flash>
 
       <.flash
         id="server-error"
         kind={:error}
-        title={gettext("Something went wrong!")}
+        title={gettext("Etwas ist schiefgelaufen")}
         phx-disconnected={
           show(".phx-server-error #server-error")
           |> JS.remove_attribute("hidden", to: ".phx-server-error #server-error")
@@ -164,9 +168,36 @@ defmodule KitrankWeb.Layouts do
         phx-connected={hide("#server-error") |> JS.set_attribute({"hidden", ""})}
         hidden
       >
-        {gettext("Attempting to reconnect")}
+        {gettext("Verbindung wird wiederhergestellt")}
         <.icon name="hero-arrow-path" class="ml-1 size-3 motion-safe:animate-spin" />
       </.flash>
+    </div>
+    """
+  end
+
+  attr :current, :string, required: true
+
+  @doc """
+  Sprachumschalter.
+
+  Ein normaler Link, kein LiveView-Event: die Sprache steht in der Sitzung, und
+  die lässt sich nur in einem echten Request schreiben.
+  """
+  def locale_switch(assigns) do
+    ~H"""
+    <div class="flex items-center gap-1 font-mono text-[11px]">
+      <a
+        :for={locale <- KitrankWeb.Locale.supported()}
+        href={~p"/sprache/#{locale}"}
+        aria-current={locale == @current && "true"}
+        class={[
+          "rounded px-1.5 py-0.5 uppercase transition",
+          locale == @current && "bg-sunk text-ink",
+          locale != @current && "text-soft hover:text-ink"
+        ]}
+      >
+        {locale}
+      </a>
     </div>
     """
   end

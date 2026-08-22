@@ -29,7 +29,7 @@ defmodule KitrankWeb.RegistrationGateTest do
     Application.put_env(:kitrank, :registration_open, true)
 
     assert {:ok, _view, html} = live(conn, ~p"/users/register")
-    assert html =~ "Register"
+    assert html =~ "Konto anlegen"
   end
 
   test "die Anmeldung ist unabhängig davon immer erreichbar", %{conn: conn} do

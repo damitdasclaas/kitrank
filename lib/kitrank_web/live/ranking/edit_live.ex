@@ -19,12 +19,13 @@ defmodule KitrankWeb.Ranking.EditLive do
   alias Kitrank.Rankings
   alias Kitrank.Rankings.Duel
   alias KitrankWeb.Color
+  alias KitrankWeb.KitLabel
 
   @impl true
   def mount(%{"edit_token" => token}, _session, socket) do
     case Rankings.get_ranking_by_edit_token(token) do
       nil ->
-        raise KitrankWeb.NotFoundError, "Rangliste nicht gefunden"
+        raise KitrankWeb.NotFoundError, gettext("Rangliste nicht gefunden")
 
       ranking ->
         season = Kits.current_season()
@@ -53,9 +54,9 @@ defmodule KitrankWeb.Ranking.EditLive do
   def handle_params(_params, _uri, socket) do
     title =
       case socket.assigns.live_action do
-        :select -> "Trikots auswählen"
-        :duel -> "Trikots vergleichen"
-        _ -> "Rangliste sortieren"
+        :select -> gettext("Trikots auswählen")
+        :duel -> gettext("Trikots vergleichen")
+        _ -> gettext("Rangliste sortieren")
       end
 
     {:noreply, socket |> assign(page_title: title) |> ensure_duel()}
@@ -230,7 +231,7 @@ defmodule KitrankWeb.Ranking.EditLive do
          socket
          |> put_flash(
            :error,
-           "Die Liste hat sich zwischendurch geändert. Hier ist der aktuelle Stand."
+           gettext("Die Liste hat sich zwischendurch geändert. Hier ist der aktuelle Stand.")
          )
          |> load_entries()}
     end
@@ -311,7 +312,7 @@ defmodule KitrankWeb.Ranking.EditLive do
         load_entries(socket)
 
       {:error, _changeset} ->
-        put_flash(socket, :error, "Die Notiz ist zu lang – höchstens 500 Zeichen.")
+        put_flash(socket, :error, gettext("Die Notiz ist zu lang – höchstens 500 Zeichen."))
     end
   end
 
@@ -406,7 +407,7 @@ defmodule KitrankWeb.Ranking.EditLive do
   defp selection(assigns) do
     ~H"""
     <div class="mt-8 space-y-4 rounded-lg border border-line p-5">
-      <h2 class="kr-eyebrow">Worüber rankst du?</h2>
+      <h2 class="kr-eyebrow">{gettext("Worüber rankst du?")}</h2>
 
       <.filter_row axis="seasons" label="Saison" chosen={@scope.seasons}>
         <:chip :for={season <- @all_seasons} value={season} label={season} />
@@ -422,16 +423,19 @@ defmodule KitrankWeb.Ranking.EditLive do
 
       <div :if={@catalog != []} class="border-t border-line pt-4">
         <div class="flex flex-wrap items-baseline gap-2">
-          <h3 class="kr-eyebrow">Schnell auswählen</h3>
+          <h3 class="kr-eyebrow">{gettext("Schnell auswählen")}</h3>
           <span class="text-[11px] text-soft">
-            {length(@catalog)} Trikots · {scope_label(@scope, @all_teams)}
+            {gettext("%{anzahl} Trikots · %{ausschnitt}",
+              anzahl: length(@catalog),
+              ausschnitt: scope_label(@scope, @all_teams)
+            )}
           </span>
         </div>
         <div class="mt-3 flex flex-wrap gap-2">
           <.quick_button
             :for={type <- available_types(@catalog)}
             type={type}
-            label={Kit.label(type)}
+            label={KitLabel.label(type)}
             all_selected?={type_all_selected?(@catalog, @selected, type)}
           />
           <.quick_button
@@ -447,23 +451,25 @@ defmodule KitrankWeb.Ranking.EditLive do
       :if={@catalog == []}
       class="mt-8 rounded-lg border border-dashed border-line p-12 text-center"
     >
-      <p class="kr-display text-xl">Nichts im Ausschnitt</p>
+      <p class="kr-display text-xl">{gettext("Nichts im Ausschnitt")}</p>
       <p class="mx-auto mt-2 max-w-sm text-sm text-soft">
-        Für diese Kombination gibt es keine Trikots. Nimm eine Einschränkung heraus.
+        {gettext("Für diese Kombination gibt es keine Trikots. Nimm eine Einschränkung heraus.")}
       </p>
     </div>
 
     <section :for={{name, eintraege} <- @groups} class="mt-10">
       <div class="flex flex-wrap items-baseline gap-3 border-b border-line pb-2">
         <h2 class="kr-display text-lg">{name}</h2>
-        <span class="kr-eyebrow">{length(eintraege)} Trikots</span>
+        <span class="kr-eyebrow">{gettext("%{anzahl} Trikots", anzahl: length(eintraege))}</span>
         <button
           type="button"
           phx-click="toggle_group"
           phx-value-name={name}
           class="ml-auto rounded-md border border-line px-3 py-1 font-mono text-[11px] text-soft transition hover:border-ink hover:text-ink"
         >
-          {if group_all_selected?(eintraege, @selected), do: "Alle abwählen", else: "Alle auswählen"}
+          {if group_all_selected?(eintraege, @selected),
+            do: gettext("Alle abwählen"),
+            else: gettext("Alle auswählen")}
         </button>
       </div>
 
@@ -506,9 +512,7 @@ defmodule KitrankWeb.Ranking.EditLive do
           MapSet.size(@chosen) == 0 && "border-transparent bg-ink text-chalk",
           MapSet.size(@chosen) > 0 && "border-line text-soft hover:border-ink hover:text-ink"
         ]}
-      >
-        Alle
-      </button>
+      >{gettext("Alle")}</button>
 
       <button
         :for={chip <- @chip}
@@ -568,7 +572,7 @@ defmodule KitrankWeb.Ranking.EditLive do
         <span class="font-mono text-[10px] font-semibold" style={"color: #{@color}"}>
           {@team.short_code}
         </span>
-        <span class="truncate text-[11px] text-soft">{Kit.display_label(@kit)}</span>
+        <span class="truncate text-[11px] text-soft">{KitLabel.display(@kit)}</span>
       </div>
     </button>
     """
@@ -586,16 +590,16 @@ defmodule KitrankWeb.Ranking.EditLive do
       :if={@entries == []}
       class="mt-10 rounded-lg border border-dashed border-line p-12 text-center"
     >
-      <p class="kr-display text-xl">Noch nichts ausgewählt</p>
+      <p class="kr-display text-xl">{gettext("Noch nichts ausgewählt")}</p>
       <p class="mx-auto mt-2 max-w-sm text-sm text-soft">
-        Such dir erst ein paar Trikots aus, dann kannst du sie hier in eine Reihenfolge bringen.
+        {gettext(
+          "Such dir erst ein paar Trikots aus, dann kannst du sie hier in eine Reihenfolge bringen."
+        )}
       </p>
       <.link
         navigate={~p"/rankings/#{@edit_token}/auswahl"}
         class="mt-5 inline-block rounded-md bg-ink px-4 py-2 text-sm font-semibold text-chalk"
-      >
-        Trikots auswählen
-      </.link>
+      >{gettext("Trikots auswählen")}</.link>
     </div>
 
     <ul
@@ -614,14 +618,14 @@ defmodule KitrankWeb.Ranking.EditLive do
     </ul>
 
     <p :if={@entries != []} class="mt-4 text-xs text-soft">
-      Ziehen am Griff sortiert um. Ohne Maus gehen auch die Pfeile — beides speichert sofort.
+      {gettext(
+        "Ziehen am Griff sortiert um. Ohne Maus gehen auch die Pfeile — beides speichert sofort."
+      )}
       <.link
         :if={length(@entries) > 1}
         patch={~p"/rankings/#{@edit_token}/duell"}
         class="text-ink underline underline-offset-4"
-      >
-        Oder nochmal vergleichen lassen
-      </.link>
+      >{gettext("Oder nochmal vergleichen lassen")}</.link>
     </p>
     """
   end
@@ -650,7 +654,7 @@ defmodule KitrankWeb.Ranking.EditLive do
 
       {:error, :kit_ids_mismatch} ->
         socket
-        |> put_flash(:error, "Die Liste hat sich zwischendurch geändert — neuer Anlauf.")
+        |> put_flash(:error, gettext("Die Liste hat sich zwischendurch geändert — neuer Anlauf."))
         |> load_entries()
         |> then(
           &assign(&1, :duel, Duel.start(Enum.map(&1.assigns.entries, fn e -> e.kit_id end)))
@@ -726,7 +730,7 @@ defmodule KitrankWeb.Ranking.EditLive do
 
     case namen do
       [einer] -> einer
-      viele -> "#{length(viele)} Vereine"
+      viele -> gettext("%{anzahl} Vereine", anzahl: length(viele))
     end
   end
 
@@ -751,7 +755,9 @@ defmodule KitrankWeb.Ranking.EditLive do
         name={if @all_selected?, do: "hero-minus-mini", else: "hero-plus-mini"}
         class="size-3"
       />
-      {if @all_selected?, do: "#{@label} abwählen", else: "Alle #{@label}"}
+      {if @all_selected?,
+        do: gettext("%{name} abwählen", name: @label),
+        else: gettext("Alle %{name}", name: @label)}
     </button>
     """
   end
@@ -776,7 +782,12 @@ defmodule KitrankWeb.Ranking.EditLive do
     <.modal
       id="entry-detail"
       on_close="close_detail"
-      label={"#{@entry.kit.team.name} – #{Kit.display_label(@entry.kit)}"}
+      label={
+        gettext("%{verein} – %{trikot}",
+          verein: @entry.kit.team.name,
+          trikot: KitLabel.display(@entry.kit)
+        )
+      }
       size="max-w-4xl"
     >
       <%!-- Das Bild bekommt drei von fuenf Spalten: es ist der Grund, warum man
@@ -804,18 +815,20 @@ defmodule KitrankWeb.Ranking.EditLive do
               index={@image}
               event="detail_image"
             />
-            <p class="mt-2 text-[11px] text-soft">{image_role(@image)}</p>
+            <p class="mt-2 text-[11px] text-soft">{KitLabel.image_role(@image)}</p>
           </div>
         </div>
 
         <div class="flex flex-col border-t border-line p-5 sm:col-span-2 sm:border-l sm:border-t-0">
-          <p class="kr-eyebrow">Platz {@index + 1} von {@total}</p>
+          <p class="kr-eyebrow">
+            {gettext("Platz %{platz} von %{gesamt}", platz: @index + 1, gesamt: @total)}
+          </p>
           <h2 class="kr-display mt-1.5 text-2xl leading-tight">{@entry.kit.team.name}</h2>
           <p class="mt-1 flex items-baseline gap-2">
             <span class="font-mono text-xs font-semibold" style={"color: #{@color}"}>
               {@entry.kit.team.short_code}
             </span>
-            <span class="text-sm text-soft">{Kit.display_label(@entry.kit)}</span>
+            <span class="text-sm text-soft">{KitLabel.display(@entry.kit)}</span>
           </p>
 
           <form
@@ -823,7 +836,7 @@ defmodule KitrankWeb.Ranking.EditLive do
             phx-change="save_detail_note"
             class="mt-5 flex min-h-0 flex-1 flex-col"
           >
-            <label for="detail-note-field" class="kr-eyebrow">Notiz</label>
+            <label for="detail-note-field" class="kr-eyebrow">{gettext("Notiz")}</label>
             <input type="hidden" name="entry_id" value={@entry.id} />
             <textarea
               id="detail-note-field"
@@ -831,11 +844,11 @@ defmodule KitrankWeb.Ranking.EditLive do
               rows="7"
               maxlength="500"
               phx-debounce="600"
-              placeholder="Warum steht es genau hier? Was stört, was gefällt?"
+              placeholder={gettext("Warum steht es genau hier? Was stört, was gefällt?")}
               class="mt-2 w-full flex-1 resize-y rounded-md border border-line bg-panel px-3 py-2.5 text-sm leading-relaxed placeholder:text-soft/70"
             >{@entry.note}</textarea>
             <p class="mt-1 text-xs text-soft">
-              Höchstens 500 Zeichen. Wird laufend gespeichert und steht später im Reveal.
+              {gettext("Höchstens 500 Zeichen. Wird laufend gespeichert und steht später im Reveal.")}
             </p>
           </form>
 
@@ -846,7 +859,8 @@ defmodule KitrankWeb.Ranking.EditLive do
             rel="noopener noreferrer"
             class="mt-4 inline-flex items-center gap-1 text-xs text-soft underline underline-offset-4 hover:text-ink"
           >
-            Zum Vereinsshop <.icon name="hero-arrow-top-right-on-square-mini" class="size-3" />
+            {gettext("Zum Vereinsshop")}
+            <.icon name="hero-arrow-top-right-on-square-mini" class="size-3" />
           </a>
 
           <div class="mt-5 flex flex-wrap gap-2 border-t border-line pt-4">
@@ -858,7 +872,7 @@ defmodule KitrankWeb.Ranking.EditLive do
               disabled={@index == 0}
               class="flex items-center gap-1 rounded-md border border-line px-3 py-1.5 text-xs transition enabled:hover:border-ink disabled:opacity-30"
             >
-              <.icon name="hero-chevron-up-mini" class="size-3.5" /> Höher
+              <.icon name="hero-chevron-up-mini" class="size-3.5" /> {gettext("Höher")}
             </button>
             <button
               type="button"
@@ -868,16 +882,14 @@ defmodule KitrankWeb.Ranking.EditLive do
               disabled={@index == @total - 1}
               class="flex items-center gap-1 rounded-md border border-line px-3 py-1.5 text-xs transition enabled:hover:border-ink disabled:opacity-30"
             >
-              <.icon name="hero-chevron-down-mini" class="size-3.5" /> Tiefer
+              <.icon name="hero-chevron-down-mini" class="size-3.5" /> {gettext("Tiefer")}
             </button>
             <button
               type="button"
               phx-click="remove"
               phx-value-id={@entry.kit_id}
               class="ml-auto rounded-md border border-line px-3 py-1.5 text-xs text-soft transition hover:border-red-500 hover:text-red-600"
-            >
-              Aus der Liste nehmen
-            </button>
+            >{gettext("Aus der Liste nehmen")}</button>
           </div>
         </div>
       </div>
@@ -902,42 +914,39 @@ defmodule KitrankWeb.Ranking.EditLive do
       :if={@fortschritt.total < 2}
       class="mt-10 rounded-lg border border-dashed border-line p-12 text-center"
     >
-      <p class="kr-display text-xl">Dafür braucht es zwei</p>
+      <p class="kr-display text-xl">{gettext("Dafür braucht es zwei")}</p>
       <p class="mx-auto mt-2 max-w-sm text-sm text-soft">
-        Wähl erst ein paar Trikots aus, dann lassen sie sich gegeneinander stellen.
+        {gettext("Wähl erst ein paar Trikots aus, dann lassen sie sich gegeneinander stellen.")}
       </p>
       <.link
         navigate={~p"/rankings/#{@edit_token}/auswahl"}
         class="mt-5 inline-block rounded-md bg-ink px-4 py-2 text-sm font-semibold text-chalk"
-      >
-        Trikots auswählen
-      </.link>
+      >{gettext("Trikots auswählen")}</.link>
     </div>
 
     <div
       :if={@fortschritt.total >= 2 && @frage == :done}
       class="mt-10 rounded-lg border border-line p-10 text-center"
     >
-      <p class="kr-eyebrow">Fertig</p>
-      <p class="kr-display mt-2 text-3xl">Dein Entwurf steht</p>
+      <p class="kr-eyebrow">{gettext("Fertig")}</p>
+      <p class="kr-display mt-2 text-3xl">{gettext("Dein Entwurf steht")}</p>
       <p class="mx-auto mt-3 max-w-md text-sm leading-relaxed text-soft">
-        {@fortschritt.total} Trikots in {@fortschritt.comparisons} Vergleichen sortiert.
-        Feinschliff und Notizen machst du im nächsten Schritt.
+        {gettext(
+          "%{trikots} Trikots in %{vergleiche} Vergleichen sortiert. Feinschliff und Notizen machst du im nächsten Schritt.",
+          trikots: @fortschritt.total,
+          vergleiche: @fortschritt.comparisons
+        )}
       </p>
       <div class="mt-6 flex flex-wrap items-center justify-center gap-3">
         <.link
           patch={~p"/rankings/#{@edit_token}/edit"}
           class="rounded-md bg-ink px-5 py-2.5 text-sm font-semibold text-chalk transition hover:opacity-90"
-        >
-          Zur Rangliste
-        </.link>
+        >{gettext("Zur Rangliste")}</.link>
         <button
           type="button"
           phx-click="duel_restart"
           class="rounded-md border border-line px-4 py-2.5 text-sm transition hover:border-ink"
-        >
-          Nochmal durchgehen
-        </button>
+        >{gettext("Nochmal durchgehen")}</button>
       </div>
     </div>
 
@@ -951,13 +960,17 @@ defmodule KitrankWeb.Ranking.EditLive do
     >
       <div class="flex flex-wrap items-baseline gap-3">
         <p class="kr-eyebrow">
-          Trikot {@fortschritt.placed + 1} von {@fortschritt.total}
+          {gettext("Trikot %{nr} von %{gesamt}",
+            nr: @fortschritt.placed + 1,
+            gesamt: @fortschritt.total
+          )}
         </p>
-        <p class="text-sm text-soft">
-          Welches gefällt dir besser?
-        </p>
+        <p class="text-sm text-soft">{gettext("Welches gefällt dir besser?")}</p>
         <p class="ml-auto font-mono text-[11px] text-soft">
-          {@fortschritt.comparisons} Vergleiche · noch etwa {@fortschritt.remaining_estimate}
+          {gettext("%{vergleiche} Vergleiche · noch etwa %{rest}",
+            vergleiche: @fortschritt.comparisons,
+            rest: @fortschritt.remaining_estimate
+          )}
         </p>
       </div>
 
@@ -975,21 +988,17 @@ defmodule KitrankWeb.Ranking.EditLive do
       </div>
 
       <p class="mt-4 text-center text-xs text-soft">
-        Jede Antwort wird gespeichert — abbrechen kostet nichts.
+        {gettext("Jede Antwort wird gespeichert — abbrechen kostet nichts.")}
         <.link
           patch={~p"/rankings/#{@edit_token}/edit"}
           class="text-ink underline underline-offset-4"
-        >
-          Zur Rangliste
-        </.link>
+        >{gettext("Zur Rangliste")}</.link>
         <span class="px-1">·</span>
         <button
           type="button"
           phx-click="duel_restart"
           class="underline underline-offset-4 hover:text-ink"
-        >
-          Von vorn anfangen
-        </button>
+        >{gettext("Von vorn anfangen")}</button>
       </p>
     </div>
     """
@@ -1025,7 +1034,7 @@ defmodule KitrankWeb.Ranking.EditLive do
             {@kit.team.short_code}
           </span>
           <span class="text-sm font-medium">{@kit.team.name}</span>
-          <span class="text-xs text-soft">{Kit.display_label(@kit)}</span>
+          <span class="text-xs text-soft">{KitLabel.display(@kit)}</span>
         </p>
         <p class="mt-1 font-mono text-[10px] text-soft">{@hint}</p>
       </div>
