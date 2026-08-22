@@ -217,11 +217,33 @@ defmodule KitrankWeb.RankingLiveTest do
 
       html =
         view
-        |> element(~s{button[phx-value-axis="competitions"][phx-value-value="#{erste.id}"]})
+        |> element(~s{button[phx-value-axis="competitions"][phx-value-item="#{erste.id}"]})
         |> render_click()
 
       assert html =~ "4 Trikots"
       refute html =~ ~s{phx-click="toggle_kit" phx-value-id="#{z.id}"}
+    end
+
+    test "verträgt den Payload, den der Browser wirklich schickt", %{
+      conn: conn,
+      ranking: r,
+      erste: erste
+    } do
+      # LiveView setzt beim Klick meta.value auf el.value – bei einem <button>
+      # ein leerer String. Hiess der eigene Parameter "value", wurde er damit
+      # stillschweigend ueberschrieben und String.to_integer("") flog. Ueber
+      # element() |> render_click() faellt das nicht auf, weil dort nur die
+      # phx-value-Attribute mitgehen.
+      {:ok, view, _html} = live(conn, ~p"/rankings/#{r.edit_token}/auswahl")
+
+      html =
+        render_click(view, "toggle_filter", %{
+          "axis" => "competitions",
+          "item" => to_string(erste.id),
+          "value" => ""
+        })
+
+      assert html =~ "4 Trikots"
     end
 
     test "grenzt auf einen Verein ein", %{conn: conn, ranking: r, erste_kits: kits} do
@@ -230,7 +252,7 @@ defmodule KitrankWeb.RankingLiveTest do
 
       html =
         view
-        |> element(~s{button[phx-value-axis="teams"][phx-value-value="#{team_id}"]})
+        |> element(~s{button[phx-value-axis="teams"][phx-value-item="#{team_id}"]})
         |> render_click()
 
       assert html =~ "2 Trikots"
@@ -240,7 +262,7 @@ defmodule KitrankWeb.RankingLiveTest do
       {:ok, view, _html} = live(conn, ~p"/rankings/#{r.edit_token}/auswahl")
 
       view
-      |> element(~s{button[phx-value-axis="competitions"][phx-value-value="#{erste.id}"]})
+      |> element(~s{button[phx-value-axis="competitions"][phx-value-item="#{erste.id}"]})
       |> render_click()
 
       html =
@@ -261,12 +283,12 @@ defmodule KitrankWeb.RankingLiveTest do
 
       # Erste Liga, aber ein Verein aus der zweiten.
       view
-      |> element(~s{button[phx-value-axis="competitions"][phx-value-value="#{erste.id}"]})
+      |> element(~s{button[phx-value-axis="competitions"][phx-value-item="#{erste.id}"]})
       |> render_click()
 
       html =
         view
-        |> element(~s{button[phx-value-axis="teams"][phx-value-value="#{hd(kits).team_id}"]})
+        |> element(~s{button[phx-value-axis="teams"][phx-value-item="#{hd(kits).team_id}"]})
         |> render_click()
 
       assert html =~ "Nichts im Ausschnitt"
@@ -334,7 +356,7 @@ defmodule KitrankWeb.RankingLiveTest do
 
       html =
         view
-        |> element(~s{button[phx-value-axis="teams"][phx-value-value="#{team.id}"]})
+        |> element(~s{button[phx-value-axis="teams"][phx-value-item="#{team.id}"]})
         |> render_click()
 
       assert html =~ "3 Trikots · alle Saisons, HSV"
@@ -349,7 +371,7 @@ defmodule KitrankWeb.RankingLiveTest do
       |> render_click()
 
       view
-      |> element(~s{button[phx-value-axis="teams"][phx-value-value="#{team.id}"]})
+      |> element(~s{button[phx-value-axis="teams"][phx-value-item="#{team.id}"]})
       |> render_click()
 
       view
@@ -408,7 +430,7 @@ defmodule KitrankWeb.RankingLiveTest do
       {:ok, view, _html} = live(conn, ~p"/rankings/#{r.edit_token}/auswahl")
 
       view
-      |> element(~s{button[phx-value-axis="competitions"][phx-value-value="#{erste.id}"]})
+      |> element(~s{button[phx-value-axis="competitions"][phx-value-item="#{erste.id}"]})
       |> render_click()
 
       view

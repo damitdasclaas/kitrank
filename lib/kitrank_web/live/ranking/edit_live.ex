@@ -124,9 +124,14 @@ defmodule KitrankWeb.Ranking.EditLive do
   ## Ausschnitt wählen
 
   @impl true
-  def handle_event("toggle_filter", %{"axis" => axis, "value" => value}, socket) do
+  # Der Parameter heisst "item", nicht "value": LiveView setzt beim Klick
+  # meta.value auf el.value, und ein <button> hat immer ein leeres value –
+  # damit wuerde ein phx-value-value stillschweigend ueberschrieben. Im Test
+  # faellt das nicht auf, weil render_click nur die phx-value-Attribute
+  # schickt; im Browser kam eine leere Zeichenkette an.
+  def handle_event("toggle_filter", %{"axis" => axis, "item" => item}, socket) do
     achse = achse(axis)
-    wert = if achse == :seasons, do: value, else: String.to_integer(value)
+    wert = if achse == :seasons, do: item, else: String.to_integer(item)
 
     scope =
       Map.update!(socket.assigns.scope, achse, fn menge ->
@@ -478,7 +483,7 @@ defmodule KitrankWeb.Ranking.EditLive do
         type="button"
         phx-click="toggle_filter"
         phx-value-axis={@axis}
-        phx-value-value={chip.value}
+        phx-value-item={chip.value}
         title={Map.get(chip, :title)}
         aria-pressed={to_string(MapSet.member?(@chosen, chip.value))}
         class={[
