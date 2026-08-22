@@ -64,7 +64,7 @@ defmodule KitrankWeb.Admin.TeamSeasonLive do
          |> put_flash(:info, "Gespeichert.")
          |> assign(season: team_season.season)
          |> load_rows()
-         |> push_navigate(to: ~p"/admin/saison")}
+         |> push_patch(to: ~p"/admin/saison")}
 
       {:error, changeset} ->
         {:noreply, assign(socket, form: to_form(changeset))}

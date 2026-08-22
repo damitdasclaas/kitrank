@@ -136,7 +136,7 @@ defmodule KitrankWeb.Admin.KitLive do
          |> put_flash(:info, "Gespeichert.")
          |> assign(season: kit.season)
          |> load_rows()
-         |> push_navigate(to: ~p"/admin/trikots")}
+         |> push_patch(to: ~p"/admin/trikots")}
 
       {:error, changeset} ->
         {:noreply, assign_form(socket, socket.assigns.kit, changeset)}

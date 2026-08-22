@@ -51,7 +51,7 @@ defmodule KitrankWeb.Admin.TeamLive do
          socket
          |> put_flash(:info, "Gespeichert.")
          |> assign(teams: Kits.list_teams())
-         |> push_navigate(to: ~p"/admin/vereine")}
+         |> push_patch(to: ~p"/admin/vereine")}
 
       {:error, changeset} ->
         {:noreply, assign(socket, form: to_form(changeset))}

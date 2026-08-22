@@ -72,7 +72,7 @@ defmodule KitrankWeb.Admin.SportLive do
     socket
     |> put_flash(:info, message)
     |> assign(sports: Kits.list_sports())
-    |> push_navigate(to: ~p"/admin/sportarten")
+    |> push_patch(to: ~p"/admin/sportarten")
   end
 
   @impl true

@@ -61,7 +61,7 @@ defmodule KitrankWeb.Admin.Components do
         </div>
         <.link
           :if={@new_path}
-          navigate={@new_path}
+          patch={@new_path}
           class="rounded-md bg-ink px-4 py-2 text-sm font-semibold text-chalk transition hover:opacity-90"
         >
           {@new_label}
@@ -143,7 +143,7 @@ defmodule KitrankWeb.Admin.Components do
   def form_actions(assigns) do
     ~H"""
     <div class="mt-6 flex items-center justify-end gap-3 border-t border-line pt-5">
-      <.link navigate={@close_path} class="text-sm text-soft hover:text-ink">Abbrechen</.link>
+      <.link patch={@close_path} class="text-sm text-soft hover:text-ink">Abbrechen</.link>
       <button
         type="submit"
         phx-disable-with="Speichert …"
@@ -157,11 +157,17 @@ defmodule KitrankWeb.Admin.Components do
 
   attr :navigate, :string, required: true
 
-  @doc "Bearbeiten-Link in der Tabelle."
+  @doc """
+  Bearbeiten-Link in der Tabelle.
+
+  `patch`, nicht `navigate`: Liste und Formular sind dieselbe LiveView. Ein
+  `navigate` würde sie neu aufbauen und dabei Filter, Suche und gewählte Saison
+  verwerfen.
+  """
   def edit_link(assigns) do
     ~H"""
     <.link
-      navigate={@navigate}
+      patch={@navigate}
       class="text-sm text-soft underline-offset-4 hover:text-ink hover:underline"
     >
       Bearbeiten

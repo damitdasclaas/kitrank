@@ -8,7 +8,20 @@ defmodule Kitrank.KitsFixtures do
 
   alias Kitrank.Kits
 
-  def unique_short_code, do: "T#{System.unique_integer([:positive])}" |> String.slice(0, 5)
+  @doc """
+  Ein Kürzel, das in die erlaubten fünf Zeichen passt und trotzdem eindeutig
+  bleibt.
+
+  Die laufende Nummer einfach abzuschneiden reicht nicht: sobald sie vierstellig
+  wird, wiederholen sich die Kürzel, der Unique-Index schlägt zu, und es stirbt
+  irgendein Test – je nach Reihenfolge ein anderer. Base36 bringt vier Stellen
+  auf 1.679.616 Werte unter.
+  """
+  def unique_short_code do
+    laufend = System.unique_integer([:positive]) |> rem(1_679_616)
+
+    "T" <> (laufend |> Integer.to_string(36) |> String.pad_leading(4, "0"))
+  end
 
   def sport_fixture(attrs \\ %{}) do
     {:ok, sport} =

@@ -56,7 +56,7 @@ defmodule KitrankWeb.Admin.CompetitionLive do
          socket
          |> put_flash(:info, "Gespeichert.")
          |> assign(competitions: Kits.list_competitions())
-         |> push_navigate(to: ~p"/admin/ligen")}
+         |> push_patch(to: ~p"/admin/ligen")}
 
       {:error, changeset} ->
         {:noreply, assign(socket, form: to_form(changeset))}

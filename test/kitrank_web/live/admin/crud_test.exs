@@ -287,6 +287,63 @@ defmodule KitrankWeb.Admin.CrudTest do
       refute html =~ a.name
     end
 
+    test "Suche und Liga-Filter überleben das Bearbeiten-Modal", %{
+      conn: conn,
+      erste: erste,
+      a: a,
+      b: b
+    } do
+      {:ok, view, _html} = live(conn, ~p"/admin/trikots")
+
+      view
+      |> element(~s{button[phx-click="toggle_league"][phx-value-id="#{erste.id}"]})
+      |> render_click()
+
+      view |> form("form[phx-change=\"search\"]", %{"q" => a.name}) |> render_change()
+
+      # Aus der *gefilterten* Liste greifen – die ungefilterte kann mit einem
+      # anderen Verein anfangen, dann steht der Link gar nicht auf der Seite.
+      kit =
+        Kits.list_kits_for_admin(Kits.current_season(),
+          competition_ids: [erste.id],
+          query: a.name
+        )
+        |> hd()
+        |> Map.fetch!(:kit)
+
+      # Modal auf ...
+      html = view |> element(~s{a[href="/admin/trikots/#{kit.id}"]}) |> render_click()
+      assert html =~ ~s(id="admin-form")
+
+      # ... und wieder zu.
+      html = view |> element(~s{#admin-form a}, "Abbrechen") |> render_click()
+
+      refute html =~ ~s(id="admin-form")
+      # Beides steht noch.
+      assert html =~ ~s(value="#{a.name}")
+      refute html =~ b.name
+    end
+
+    test "der Filter überlebt auch das Speichern", %{conn: conn, erste: erste, b: b} do
+      {:ok, view, _html} = live(conn, ~p"/admin/trikots")
+
+      view
+      |> element(~s{button[phx-click="toggle_league"][phx-value-id="#{erste.id}"]})
+      |> render_click()
+
+      kit = Kits.list_kits_for_admin(Kits.current_season(), competition_ids: [erste.id]) |> hd()
+      view |> element(~s{a[href="/admin/trikots/#{kit.kit.id}"]}) |> render_click()
+
+      html =
+        view
+        |> form("#kit-form", kit: %{cutout_url: "https://example.com/neu.jpg"})
+        |> render_submit()
+
+      refute html =~ ~s(id="admin-form")
+      refute html =~ b.name
+      assert Kits.get_kit!(kit.kit.id).cutout_url == "https://example.com/neu.jpg"
+    end
+
     test "zeigt Trikots ohne Liga-Zuordnung, statt sie zu verstecken", %{conn: conn} do
       # Ein Verein ohne Saison-Zuordnung – in der Übersicht unsichtbar, im
       # Admin muss er auffallen.
