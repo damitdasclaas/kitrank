@@ -1,0 +1,240 @@
+{
+  "_hinweis": "Stammdaten einer Saison. Einspielen mit '/app/bin/kitrank eval \"Kitrank.Release.import_teams()\"' bzw. lokal 'mix kitrank.import'. Der Import ist idempotent: mehrfaches Ausfuehren aendert nichts doppelt. Fuer eine neue Saison diese Datei kopieren, 'season' hochsetzen und Auf-/Abstiege eintragen. Vereinsfarbe ist die erste Markenfarbe; Trikotbilder und Shop-Links gehoeren nicht hierher, die pflegst du ueber /admin.",
+  "season": "2026/27",
+  "sport": {
+    "name": "Fußball",
+    "slug": "football"
+  },
+  "competitions": [
+    {
+      "name": "Bundesliga",
+      "country": "DE",
+      "tier": 1,
+      "teams": [
+        {
+          "name": "FC Bayern München",
+          "short_code": "FCB",
+          "primary_color": "#ED0038",
+          "shop_url": null
+        },
+        {
+          "name": "Bayer 04 Leverkusen",
+          "short_code": "B04",
+          "primary_color": "#E32221",
+          "shop_url": null
+        },
+        {
+          "name": "Eintracht Frankfurt",
+          "short_code": "SGE",
+          "primary_color": "#E1020C",
+          "shop_url": null
+        },
+        {
+          "name": "Borussia Dortmund",
+          "short_code": "BVB",
+          "primary_color": "#FFD900",
+          "shop_url": null
+        },
+        {
+          "name": "SC Freiburg",
+          "short_code": "SCF",
+          "primary_color": "#000000",
+          "shop_url": null
+        },
+        {
+          "name": "Hamburger SV",
+          "short_code": "HSV",
+          "primary_color": "#1E5CB3",
+          "shop_url": null
+        },
+        {
+          "name": "RB Leipzig",
+          "short_code": "RBL",
+          "primary_color": "#DD0741",
+          "shop_url": null
+        },
+        {
+          "name": "FC Augsburg",
+          "short_code": "FCA",
+          "primary_color": "#BA3733",
+          "shop_url": null
+        },
+        {
+          "name": "1. FC Union Berlin",
+          "short_code": "FCU",
+          "primary_color": "#E30613",
+          "shop_url": null
+        },
+        {
+          "name": "SV Werder Bremen",
+          "short_code": "SVW",
+          "primary_color": "#1D9053",
+          "shop_url": null
+        },
+        {
+          "name": "1. FC Köln",
+          "short_code": "KOE",
+          "primary_color": "#E20613",
+          "shop_url": null
+        },
+        {
+          "name": "1. FSV Mainz 05",
+          "short_code": "M05",
+          "primary_color": "#AE0F0A",
+          "shop_url": null
+        },
+        {
+          "name": "Borussia Mönchengladbach",
+          "short_code": "BMG",
+          "primary_color": "#000000",
+          "shop_url": null
+        },
+        {
+          "name": "VfB Stuttgart",
+          "short_code": "VFB",
+          "primary_color": "#D40723",
+          "shop_url": null
+        },
+        {
+          "name": "TSG 1899 Hoffenheim",
+          "short_code": "TSG",
+          "primary_color": "#1961B5",
+          "shop_url": null
+        },
+        {
+          "name": "FC Schalke 04",
+          "short_code": "S04",
+          "primary_color": "#004D9E",
+          "shop_url": null
+        },
+        {
+          "name": "SV Elversberg",
+          "short_code": "SVE",
+          "primary_color": "#005CA9",
+          "shop_url": null
+        },
+        {
+          "name": "SC Paderborn 07",
+          "short_code": "SCP",
+          "primary_color": "#002D5C",
+          "shop_url": null
+        }
+      ]
+    },
+    {
+      "name": "2. Bundesliga",
+      "country": "DE",
+      "tier": 2,
+      "teams": [
+        {
+          "name": "Hertha BSC",
+          "short_code": "BSC",
+          "primary_color": "#004D9E",
+          "shop_url": null
+        },
+        {
+          "name": "Arminia Bielefeld",
+          "short_code": "DSC",
+          "primary_color": "#000000",
+          "shop_url": null
+        },
+        {
+          "name": "VfL Bochum",
+          "short_code": "BOC",
+          "primary_color": "#005CA5",
+          "shop_url": null
+        },
+        {
+          "name": "Eintracht Braunschweig",
+          "short_code": "EBS",
+          "primary_color": "#FFD400",
+          "shop_url": null
+        },
+        {
+          "name": "Energie Cottbus",
+          "short_code": "FCE",
+          "primary_color": "#C8102E",
+          "shop_url": null
+        },
+        {
+          "name": "SV Darmstadt 98",
+          "short_code": "D98",
+          "primary_color": "#0057A8",
+          "shop_url": null
+        },
+        {
+          "name": "Dynamo Dresden",
+          "short_code": "SGD",
+          "primary_color": "#F3AC26",
+          "shop_url": null
+        },
+        {
+          "name": "SpVgg Greuther Fürth",
+          "short_code": "SGF",
+          "primary_color": "#007A3D",
+          "shop_url": null
+        },
+        {
+          "name": "Hannover 96",
+          "short_code": "H96",
+          "primary_color": "#000000",
+          "shop_url": null
+        },
+        {
+          "name": "1. FC Heidenheim",
+          "short_code": "FCH",
+          "primary_color": "#E2001A",
+          "shop_url": null
+        },
+        {
+          "name": "1. FC Kaiserslautern",
+          "short_code": "FCK",
+          "primary_color": "#DA1116",
+          "shop_url": null
+        },
+        {
+          "name": "Karlsruher SC",
+          "short_code": "KSC",
+          "primary_color": "#0057A5",
+          "shop_url": null
+        },
+        {
+          "name": "Holstein Kiel",
+          "short_code": "KSV",
+          "primary_color": "#0F5787",
+          "shop_url": null
+        },
+        {
+          "name": "1. FC Magdeburg",
+          "short_code": "FCM",
+          "primary_color": "#0068B2",
+          "shop_url": null
+        },
+        {
+          "name": "1. FC Nürnberg",
+          "short_code": "FCN",
+          "primary_color": "#7F0910",
+          "shop_url": null
+        },
+        {
+          "name": "VfL Osnabrück",
+          "short_code": "VFL",
+          "primary_color": "#6E2585",
+          "shop_url": null
+        },
+        {
+          "name": "FC St. Pauli",
+          "short_code": "STP",
+          "primary_color": "#E30613",
+          "shop_url": null
+        },
+        {
+          "name": "VfL Wolfsburg",
+          "short_code": "WOB",
+          "primary_color": "#09633D",
+          "shop_url": null
+        }
+      ]
+    }
+  ]
+}

@@ -6,6 +6,7 @@ defmodule Kitrank.Release do
 
       /app/bin/kitrank eval 'Kitrank.Release.migrate()'
       /app/bin/kitrank eval 'Kitrank.Release.admin("du@example.com")'
+      /app/bin/kitrank eval 'Kitrank.Release.import_teams()'
   """
   @app :kitrank
 
@@ -20,6 +21,26 @@ defmodule Kitrank.Release do
   def rollback(repo, version) do
     load_app()
     {:ok, _, _} = Ecto.Migrator.with_repo(repo, &Ecto.Migrator.run(&1, :down, to: version))
+  end
+
+  @doc """
+  Spielt die Stammdaten einer Saison ein – Vereine, Ligen, Zuordnungen.
+
+  Die Datei liegt im Release unter `priv/data/`. Trikots gehören nicht dazu,
+  die pflegst du über `/admin`.
+  """
+  def import_teams(path \\ nil) do
+    start_app()
+
+    case Kitrank.Kits.Import.run(path) do
+      {:ok, bericht} ->
+        IO.puts("\n" <> Kitrank.Kits.Import.format(bericht))
+        :ok
+
+      {:error, grund} ->
+        IO.puts("Import fehlgeschlagen: #{grund}")
+        :error
+    end
   end
 
   @doc """

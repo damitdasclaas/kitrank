@@ -41,17 +41,44 @@ Umgebungsvariable `REGISTRATION_OPEN=true` setzen, fertig.
 
 ## Datenpflege
 
-`/admin` (nur für Admins) hat CRUD für Sportarten, Ligen, Vereine,
-Saison-Zuordnungen und Trikots. Die Reihenfolge, in der man vorgeht:
+Zwei Wege, bewusst getrennt nach dem, was sich wie oft ändert.
 
-1. **Sportart** → **Liga** anlegen
-2. **Vereine** mit Kürzel und Vereinsfarbe
-3. **Saison**: welcher Verein spielt dieses Jahr in welcher Liga (hier pflegst du Auf- und Abstieg)
-4. **Trikots** pro Verein und Saison, mit Bild- und Shop-Links
+### Stammdaten: Import aus einer Datei
 
-Ohne Schritt 3 bleibt die Übersicht leer — die Gruppierung kommt aus
-`team_seasons`, nicht aus einem Feld am Verein. Das Dashboard unter `/admin`
-zeigt, was fehlt.
+Vereine, Ligen und Saison-Zuordnungen stehen in
+[`priv/data/teams_2026_27.json`](priv/data/teams_2026_27.json) — 36 Vereine mit
+Kürzel und Vereinsfarbe. Einspielen:
+
+```bash
+mix kitrank.import                                        # lokal
+/app/bin/kitrank eval 'Kitrank.Release.import_teams()'    # auf dem Server
+```
+
+Der Import ist **idempotent** und berichtet, was er getan hat. Für die nächste
+Saison die Datei kopieren, `season` hochsetzen, Auf- und Abstiege eintragen,
+neu einspielen — Vereine wechseln dann einfach die Liga.
+
+Drei Dinge, die er absichtlich **nicht** tut:
+
+- **Vereine löschen.** Wer aus der Datei fällt, verliert nur die Zuordnung für
+  diese Saison. Sonst wären mit einem Abstieg auch alle Trikots früherer
+  Saisons weg.
+- **Andere Saisons anfassen.** Ein Lauf betrifft nur die Saison in der Datei.
+- **Shop-Links überschreiben.** Ein leeres Feld in der Datei löscht nicht, was
+  im Admin gepflegt wurde.
+
+### Trikots: über `/admin`
+
+Bilder und Shop-Links stehen bewusst nicht in der Import-Datei. Sie ändern sich
+laufend, sehen bei jedem Verein anders aus und brauchen ein Auge: welches Bild
+der Freisteller ist und welches eine Model-Aufnahme, entscheidet kein Skript
+zuverlässig.
+
+`/admin` hat CRUD für alles. Das Dashboard zeigt, was noch fehlt — Trikots ohne
+Bild, ohne Shop-Link, und ob für die Saison überhaupt Zuordnungen existieren.
+
+**Ohne Saison-Zuordnung bleibt die Übersicht leer** — die Gruppierung kommt aus
+`team_seasons`, nicht aus einem Feld am Verein.
 
 ## Setup
 

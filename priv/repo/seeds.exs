@@ -1,90 +1,42 @@
-# Dev-Seeds: befüllt eine lokale Datenbank schnell mit einer plausiblen Struktur.
+# Dev-Seeds: befüllt eine lokale Datenbank schnell mit einem realistischen Stand.
 #
-# Bewusst KEINE Dauerlösung für die Datenpflege – dafür ist die Admin-UI da
-# (Architektur Abschnitt 4.4). Entsprechend stehen hier nur ein paar Beispiel-
-# Teams, nicht die vollständigen Ligen, und die Bild-/Shop-URLs sind leer:
-# echte Trikotbilder werden verlinkt, nicht gehostet (Abschnitt 5), und die
-# konkreten Deep-Links trägst du im Admin ein.
+# Die Stammdaten kommen aus derselben Datei, die auch in Produktion eingespielt
+# wird (priv/data/teams_2026_27.json) – es gibt keine zweite, erfundene Liste,
+# die auseinanderlaufen könnte.
+#
+# Ergänzt werden hier nur Trikots, denn die gehören nicht in die Import-Datei:
+#   * für alle Vereine leere Trikots, damit die Übersicht die gezeichnete
+#     Darstellung zeigt
+#   * für den HSV echte Bilder aus dem Vereinsshop, damit beides nebeneinander
+#     zu sehen ist
 #
 #     mix run priv/repo/seeds.exs
 #
-# Das Skript ist idempotent – mehrfaches Ausführen legt nichts doppelt an.
+# Idempotent – mehrfaches Ausführen legt nichts doppelt an.
 
 alias Kitrank.Repo
 alias Kitrank.Kits
-alias Kitrank.Kits.{Competition, Kit, Season, Sport, Team, TeamSeason}
+alias Kitrank.Kits.{Kit, Season, Team}
+
+{:ok, bericht} = Kits.Import.run()
+IO.puts(Kits.Import.format(bericht))
 
 season = Season.current()
 
 upsert = fn schema, keys, attrs ->
   case Repo.get_by(schema, keys) do
-    nil ->
-      schema
-      |> struct()
-      |> schema.changeset(attrs)
-      |> Repo.insert!()
-
-    existing ->
-      existing
-      |> schema.changeset(attrs)
-      |> Repo.update!()
+    nil -> schema |> struct() |> schema.changeset(attrs) |> Repo.insert!()
+    existing -> existing |> schema.changeset(attrs) |> Repo.update!()
   end
 end
 
-football = upsert.(Sport, [slug: "football"], %{name: "Fußball", slug: "football"})
-
-bundesliga =
-  upsert.(Competition, [sport_id: football.id, country: "DE", name: "Bundesliga"], %{
-    sport_id: football.id,
-    name: "Bundesliga",
-    country: "DE",
-    tier: 1
-  })
-
-bundesliga_2 =
-  upsert.(Competition, [sport_id: football.id, country: "DE", name: "2. Bundesliga"], %{
-    sport_id: football.id,
-    name: "2. Bundesliga",
-    country: "DE",
-    tier: 2
-  })
-
-# {Kürzel, Name, Vereinsfarbe, Liga} – Beispielauswahl, keine vollständige Saison.
-teams = [
-  {"FCB", "FC Bayern München", "#DC052D", bundesliga},
-  {"BVB", "Borussia Dortmund", "#FDE100", bundesliga},
-  {"SGE", "Eintracht Frankfurt", "#E1000F", bundesliga},
-  {"BMG", "Borussia Mönchengladbach", "#000000", bundesliga},
-  {"SVW", "SV Werder Bremen", "#1D9053", bundesliga},
-  {"FCSP", "FC St. Pauli", "#6B4423", bundesliga},
-  {"HSV", "Hamburger SV", "#005CA9", bundesliga},
-  {"S04", "FC Schalke 04", "#004D9D", bundesliga_2},
-  {"H96", "Hannover 96", "#00963F", bundesliga_2},
-  {"KSC", "Karlsruher SC", "#005CA9", bundesliga_2}
-]
-
-for {short_code, name, color, competition} <- teams do
-  team =
-    upsert.(Team, [short_code: short_code], %{
-      name: name,
-      short_code: short_code,
-      primary_color: color
-    })
-
-  upsert.(TeamSeason, [team_id: team.id, season: season], %{
+# Heim/Auswärts/Ausweich für alle – ohne Bilder, die zeichnet die Übersicht.
+for team <- Kits.list_teams(), kit_type <- ~w(home away third) do
+  upsert.(Kit, [team_id: team.id, season: season, kit_type: kit_type], %{
     team_id: team.id,
-    competition_id: competition.id,
-    season: season
+    season: season,
+    kit_type: kit_type
   })
-
-  # Heim/Auswärts/Ausweich pro Team – Bild- und Shop-URLs kommen aus dem Admin.
-  for kit_type <- ~w(home away third) do
-    upsert.(Kit, [team_id: team.id, season: season, kit_type: kit_type], %{
-      team_id: team.id,
-      season: season,
-      kit_type: kit_type
-    })
-  end
 end
 
 # ── Ein Verein mit echten Daten ───────────────────────────────────────────────
@@ -146,10 +98,9 @@ end
 
 IO.puts("""
 Seeds fertig für Saison #{season}:
-  #{length(Kits.list_teams())} Teams
-  #{length(Kits.list_competitions())} Wettbewerbe
+  #{length(Kits.list_teams())} Vereine
   #{length(Kits.list_kits(season))} Trikots
 
-Bis auf den HSV sind Bild- und Shop-URLs absichtlich leer – die pflegst du
-über /admin. Der HSV zeigt, wie es mit echten Bildern aussieht.
+Bis auf den HSV sind Bild- und Shop-URLs leer – die pflegst du über /admin.
+Der HSV zeigt, wie es mit echten Bildern aussieht.
 """)
