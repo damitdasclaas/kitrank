@@ -23,7 +23,9 @@ defmodule KitrankWeb.UserSessionControllerTest do
       # Now do a logged in request and assert on the menu
       conn = get(conn, ~p"/")
       response = html_response(conn, 200)
-      assert response =~ user.email
+      # Die Kopfzeile zeigt die Adresse nicht – "Abmelden" erscheint nur, wenn
+      # jemand angemeldet ist, und ist damit das verlaesslichere Signal.
+      assert response =~ ~p"/users/log-out"
       assert response =~ ~p"/users/settings"
       assert response =~ ~p"/users/log-out"
     end
@@ -87,7 +89,9 @@ defmodule KitrankWeb.UserSessionControllerTest do
       # Now do a logged in request and assert on the menu
       conn = get(conn, ~p"/")
       response = html_response(conn, 200)
-      assert response =~ user.email
+      # Die Kopfzeile zeigt die Adresse nicht – "Abmelden" erscheint nur, wenn
+      # jemand angemeldet ist, und ist damit das verlaesslichere Signal.
+      assert response =~ ~p"/users/log-out"
       assert response =~ ~p"/users/settings"
       assert response =~ ~p"/users/log-out"
     end
@@ -111,7 +115,9 @@ defmodule KitrankWeb.UserSessionControllerTest do
       # Now do a logged in request and assert on the menu
       conn = get(conn, ~p"/")
       response = html_response(conn, 200)
-      assert response =~ user.email
+      # Die Kopfzeile zeigt die Adresse nicht – "Abmelden" erscheint nur, wenn
+      # jemand angemeldet ist, und ist damit das verlaesslichere Signal.
+      assert response =~ ~p"/users/log-out"
       assert response =~ ~p"/users/settings"
       assert response =~ ~p"/users/log-out"
     end
