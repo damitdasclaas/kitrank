@@ -24,7 +24,14 @@ defmodule Kitrank.Kits.ProductImagesStub do
   def fetch("kein-link"), do: {:error, :invalid_url}
 
   def fetch(url) when is_binary(url) do
-    {:ok, %{title: "adidas Heimtrikot 26/27", images: @images, source_url: url}}
+    {:ok,
+     %{
+       title: "adidas Heimtrikot 26/27",
+       images: @images,
+       # Manche Shops beschreiben ihre Bilder selbst.
+       labels: %{hd(@images) => "Vorderansicht"},
+       source_url: url
+     }}
   end
 
   def fetch(_), do: {:error, :invalid_url}

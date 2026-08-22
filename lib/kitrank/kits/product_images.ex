@@ -54,22 +54,33 @@ defmodule Kitrank.Kits.ProductImages do
   # sich nachvollziehen laesst.
   defp parse(body, url) do
     try do
-      images =
+      kandidaten =
         []
         |> collect_json_ld(body)
         |> collect_open_graph(body)
         |> collect_markup(body, url)
-        |> Enum.map(&absolute(&1, url))
-        |> Enum.reject(&is_nil/1)
-        |> Enum.uniq()
-        |> Enum.reject(&unwanted?/1)
+        |> Enum.map(fn {u, label} -> {absolute(u, url), label} end)
+        |> Enum.reject(fn {u, _} -> is_nil(u) end)
+        |> Enum.uniq_by(&elem(&1, 0))
+        |> Enum.reject(fn {u, _} -> unwanted?(u) end)
         |> upgrade_variants()
         |> dedupe_by_file()
         |> Enum.take(@max_images)
 
+      images = Enum.map(kandidaten, &elem(&1, 0))
+
+      # Nur Beschreibungen behalten, die es wirklich gibt – ein leeres Label
+      # waere in der Auswahl schlimmer als keines.
+      labels =
+        for {u, label} <- kandidaten,
+            is_binary(label),
+            String.trim(label) != "",
+            into: %{},
+            do: {u, String.trim(label)}
+
       cond do
         images != [] ->
-          {:ok, %{title: title(body), images: images, source_url: url}}
+          {:ok, %{title: title(body), images: images, labels: labels, source_url: url}}
 
         # Eine winzige Seite ohne Bilder ist fast immer eine JS-Huelle, die
         # ihren Inhalt erst im Browser nachlaedt.
@@ -151,17 +162,33 @@ defmodule Kitrank.Kits.ProductImages do
 
   defp product_images(data) when is_list(data), do: Enum.flat_map(data, &product_images/1)
 
-  defp product_images(%{"@type" => "Product", "image" => image}), do: List.wrap(image)
+  defp product_images(%{"@type" => "Product", "image" => image}) do
+    image |> List.wrap() |> Enum.map(&image_entry/1) |> Enum.reject(&is_nil/1)
+  end
 
   defp product_images(%{"@graph" => graph}), do: product_images(graph)
 
   defp product_images(_), do: []
 
+  # Manche Shops nennen die Bilder als reine Adressen, andere als ImageObject
+  # mit Beschreibung. Die Beschreibung ist Gold wert: "Vorderansicht",
+  # "Rueckansicht" – genau die Zuordnung, die man sonst per Auge trifft.
+  defp image_entry(url) when is_binary(url), do: {url, nil}
+
+  defp image_entry(%{} = obj) do
+    case obj["url"] || obj["contentUrl"] || obj["image"] do
+      url when is_binary(url) -> {url, obj["name"] || obj["caption"] || obj["description"]}
+      _ -> nil
+    end
+  end
+
+  defp image_entry(_), do: nil
+
   defp collect_open_graph(acc, body) do
     treffer =
       ~r{<meta[^>]+(?:property|name)="og:image(?::secure_url|:url)?"[^>]+content="([^"]+)"}i
       |> Regex.scan(body, capture: :all_but_first)
-      |> Enum.map(fn [url] -> unescape(url) end)
+      |> Enum.map(fn [url] -> {unescape(url), nil} end)
 
     acc ++ treffer
   end
@@ -170,7 +197,7 @@ defmodule Kitrank.Kits.ProductImages do
     aus_src =
       ~r{<img[^>]+src="([^"]+\.(?:jpe?g|png|webp)[^"]*)"}i
       |> Regex.scan(body, capture: :all_but_first)
-      |> Enum.map(fn [u] -> unescape(u) end)
+      |> Enum.map(fn [u] -> {unescape(u), nil} end)
 
     # srcset liefert oft die groesseren Varianten desselben Bildes.
     aus_srcset =
@@ -182,7 +209,7 @@ defmodule Kitrank.Kits.ProductImages do
         |> Enum.map(&(&1 |> String.trim() |> String.split(" ") |> List.first()))
       end)
       |> Enum.filter(&(&1 =~ ~r/\.(jpe?g|png|webp)/i))
-      |> Enum.map(&unescape/1)
+      |> Enum.map(&{unescape(&1), nil})
 
     acc ++ aus_src ++ aus_srcset
   end
@@ -243,29 +270,43 @@ defmodule Kitrank.Kits.ProductImages do
 
   # Manche Shops kodieren die Bildgroesse im Pfad. Steht dort eine kleine
   # Variante, wird die grosse probiert – aber nur uebernommen, wenn es sie gibt.
-  defp upgrade_variants(urls) do
-    Enum.map(urls, fn url ->
-      case bigger(url) do
-        nil -> url
-        kandidat -> if exists?(kandidat), do: kandidat, else: url
-      end
+  # Nebenlaeufig, nicht der Reihe nach: bei 40 Kandidaten summierten sich die
+  # einzelnen Pruefungen auf ueber 40 Sekunden. Wer zu lange braucht, behaelt
+  # einfach seine Original-Adresse.
+  defp upgrade_variants(kandidaten) do
+    kandidaten
+    |> Task.async_stream(
+      fn {url, label} ->
+        case bigger(url) do
+          nil -> {url, label}
+          groesser -> if exists?(groesser), do: {groesser, label}, else: {url, label}
+        end
+      end,
+      max_concurrency: 10,
+      timeout: 5_000,
+      on_timeout: :kill_task,
+      zip_input_on_exit: true
+    )
+    |> Enum.map(fn
+      {:ok, ergebnis} -> ergebnis
+      {:exit, {kandidat, _grund}} -> kandidat
     end)
-    |> Enum.uniq()
+    |> Enum.uniq_by(&elem(&1, 0))
   end
 
   # srcset liefert dasselbe Bild in fuenf Groessen. Fuer die Auswahl im Admin
   # zaehlt das Motiv, nicht die Aufloesung – also pro Dateiname nur einen
   # Treffer, und zwar den aus der vertrauenswuerdigsten Quelle (die stehen
   # vorne).
-  defp dedupe_by_file(urls) do
-    urls
-    |> Enum.reduce({[], MapSet.new()}, fn url, {behalten, gesehen} ->
+  defp dedupe_by_file(kandidaten) do
+    kandidaten
+    |> Enum.reduce({[], MapSet.new()}, fn {url, _label} = kandidat, {behalten, gesehen} ->
       name = url |> URI.parse() |> Map.get(:path, "") |> to_string() |> Path.basename()
 
       if name != "" and MapSet.member?(gesehen, name) do
         {behalten, gesehen}
       else
-        {[url | behalten], MapSet.put(gesehen, name)}
+        {[kandidat | behalten], MapSet.put(gesehen, name)}
       end
     end)
     |> elem(0)
@@ -278,6 +319,10 @@ defmodule Kitrank.Kits.ProductImages do
       Regex.match?(~r{/res/[a-z]+_(?:50|100|200)/}, url) ->
         Regex.replace(~r{(/res/[a-z]+)_(?:50|100|200)/}, url, "\\1_450/")
 
+      # Shopify skaliert ueber einen Parameter: ?width=1024
+      Regex.match?(~r{[?&]width=\d+}, url) ->
+        Regex.replace(~r{([?&]width=)\d+}, url, "\\g{1}2048")
+
       true ->
         nil
     end
@@ -286,7 +331,7 @@ defmodule Kitrank.Kits.ProductImages do
   defp exists?(url) do
     case Req.head(url,
            headers: [{"user-agent", @user_agent}],
-           receive_timeout: 8_000,
+           receive_timeout: 4_000,
            retry: false
          ) do
       {:ok, %{status: status}} -> status in 200..299

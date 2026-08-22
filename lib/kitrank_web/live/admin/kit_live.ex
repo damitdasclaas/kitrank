@@ -31,6 +31,7 @@ defmodule KitrankWeb.Admin.KitLive do
        page_title: "Trikots",
        season: season,
        candidates: [],
+       candidate_labels: %{},
        fetching?: false,
        fetch_error: nil,
        league_filter: MapSet.new(),
@@ -158,7 +159,11 @@ defmodule KitrankWeb.Admin.KitLive do
 
         {:noreply,
          socket
-         |> assign(fetching?: false, candidates: ergebnis.images)
+         |> assign(
+           fetching?: false,
+           candidates: ergebnis.images,
+           candidate_labels: Map.get(ergebnis, :labels, %{})
+         )
          |> assign_form(socket.assigns.kit, Kits.change_kit(socket.assigns.kit, attrs))}
 
       {:error, grund} ->
@@ -390,6 +395,7 @@ defmodule KitrankWeb.Admin.KitLive do
           picked={picked_urls(@preview)}
           fetching?={@fetching?}
           error={@fetch_error}
+          labels={@candidate_labels}
         />
 
         <.form for={@form} id="kit-form" phx-change="validate" phx-submit="save">
@@ -455,6 +461,7 @@ defmodule KitrankWeb.Admin.KitLive do
   attr :picked, :list, required: true
   attr :fetching?, :boolean, required: true
   attr :error, :string, default: nil
+  attr :labels, :map, default: %{}
 
   # Produktlink rein, Bilder raus, anklicken. Die Reihenfolge der Klicks
   # bestimmt die Rollen: erstes Bild ist der Freisteller, die naechsten sind
@@ -515,6 +522,7 @@ defmodule KitrankWeb.Admin.KitLive do
               phx-click="toggle_image"
               phx-value-url={url}
               aria-pressed={to_string(url in @picked)}
+              title={@labels[url]}
               class={[
                 "relative block aspect-square w-full overflow-hidden rounded-md border bg-white transition",
                 url in @picked && "border-ink ring-2 ring-ink",
@@ -529,8 +537,17 @@ defmodule KitrankWeb.Admin.KitLive do
                 {Enum.find_index(@picked, &(&1 == url)) + 1}
               </span>
             </button>
-            <p :if={url in @picked} class="mt-1 text-center text-[10px] text-soft">
+            <p :if={url in @picked} class="mt-1 text-center text-[10px] text-ink">
               {image_role(Enum.find_index(@picked, &(&1 == url)))}
+            </p>
+            <%!-- Manche Shops beschreiben ihre Bilder selbst ("Vorderansicht").
+                  Das nimmt beim Auswaehlen das Raten ab. --%>
+            <p
+              :if={@labels[url]}
+              class="mt-0.5 line-clamp-2 text-center text-[10px] leading-tight text-soft"
+              title={@labels[url]}
+            >
+              {@labels[url]}
             </p>
           </li>
         </ul>

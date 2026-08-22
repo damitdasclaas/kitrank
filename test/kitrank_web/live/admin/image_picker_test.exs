@@ -61,6 +61,14 @@ defmodule KitrankWeb.Admin.ImagePickerTest do
     assert :binary.match(quelle, "<.image_picker") < :binary.match(quelle, ~s(id="kit-form"))
   end
 
+  test "zeigt die Beschreibung des Shops, wo es eine gibt", %{view: view} do
+    # Manche Shops liefern "Vorderansicht" / "Rückansicht" mit – das nimmt beim
+    # Auswählen das Raten ab.
+    html = render(view)
+
+    assert html =~ "Vorderansicht"
+  end
+
   test "zeigt die Kandidaten zum Anklicken", %{view: view} do
     html = render(view)
 
