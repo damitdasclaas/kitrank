@@ -37,8 +37,12 @@ defmodule KitrankWeb.Admin.ImagePickerTest do
   # Der Abruf laeuft in einem eigenen Prozess, damit ein blockender Shop die
   # Oberflaeche nicht einfriert. Im Test heisst das: ausloesen und auf das
   # Ergebnis warten, sonst rendert man den Zwischenstand.
+  #
+  # Ueber das echte Formular, nicht ueber render_hook: der Handler allein
+  # aufgerufen haette den Fehler nie gezeigt, an dem es in Produktion
+  # gescheitert ist – das Feld wurde gar nicht mitgeschickt.
   defp hole_bilder(view, url) do
-    render_hook(view, "fetch_images", %{"product_url" => url})
+    view |> form("#image-picker-form", %{"product_url" => url}) |> render_submit()
     render_async(view)
   end
 
@@ -46,6 +50,15 @@ defmodule KitrankWeb.Admin.ImagePickerTest do
     view
     |> element(~s{button[phx-click="toggle_image"][phx-value-url="#{url}"]})
     |> render_click()
+  end
+
+  test "das Eingabefeld liegt in einem eigenen Formular, nicht im Trikot-Formular" do
+    # Sonst kommt der eingegebene Link nie beim Server an – und verschachtelte
+    # Formulare waeren ohnehin ungueltiges HTML.
+    quelle = File.read!("lib/kitrank_web/live/admin/kit_live.ex")
+
+    assert quelle =~ ~s(<form id="image-picker-form" phx-submit="fetch_images")
+    assert :binary.match(quelle, "<.image_picker") < :binary.match(quelle, ~s(id="kit-form"))
   end
 
   test "zeigt die Kandidaten zum Anklicken", %{view: view} do

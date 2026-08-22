@@ -307,6 +307,13 @@ defmodule KitrankWeb.Admin.KitLive do
           >Verein</.link>.
         </div>
 
+        <.image_picker
+          candidates={@candidates}
+          picked={picked_urls(@preview)}
+          fetching?={@fetching?}
+          error={@fetch_error}
+        />
+
         <.form for={@form} id="kit-form" phx-change="validate" phx-submit="save">
           <div class="flex gap-5">
             <div
@@ -324,13 +331,6 @@ defmodule KitrankWeb.Admin.KitLive do
               <.input field={@form[:season]} label="Saison" placeholder="2026/27" />
             </div>
           </div>
-
-          <.image_picker
-            candidates={@candidates}
-            picked={picked_urls(@preview)}
-            fetching?={@fetching?}
-            error={@fetch_error}
-          />
 
           <div class="mt-4 space-y-4">
             <.input field={@form[:cutout_url]} label="Cutout-Bild" placeholder="https://…" />
@@ -379,27 +379,29 @@ defmodule KitrankWeb.Admin.KitLive do
         Produktlink einfügen — danach anklicken, welche Bilder du willst.
       </p>
 
-      <%!-- Eigenes Formular, damit Enter hier nicht das Trikot speichert. --%>
-      <div class="mt-3 flex gap-2">
+      <%!-- Ein eigenes Formular: nur so wird der Feldwert mitgeschickt, und
+            Enter loest hier den Abruf aus statt das Trikot zu speichern.
+            Deshalb steht der Picker auch ausserhalb des Trikot-Formulars –
+            verschachtelte Formulare sind ungueltig. --%>
+      <form id="image-picker-form" phx-submit="fetch_images" class="mt-3 flex gap-2">
+        <label for="product_url" class="sr-only">Produktlink</label>
         <input
           type="url"
           id="product_url"
           name="product_url"
+          required
           placeholder="https://shop.hsv.de/…/products/14284"
-          phx-keydown={JS.push("fetch_images")}
-          phx-key="Enter"
           class="min-w-0 flex-1 rounded-md border border-line bg-panel px-3 py-2 font-mono text-xs"
         />
         <button
-          type="button"
-          phx-click={JS.push("fetch_images")}
+          type="submit"
           phx-disable-with="Holt …"
           disabled={@fetching?}
           class="shrink-0 rounded-md border border-ink px-3 py-2 text-xs font-semibold transition hover:bg-panel disabled:opacity-40"
         >
           {if @fetching?, do: "Holt …", else: "Bilder holen"}
         </button>
-      </div>
+      </form>
 
       <p :if={@error} class="mt-2 text-xs text-red-600">{@error}</p>
 
