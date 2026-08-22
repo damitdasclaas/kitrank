@@ -116,7 +116,7 @@ defmodule KitrankWeb.Ranking.ShowLive do
         team={@zoom.kit.team}
         images={kit_images(@zoom.kit)}
         index={@zoom.index}
-        label={Kit.label(@zoom.kit.kit_type)}
+        label={Kit.display_label(@zoom.kit)}
       />
     </Layouts.app>
     """
@@ -142,7 +142,7 @@ defmodule KitrankWeb.Ranking.ShowLive do
             phx-value-id={@entry.kit_id}
             class="group relative flex h-20 w-20 shrink-0 cursor-zoom-in items-center justify-center rounded-md"
             style={"background-color: color-mix(in oklab, #{@color} 14%, #FFFFFF)"}
-            aria-label={"#{@entry.kit.team.name} #{Kit.label(@entry.kit.kit_type)} gross ansehen"}
+            aria-label={"#{@entry.kit.team.name} #{Kit.display_label(@entry.kit)} gross ansehen"}
           >
             <.kit_figure
               kit={@entry.kit}
@@ -159,7 +159,7 @@ defmodule KitrankWeb.Ranking.ShowLive do
                 {@entry.kit.team.short_code}
               </span>
               <span class="text-sm font-medium">{@entry.kit.team.name}</span>
-              <span class="text-xs text-soft">{Kit.label(@entry.kit.kit_type)}</span>
+              <span class="text-xs text-soft">{Kit.display_label(@entry.kit)}</span>
             </p>
 
             <p :if={@entry.note} class="mt-1.5 text-sm leading-relaxed text-soft">

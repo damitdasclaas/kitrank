@@ -531,7 +531,7 @@ defmodule KitrankWeb.Ranking.EditLive do
         <span class="font-mono text-[10px] font-semibold" style={"color: #{@color}"}>
           {@team.short_code}
         </span>
-        <span class="truncate text-[11px] text-soft">{Kit.label(@kit.kit_type)}</span>
+        <span class="truncate text-[11px] text-soft">{Kit.display_label(@kit)}</span>
       </div>
     </button>
     """
@@ -700,7 +700,7 @@ defmodule KitrankWeb.Ranking.EditLive do
     <.modal
       id="entry-detail"
       on_close="close_detail"
-      label={"#{@entry.kit.team.name} – #{Kit.label(@entry.kit.kit_type)}"}
+      label={"#{@entry.kit.team.name} – #{Kit.display_label(@entry.kit)}"}
       size="max-w-4xl"
     >
       <%!-- Das Bild bekommt drei von fuenf Spalten: es ist der Grund, warum man
@@ -739,7 +739,7 @@ defmodule KitrankWeb.Ranking.EditLive do
             <span class="font-mono text-xs font-semibold" style={"color: #{@color}"}>
               {@entry.kit.team.short_code}
             </span>
-            <span class="text-sm text-soft">{Kit.label(@entry.kit.kit_type)}</span>
+            <span class="text-sm text-soft">{Kit.display_label(@entry.kit)}</span>
           </p>
 
           <form

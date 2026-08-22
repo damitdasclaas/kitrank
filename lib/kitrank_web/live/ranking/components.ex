@@ -187,7 +187,7 @@ defmodule KitrankWeb.Ranking.Components do
         data-role="detail-figure"
         class="group relative flex h-20 w-20 shrink-0 items-center justify-center rounded-md transition sm:h-24 sm:w-24"
         style={"background-color: color-mix(in oklab, #{@color} 14%, #FFFFFF)"}
-        aria-label={"#{@entry.kit.team.name} #{Kit.label(@entry.kit.kit_type)} im Detail"}
+        aria-label={"#{@entry.kit.team.name} #{Kit.display_label(@entry.kit)} im Detail"}
       >
         <.kit_figure
           kit={@entry.kit}
@@ -209,7 +209,7 @@ defmodule KitrankWeb.Ranking.Components do
             {@entry.kit.team.short_code}
           </span>
           <span class="text-sm">{@entry.kit.team.name}</span>
-          <span class="text-xs text-soft">{Kit.label(@entry.kit.kit_type)}</span>
+          <span class="text-xs text-soft">{Kit.display_label(@entry.kit)}</span>
           <button
             type="button"
             phx-click="open_detail"
@@ -232,7 +232,7 @@ defmodule KitrankWeb.Ranking.Components do
               phx-debounce="600"
               maxlength="500"
               placeholder="Notiz — warum steht es hier?"
-              aria-label={"Notiz zu #{@entry.kit.team.name} #{Kit.label(@entry.kit.kit_type)}"}
+              aria-label={"Notiz zu #{@entry.kit.team.name} #{Kit.display_label(@entry.kit)}"}
               class="w-full resize-y rounded-md border border-line bg-panel px-2.5 py-1.5 text-xs leading-relaxed placeholder:text-soft/70"
             >{@entry.note}</textarea>
           </form>
@@ -267,7 +267,7 @@ defmodule KitrankWeb.Ranking.Components do
           phx-click="remove"
           phx-value-id={@entry.kit_id}
           class="flex h-6 w-6 items-center justify-center rounded border border-line text-soft transition hover:border-red-500 hover:text-red-600"
-          aria-label={"#{@entry.kit.team.name} #{Kit.label(@entry.kit.kit_type)} aus der Liste nehmen"}
+          aria-label={"#{@entry.kit.team.name} #{Kit.display_label(@entry.kit)} aus der Liste nehmen"}
         >
           <.icon name="hero-x-mark-mini" class="size-3.5" />
         </button>

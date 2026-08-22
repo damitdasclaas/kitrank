@@ -21,9 +21,23 @@ defmodule Kitrank.Kits.Kit do
   @doc "Deutsches Label für einen Kit-Typ, für die Anzeige in der UI."
   def label(kit_type), do: Map.get(@labels, kit_type, kit_type)
 
+  @doc """
+  Beschriftung eines konkreten Trikots.
+
+  Sondertrikots gibt es pro Saison beliebig viele – ohne ihren Namen stünde in
+  jeder Liste mehrfach dasselbe "Sonder". Bei Heim, Auswärts und Ausweich ist
+  der Name überflüssig, dort bleibt es beim Typ.
+  """
+  def display_label(%__MODULE__{kit_type: kit_type, name: name}) when is_binary(name) do
+    if String.trim(name) == "", do: label(kit_type), else: "#{label(kit_type)} · #{name}"
+  end
+
+  def display_label(%__MODULE__{kit_type: kit_type}), do: label(kit_type)
+
   schema "kits" do
     field :season, :string
     field :kit_type, :string
+    field :name, :string
     field :cutout_url, :string
     field :model_image_urls, {:array, :string}, default: []
     field :source_shop_url, :string
@@ -39,11 +53,18 @@ defmodule Kitrank.Kits.Kit do
       :team_id,
       :season,
       :kit_type,
+      :name,
       :cutout_url,
       :model_image_urls,
       :source_shop_url
     ])
     |> validate_required([:team_id, :season, :kit_type])
+    |> update_change(:name, fn
+      nil -> nil
+      name -> String.trim(name)
+    end)
+    |> validate_length(:name, max: 60)
+    |> require_name_for_special()
     |> Kitrank.Kits.Season.validate(:season)
     |> validate_inclusion(:kit_type, @kit_types)
     |> Kitrank.Kits.Url.validate_http_url(:cutout_url)
@@ -51,7 +72,26 @@ defmodule Kitrank.Kits.Kit do
     |> Kitrank.Kits.Url.validate_http_url_list(:model_image_urls)
     |> assoc_constraint(:team)
     |> unique_constraint([:team_id, :season, :kit_type],
+      name: :kits_regular_type_index,
       message: "dieses Team hat für diese Saison schon ein Trikot dieses Typs"
     )
+    |> unique_constraint([:team_id, :season, :name],
+      name: :kits_special_name_index,
+      message: "dieses Team hat für diese Saison schon ein Sondertrikot mit diesem Namen"
+    )
+  end
+
+  # Ohne Namen sind mehrere Sondertrikots nicht auseinanderzuhalten – deshalb
+  # hier Pflicht und nur hier.
+  defp require_name_for_special(changeset) do
+    if get_field(changeset, :kit_type) == "special" do
+      changeset
+      |> validate_required([:name],
+        message: "Sondertrikots brauchen einen Namen, um sie zu unterscheiden"
+      )
+      |> validate_length(:name, min: 1)
+    else
+      changeset
+    end
   end
 end

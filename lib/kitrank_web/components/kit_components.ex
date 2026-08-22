@@ -51,7 +51,7 @@ defmodule KitrankWeb.KitComponents do
       <img
         :if={@src}
         src={@src}
-        alt={"#{@team.name} – #{Kit.label(@kit.kit_type)}"}
+        alt={"#{@team.name} – #{Kit.display_label(@kit)}"}
         loading="lazy"
         decoding="async"
         class="h-full w-full object-contain"
@@ -85,7 +85,7 @@ defmodule KitrankWeb.KitComponents do
       viewBox="0 0 100 110"
       class="h-full w-full"
       role="img"
-      aria-label={"#{Kit.label(@kit.kit_type)} (Platzhalter, kein Foto hinterlegt)"}
+      aria-label={"#{Kit.display_label(@kit)} (Platzhalter, kein Foto hinterlegt)"}
     >
       <defs :if={@palette.band}>
         <clipPath id={@uid}>

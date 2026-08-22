@@ -300,7 +300,7 @@ defmodule KitrankWeb.OverviewLive do
         team={@kits_by_id[@zoom.kit_id].team}
         images={kit_images(@kits_by_id[@zoom.kit_id].kit)}
         index={@zoom.index}
-        label={Kit.label(@kits_by_id[@zoom.kit_id].kit.kit_type)}
+        label={Kit.display_label(@kits_by_id[@zoom.kit_id].kit)}
       />
     </Layouts.app>
     """
@@ -419,8 +419,8 @@ defmodule KitrankWeb.OverviewLive do
           aria-pressed={to_string(@lead_kit.id in @compare_ids)}
           aria-label={
             if @lead_kit.id in @compare_ids,
-              do: "#{@team.name} #{Kit.label(@lead_kit.kit_type)} aus dem Vergleich nehmen",
-              else: "#{@team.name} #{Kit.label(@lead_kit.kit_type)} vergleichen"
+              do: "#{@team.name} #{Kit.display_label(@lead_kit)} aus dem Vergleich nehmen",
+              else: "#{@team.name} #{Kit.display_label(@lead_kit)} vergleichen"
           }
         >
           <.icon
@@ -524,14 +524,14 @@ defmodule KitrankWeb.OverviewLive do
       <span class="font-mono text-[11px] font-semibold" style={"color: #{@color}"}>
         {@entry.team.short_code}
       </span>
-      <span class="text-[11px] text-soft">{Kit.label(@entry.kit.kit_type)}</span>
+      <span class="text-[11px] text-soft">{Kit.display_label(@entry.kit)}</span>
       <button
         type="button"
         phx-click="toggle_compare"
         phx-value-id={@entry.kit.id}
         data-role="tray-remove"
         class="text-soft transition hover:text-ink"
-        aria-label={"#{@entry.team.name} #{Kit.label(@entry.kit.kit_type)} aus dem Vergleich nehmen"}
+        aria-label={"#{@entry.team.name} #{Kit.display_label(@entry.kit)} aus dem Vergleich nehmen"}
       >
         <.icon name="hero-x-mark-mini" class="size-3.5" />
       </button>
@@ -623,7 +623,7 @@ defmodule KitrankWeb.OverviewLive do
         phx-value-id={@kit.id}
         class="group relative flex aspect-square cursor-zoom-in items-center justify-center p-8"
         style={"background-color: color-mix(in oklab, #{@color} 13%, #FFFFFF)"}
-        aria-label={"#{@team.name} #{Kit.label(@kit.kit_type)} gross ansehen"}
+        aria-label={"#{@team.name} #{Kit.display_label(@kit)} gross ansehen"}
       >
         <.kit_figure
           kit={@kit}
@@ -647,7 +647,7 @@ defmodule KitrankWeb.OverviewLive do
 
       <div class="flex items-center gap-2 border-t border-line px-4 py-3">
         <div class="min-w-0">
-          <p class="text-sm font-medium">{Kit.label(@kit.kit_type)}</p>
+          <p class="text-sm font-medium">{Kit.display_label(@kit)}</p>
           <a
             :if={@kit.source_shop_url}
             href={@kit.source_shop_url}
@@ -728,7 +728,7 @@ defmodule KitrankWeb.OverviewLive do
               phx-value-id={entry.kit.id}
               class="group relative flex aspect-[4/5] w-full cursor-zoom-in items-center justify-center rounded-lg p-6"
               style={"background-color: color-mix(in oklab, #{Color.team_color(entry.team)} 14%, #FFFFFF)"}
-              aria-label={"#{entry.team.name} #{Kit.label(entry.kit.kit_type)} gross ansehen"}
+              aria-label={"#{entry.team.name} #{Kit.display_label(entry.kit)} gross ansehen"}
             >
               <.kit_figure
                 kit={entry.kit}
@@ -752,7 +752,7 @@ defmodule KitrankWeb.OverviewLive do
           </.compare_row>
 
           <.compare_row label="Trikot" entries={@entries}>
-            <:cell :let={entry}>{Kit.label(entry.kit.kit_type)}</:cell>
+            <:cell :let={entry}>{Kit.display_label(entry.kit)}</:cell>
           </.compare_row>
 
           <.compare_row label="Liga" entries={@entries}>

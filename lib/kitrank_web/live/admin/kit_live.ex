@@ -348,7 +348,7 @@ defmodule KitrankWeb.Admin.KitLive do
           <:col :let={%{kit: kit}} label="Typ">
             <span class="inline-flex items-center gap-2">
               <.kit_badge kit_type={kit.kit_type} class="bg-sunk text-soft" />
-              {Kit.label(kit.kit_type)}
+              {Kit.display_label(kit)}
             </span>
           </:col>
           <:col :let={%{kit: kit}} label="Bilder" class="text-soft">
@@ -364,7 +364,7 @@ defmodule KitrankWeb.Admin.KitLive do
             <.edit_link navigate={~p"/admin/trikots/#{kit.id}"} />
             <.delete_button
               id={kit.id}
-              confirm={"#{kit.team.name} #{Kit.label(kit.kit_type)} löschen?"}
+              confirm={"#{kit.team.name} #{Kit.display_label(kit)} löschen?"}
             />
           </:actions>
         </.admin_table>
@@ -406,6 +406,14 @@ defmodule KitrankWeb.Admin.KitLive do
             <div class="min-w-0 flex-1 space-y-4">
               <.input field={@form[:team_id]} type="select" label="Verein" options={@team_options} />
               <.input field={@form[:kit_type]} type="select" label="Typ" options={@type_options} />
+              <.input
+                field={@form[:name]}
+                label="Name"
+                placeholder={if @preview.kit_type == "special", do: "125 Jahre", else: "optional"}
+              />
+              <p :if={@preview.kit_type == "special"} class="text-xs text-soft">
+                Sondertrikots gibt es beliebig viele pro Saison — der Name unterscheidet sie.
+              </p>
               <.input field={@form[:season]} label="Saison" placeholder="2026/27" />
             </div>
           </div>

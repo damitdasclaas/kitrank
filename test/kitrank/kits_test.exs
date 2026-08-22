@@ -105,6 +105,82 @@ defmodule Kitrank.KitsTest do
       assert changeset.errors[:team_id]
     end
 
+    test "erlaubt beliebig viele Sondertrikots pro Saison" do
+      team = team_fixture()
+
+      for name <- ["125 Jahre", "Weihnachten", "Stadtmeister"] do
+        assert {:ok, _} =
+                 Kits.create_kit(%{
+                   team_id: team.id,
+                   season: Kits.current_season(),
+                   kit_type: "special",
+                   name: name
+                 })
+      end
+
+      sonder = Kits.list_kits() |> Enum.filter(&(&1.kit_type == "special"))
+      assert length(sonder) == 3
+    end
+
+    test "verlangt bei Sondertrikots einen Namen" do
+      team = team_fixture()
+
+      assert {:error, changeset} =
+               Kits.create_kit(%{
+                 team_id: team.id,
+                 season: Kits.current_season(),
+                 kit_type: "special"
+               })
+
+      assert "Sondertrikots brauchen einen Namen, um sie zu unterscheiden" in errors_on(changeset).name
+    end
+
+    test "lehnt zwei Sondertrikots mit demselben Namen ab" do
+      team = team_fixture()
+
+      attrs = %{
+        team_id: team.id,
+        season: Kits.current_season(),
+        kit_type: "special",
+        name: "Derby"
+      }
+
+      assert {:ok, _} = Kits.create_kit(attrs)
+      assert {:error, changeset} = Kits.create_kit(attrs)
+      assert changeset.errors[:team_id]
+    end
+
+    test "Heim, Auswärts und Ausweich bleiben auf eines begrenzt" do
+      team = team_fixture()
+
+      for kit_type <- ~w(home away third) do
+        attrs = %{team_id: team.id, season: Kits.current_season(), kit_type: kit_type}
+        assert {:ok, _} = Kits.create_kit(attrs)
+        assert {:error, changeset} = Kits.create_kit(attrs)
+        assert changeset.errors[:team_id]
+      end
+    end
+
+    test "ein Name ausserhalb von Sondertrikots ist erlaubt, aber nicht nötig" do
+      team = team_fixture()
+
+      assert {:ok, ohne} =
+               Kits.create_kit(%{team_id: team.id, season: "2025/26", kit_type: "home"})
+
+      assert ohne.name == nil
+
+      assert {:ok, mit} =
+               Kits.create_kit(%{
+                 team_id: team.id,
+                 season: "2026/27",
+                 kit_type: "home",
+                 name: "Retro"
+               })
+
+      assert Kits.Kit.display_label(mit) == "Heim · Retro"
+      assert Kits.Kit.display_label(ohne) == "Heim"
+    end
+
     test "lehnt unbekannte Kit-Typen ab" do
       team = team_fixture()
 

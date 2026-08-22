@@ -67,6 +67,7 @@ schema "kits" do
   belongs_to :team, Team
   field :season, :string            # "2026/27"
   field :kit_type, :string          # "home" | "away" | "third" | "special"
+  field :name, :string              # nur zur Unterscheidung, Pflicht bei "special"
   field :cutout_url, :string
   field :model_image_urls, {:array, :string}  # 2-3 Bilder
   field :source_shop_url, :string   # Deep-Link zum konkreten Produkt

@@ -96,6 +96,14 @@ Der Abruf läuft in einem eigenen Prozess (`start_async`) — ein Shop, der zwö
 Sekunden nicht antwortet, würde die Oberfläche sonst so lange einfrieren, und
 ein eingefrorenes Fenster sieht aus wie ein Fehler.
 
+**Sondertrikots** gibt es pro Team und Saison beliebig viele — Heim, Auswärts
+und Ausweich weiterhin genau eines. Dafür brauchen Sondertrikots einen **Namen**
+(„125 Jahre", „Weihnachten"): ohne ihn stünde in jeder Liste mehrfach dasselbe
+„Sonder". Zwei Sondertrikots desselben Teams dürfen nicht denselben Namen tragen.
+
+Umgesetzt über zwei partielle Unique-Indizes statt einer gelockerten Regel — so
+bleibt die Begrenzung dort, wo sie sinnvoll ist, statt überall zu fallen.
+
 `/admin` hat CRUD für alles. Die Trikot-Liste lässt sich nach **Saison und Liga**
 filtern und nach **Verein durchsuchen** (Name oder Kürzel) — bei über hundert
 Trikots pro Saison ist Scrollen sonst keine Option.

@@ -66,14 +66,23 @@ defmodule Kitrank.KitsFixtures do
     attrs = Enum.into(attrs, %{})
     team_id = Map.get_lazy(attrs, :team_id, fn -> team_fixture().id end)
 
-    {:ok, kit} =
-      attrs
-      |> Enum.into(%{
+    attrs =
+      Enum.into(attrs, %{
         team_id: team_id,
         season: Kits.current_season(),
         kit_type: "home"
       })
-      |> Kits.create_kit()
+
+    # Sondertrikots gibt es beliebig viele – auseinanderhalten kann man sie nur
+    # ueber den Namen, deshalb verlangt das Schema ihn dort.
+    attrs =
+      if attrs[:kit_type] == "special" and is_nil(attrs[:name]) do
+        Map.put(attrs, :name, "Sonder #{System.unique_integer([:positive])}")
+      else
+        attrs
+      end
+
+    {:ok, kit} = Kits.create_kit(attrs)
 
     kit
   end

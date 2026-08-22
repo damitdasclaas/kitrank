@@ -159,6 +159,42 @@ defmodule KitrankWeb.Admin.CrudTest do
       assert kit.model_image_urls == ["https://example.com/a.jpg", "https://example.com/b.jpg"]
     end
 
+    test "legt mehrere Sondertrikots mit Namen an", %{conn: conn, team: team, season: season} do
+      for name <- ["125 Jahre", "Weihnachten"] do
+        {:ok, view, _html} = live(conn, ~p"/admin/trikots/neu")
+
+        view
+        |> form("#kit-form",
+          kit: %{team_id: team.id, season: season, kit_type: "special", name: name}
+        )
+        |> render_submit()
+      end
+
+      sonder = Kits.list_kits(season) |> Enum.filter(&(&1.kit_type == "special"))
+      assert length(sonder) == 2
+      assert Enum.map(sonder, & &1.name) |> Enum.sort() == ["125 Jahre", "Weihnachten"]
+    end
+
+    test "verlangt bei Sondertrikots einen Namen", %{conn: conn, team: team, season: season} do
+      {:ok, view, _html} = live(conn, ~p"/admin/trikots/neu")
+
+      html =
+        view
+        |> form("#kit-form", kit: %{team_id: team.id, season: season, kit_type: "special"})
+        |> render_submit()
+
+      assert html =~ "brauchen einen Namen"
+      assert Kits.list_kits(season) == []
+    end
+
+    test "zeigt den Namen in der Liste", %{conn: conn, team: team, season: season} do
+      kit_fixture(team_id: team.id, season: season, kit_type: "special", name: "125 Jahre")
+
+      {:ok, _view, html} = live(conn, ~p"/admin/trikots")
+
+      assert html =~ "Sonder · 125 Jahre"
+    end
+
     test "lehnt eine kaputte Bild-URL ab", %{conn: conn, team: team, season: season} do
       {:ok, view, _html} = live(conn, ~p"/admin/trikots/neu")
 

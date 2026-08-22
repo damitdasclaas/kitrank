@@ -299,7 +299,7 @@ defmodule KitrankWeb.Reveal.Components do
           <span class="block font-mono text-[11px] font-semibold" style={"color: #{@color}"}>
             {@cell.kit.team.short_code}
           </span>
-          <span class="block text-[11px] text-soft">{Kit.label(@cell.kit.kit_type)}</span>
+          <span class="block text-[11px] text-soft">{Kit.display_label(@cell.kit)}</span>
         </span>
       </span>
     </td>
@@ -440,7 +440,7 @@ defmodule KitrankWeb.Reveal.Components do
             {@entry.kit.team.short_code}
           </span>
           <span class="text-sm">{@entry.kit.team.name}</span>
-          <span class="text-xs text-soft">{Kit.label(@entry.kit.kit_type)}</span>
+          <span class="text-xs text-soft">{Kit.display_label(@entry.kit)}</span>
         </p>
         <p :if={@entry.note} class="mt-2 text-sm leading-relaxed text-soft">
           {@entry.note}
