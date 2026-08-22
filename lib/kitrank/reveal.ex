@@ -13,6 +13,7 @@ defmodule Kitrank.Reveal do
 
   import Ecto.Query, warn: false
 
+  alias Kitrank.Kits
   alias Kitrank.Kits.{Kit, TeamSeason}
   alias Kitrank.Repo
   alias Kitrank.Rankings
@@ -239,6 +240,45 @@ defmodule Kitrank.Reveal do
       nil -> {:error, :unknown_share_slug}
       {:error, reason} -> {:error, reason}
     end
+  end
+
+  @doc """
+  Beitreten, ohne vorher eine Rangliste gebaut zu haben.
+
+  Legt eine Rangliste an, die alle Trikots des Raum-Ausschnitts enthält, und
+  tritt damit bei. Sortiert wird danach — im Raum, per Duell.
+
+  Ohne das muss jede:r **vorher** eine Rangliste bauen und den Teilen-Link
+  parat haben. Für eine spontane Runde ist das zu viel; damit ist der Beitritt
+  ein Name und ein Klick.
+  """
+  def join_new(%Room{} = room, display_name) do
+    with {:ok, room} <- ensure_joinable(room),
+         kit_ids = room |> scope_kit_ids() |> MapSet.to_list(),
+         false <- kit_ids == [],
+         {:ok, ranking} <- Rankings.create_ranking(%{display_name: display_name}) do
+      Rankings.add_kits(ranking, sortiert_nach_uebersicht(room, kit_ids))
+
+      # Qualifiziert, weil `import Ecto.Query` ein eigenes join/3 mitbringt.
+      case __MODULE__.join(room, ranking.share_slug, display_name) do
+        {:ok, participant} -> {:ok, participant, ranking}
+        {:error, reason} -> {:error, reason}
+      end
+    else
+      true -> {:error, :empty_scope}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  # In der Reihenfolge der Uebersicht statt zufaellig – so beginnt das Duell
+  # mit einer nachvollziehbaren Ausgangslage.
+  defp sortiert_nach_uebersicht(%Room{} = room, kit_ids) do
+    erlaubt = MapSet.new(kit_ids)
+
+    %{seasons: [room.season], competition_ids: room.competition_ids}
+    |> Kits.list_kits_for_scope()
+    |> Enum.map(& &1.kit.id)
+    |> Enum.filter(&MapSet.member?(erlaubt, &1))
   end
 
   defp ensure_joinable(%Room{} = room) do

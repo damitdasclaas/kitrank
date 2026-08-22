@@ -13,6 +13,7 @@ defmodule KitrankWeb.Reveal.Components do
   import KitrankWeb.KitComponents, only: [kit_figure: 1]
 
   alias Kitrank.Kits.Kit
+  alias Kitrank.Rankings.Duel
   alias KitrankWeb.Color
 
   attr :room, :map, required: true
@@ -99,12 +100,35 @@ defmodule KitrankWeb.Reveal.Components do
 
       <p :if={@error} class="mt-3 text-sm text-red-600">{@error}</p>
 
-      <p class="mt-4 text-xs text-soft">
-        Noch keine Rangliste?
-        <.link navigate={~p"/rankings/new"} class="text-ink underline underline-offset-4">
-          In zwei Minuten gebaut
-        </.link>
-      </p>
+      <%!-- Der zweite Weg ist der wichtigere: ohne ihn muss jede:r vorher eine
+            Rangliste gebaut und den Link parat haben. Fuer eine spontane Runde
+            ist das zu viel. --%>
+      <div :if={!@full?} class="mt-6 border-t border-line pt-5">
+        <h3 class="kr-display text-base">Noch keine Rangliste?</h3>
+        <p class="mt-1 text-sm text-soft">
+          Dann bau sie hier. Du bekommst alle Trikots des Raums und sortierst sie gleich
+          im Raum — Name reicht.
+        </p>
+
+        <form phx-submit="join_new" class="mt-3 flex flex-wrap gap-2">
+          <label for="neu_name" class="sr-only">Dein Name</label>
+          <input
+            id="neu_name"
+            name="display_name"
+            required
+            maxlength="40"
+            placeholder="Tom"
+            class="min-w-0 flex-1 rounded-md border border-line bg-panel px-3 py-2.5 text-sm"
+          />
+          <button
+            type="submit"
+            phx-disable-with="Legt an …"
+            class="shrink-0 rounded-md border border-ink px-4 py-2.5 text-sm font-semibold transition hover:bg-sunk"
+          >
+            Ohne Rangliste beitreten
+          </button>
+        </form>
+      </div>
     </div>
     """
   end
@@ -303,6 +327,103 @@ defmodule KitrankWeb.Reveal.Components do
         </span>
       </span>
     </td>
+    """
+  end
+
+  attr :duel, :map, required: true
+  attr :kits, :map, required: true
+
+  @doc """
+  Die eigene Rangliste im Raum sortieren, per Duell.
+
+  Wer ohne vorbereitete Liste beitritt, bekommt alle Trikots des Ausschnitts —
+  in einer nachvollziehbaren, aber beliebigen Reihenfolge. Hier bringt man sie
+  in die eigene, während die anderen dasselbe tun.
+  """
+  def own_ranking(assigns) do
+    assigns =
+      assigns
+      |> assign(:frage, Duel.question(assigns.duel))
+      |> assign(:fortschritt, Duel.progress(assigns.duel))
+
+    ~H"""
+    <div class="mt-8 rounded-xl border border-line bg-panel p-5">
+      <div class="flex flex-wrap items-baseline gap-3">
+        <h2 class="kr-display text-lg">Deine Rangliste</h2>
+        <p :if={@frage != :done} class="text-sm text-soft">
+          Welches gefällt dir besser?
+        </p>
+        <p :if={@frage == :done} class="text-sm text-soft">Steht — du bist bereit.</p>
+        <p class="ml-auto font-mono text-[11px] text-soft">
+          {@fortschritt.placed} von {@fortschritt.total} eingeordnet
+        </p>
+      </div>
+
+      <div class="mt-2 h-1 overflow-hidden rounded-full bg-sunk">
+        <div
+          class="h-full rounded-full bg-ink transition-all duration-300"
+          style={"width: #{round(@fortschritt.placed / max(@fortschritt.total, 1) * 100)}%"}
+        >
+        </div>
+      </div>
+
+      <div :if={@frage != :done} id="eigenes-duell" phx-window-keydown="own_duel_key" class="mt-5">
+        <div class="grid gap-3 sm:grid-cols-2">
+          <.own_duel_card kit={@kits[elem(@frage, 0)]} side="new" />
+          <.own_duel_card kit={@kits[elem(@frage, 1)]} side="existing" />
+        </div>
+        <p class="mt-3 text-center text-[11px] text-soft">
+          Pfeiltasten links und rechts gehen auch. Jede Antwort wird gespeichert.
+        </p>
+      </div>
+
+      <p :if={@frage == :done} class="mt-4 text-xs text-soft">
+        Wenn der Host startet, zählt diese Reihenfolge.
+        <button
+          type="button"
+          phx-click="own_duel_restart"
+          class="underline underline-offset-4 hover:text-ink"
+        >
+          Nochmal durchgehen
+        </button>
+      </p>
+    </div>
+    """
+  end
+
+  attr :kit, :map, required: true
+  attr :side, :string, required: true
+
+  defp own_duel_card(assigns) do
+    assigns = assign(assigns, :color, Color.team_color(assigns.kit.team))
+
+    ~H"""
+    <button
+      type="button"
+      phx-click="own_duel_pick"
+      phx-value-side={@side}
+      class="group overflow-hidden rounded-lg border border-line text-left transition hover:border-ink"
+    >
+      <div
+        class="flex aspect-[4/3] items-center justify-center p-5"
+        style={"background-color: color-mix(in oklab, #{@color} 14%, #FFFFFF)"}
+      >
+        <.kit_figure
+          kit={@kit}
+          team={@kit.team}
+          class="h-full w-full transition-transform duration-300 group-hover:scale-105"
+        />
+      </div>
+      <div class="border-t border-line px-3 py-2">
+        <p class="flex flex-wrap items-baseline gap-x-2">
+          <span class="font-mono text-[11px] font-semibold" style={"color: #{@color}"}>
+            {@kit.team.short_code}
+          </span>
+          <span class="truncate text-xs">{@kit.team.name}</span>
+          <span class="text-[11px] text-soft">{Kit.display_label(@kit)}</span>
+        </p>
+      </div>
+    </button>
     """
   end
 

@@ -15,6 +15,8 @@ defmodule KitrankWeb.Reveal.RoomLive do
 
   import KitrankWeb.Reveal.Components
 
+  alias Kitrank.Rankings
+  alias Kitrank.Rankings.Duel
   alias Kitrank.Reveal
   alias KitrankWeb.Presence
 
@@ -45,10 +47,18 @@ defmodule KitrankWeb.Reveal.RoomLive do
            join_error: nil,
            online: %{},
            board_open?: true,
+           my_ranking: nil,
+           own_duel: nil,
            scope_label: scope_label(room)
          )
          |> load_room()}
     end
+  end
+
+  defp own_kits(nil), do: %{}
+
+  defp own_kits(ranking) do
+    ranking |> Rankings.list_entries() |> Map.new(&{&1.kit_id, &1.kit})
   end
 
   # Kurzform des Ausschnitts fuer den Kopf: "Bundesliga · Heim, Auswaerts".
@@ -90,6 +100,57 @@ defmodule KitrankWeb.Reveal.RoomLive do
       {:error, reason} ->
         {:noreply, assign(socket, :join_error, join_message(reason))}
     end
+  end
+
+  ## Ohne Vorbereitung beitreten
+
+  def handle_event("join_new", %{"display_name" => name}, socket) do
+    case Reveal.join_new(socket.assigns.room, name) do
+      {:ok, participant, ranking} ->
+        track(socket, participant)
+
+        {:noreply,
+         socket
+         |> assign(me: participant.id, my_ranking: ranking, join_error: nil)
+         |> start_own_duel()
+         |> load_room()}
+
+      {:error, :empty_scope} ->
+        {:noreply,
+         assign(
+           socket,
+           :join_error,
+           "Für den Ausschnitt dieses Raums gibt es keine Trikots — da lässt sich nichts ranken."
+         )}
+
+      {:error, reason} ->
+        {:noreply, assign(socket, :join_error, join_message(reason))}
+    end
+  end
+
+  ## Eigene Rangliste im Raum sortieren
+
+  def handle_event("own_duel_pick", %{"side" => side}, socket) do
+    wahl = if side == "new", do: :new, else: :existing
+    duel = Duel.answer(socket.assigns.own_duel, wahl)
+
+    # Nach jeder Antwort schreiben: der Zwischenstand ist immer gueltig, und
+    # wenn der Host loslegt, zaehlt was bis dahin steht.
+    Rankings.reorder(socket.assigns.my_ranking, Duel.order(duel))
+
+    {:noreply, assign(socket, :own_duel, duel)}
+  end
+
+  def handle_event("own_duel_key", %{"key" => key}, socket) do
+    case key do
+      "ArrowLeft" -> handle_event("own_duel_pick", %{"side" => "new"}, socket)
+      "ArrowRight" -> handle_event("own_duel_pick", %{"side" => "existing"}, socket)
+      _ -> {:noreply, socket}
+    end
+  end
+
+  def handle_event("own_duel_restart", _params, socket) do
+    {:noreply, start_own_duel(socket)}
   end
 
   ## Aufdecken – das eigene Trikot darf jede:r selbst
@@ -200,6 +261,14 @@ defmodule KitrankWeb.Reveal.RoomLive do
     )
   end
 
+  defp start_own_duel(%{assigns: %{my_ranking: nil}} = socket), do: socket
+
+  defp start_own_duel(socket) do
+    ids = socket.assigns.my_ranking |> Rankings.list_entries() |> Enum.map(& &1.kit_id)
+
+    assign(socket, :own_duel, Duel.start(ids))
+  end
+
   defp assign_online(socket) do
     assign(socket, :online, Presence.list_room(socket.assigns.room.room_code))
   end
@@ -259,6 +328,12 @@ defmodule KitrankWeb.Reveal.RoomLive do
           :if={!@me && @room.status == "waiting"}
           error={@join_error}
           full?={length(@participants) >= @room.max_participants}
+        />
+
+        <.own_ranking
+          :if={@own_duel && @room.status == "waiting"}
+          duel={@own_duel}
+          kits={own_kits(@my_ranking)}
         />
 
         <.lobby

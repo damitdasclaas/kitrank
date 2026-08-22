@@ -173,6 +173,99 @@ defmodule KitrankWeb.RevealLiveTest do
     end
   end
 
+  describe "Ohne Vorbereitung beitreten" do
+    setup do
+      competition = competition_fixture(name: "Bundesliga", tier: 1)
+
+      league_fixture(
+        competition: competition,
+        season: Kits.current_season(),
+        team_count: 4,
+        kit_types: ["home"]
+      )
+
+      {:ok, room} =
+        Reveal.create_room(%{competition_ids: [competition.id], kit_types: ["home"]})
+
+      %{room: room, competition: competition}
+    end
+
+    test "bietet den Weg ohne Rangliste an", %{conn: conn, room: room} do
+      {:ok, _view, html} = live(conn, ~p"/reveal/#{room.room_code}")
+
+      assert html =~ "Noch keine Rangliste?"
+      assert html =~ ~s{phx-submit="join_new"}
+    end
+
+    test "legt eine Rangliste mit dem Ausschnitt an", %{conn: conn, room: room} do
+      {:ok, view, _html} = live(conn, ~p"/reveal/#{room.room_code}")
+
+      html =
+        view
+        |> form(~s{form[phx-submit="join_new"]}, %{"display_name" => "Spontan"})
+        |> render_submit()
+
+      assert [teilnehmer] = Reveal.list_participants(room)
+      assert teilnehmer.display_name == "Spontan"
+      # Alle vier Trikots des Ausschnitts, ohne dass jemand etwas ausgewaehlt hat.
+      assert Rankings.count_entries(teilnehmer.ranking_id) == 4
+      # Und direkt danach sortiert man im Raum.
+      assert html =~ "Deine Rangliste"
+      assert html =~ ~s{phx-click="own_duel_pick"}
+    end
+
+    test "sortiert im Raum und speichert nach jeder Antwort", %{conn: conn, room: room} do
+      {:ok, view, _html} = live(conn, ~p"/reveal/#{room.room_code}")
+
+      view
+      |> form(~s{form[phx-submit="join_new"]}, %{"display_name" => "Spontan"})
+      |> render_submit()
+
+      [teilnehmer] = Reveal.list_participants(room)
+      vorher = Rankings.list_entries(teilnehmer.ranking_id) |> Enum.map(& &1.kit_id)
+
+      view |> element(~s{button[phx-value-side="new"]}) |> render_click()
+
+      nachher = Rankings.list_entries(teilnehmer.ranking_id) |> Enum.map(& &1.kit_id)
+      assert Enum.sort(nachher) == Enum.sort(vorher)
+      refute nachher == vorher
+    end
+
+    test "meldet, wenn es im Ausschnitt nichts gibt", %{conn: conn} do
+      leer = competition_fixture(name: "Leere Liga", tier: 9)
+      {:ok, room} = Reveal.create_room(%{competition_ids: [leer.id], kit_types: ["home"]})
+
+      {:ok, view, _html} = live(conn, ~p"/reveal/#{room.room_code}")
+
+      html =
+        view
+        |> form(~s{form[phx-submit="join_new"]}, %{"display_name" => "Spontan"})
+        |> render_submit()
+
+      assert html =~ "keine Trikots"
+      assert Reveal.list_participants(room) == []
+    end
+
+    test "der Weg mit Teilen-Link bleibt daneben", %{conn: conn, room: room} do
+      {:ok, _view, html} = live(conn, ~p"/reveal/#{room.room_code}")
+
+      assert html =~ "Teilen-Link"
+      assert html =~ ~s{phx-submit="join"}
+    end
+
+    test "Pfeiltasten sortieren auch", %{conn: conn, room: room} do
+      {:ok, view, _html} = live(conn, ~p"/reveal/#{room.room_code}")
+
+      view
+      |> form(~s{form[phx-submit="join_new"]}, %{"display_name" => "Spontan"})
+      |> render_submit()
+
+      html = view |> element("#eigenes-duell") |> render_keydown(%{"key" => "ArrowRight"})
+
+      assert html =~ "von 4 eingeordnet"
+    end
+  end
+
   describe "Aufdecken" do
     setup do
       room = room_fixture()
