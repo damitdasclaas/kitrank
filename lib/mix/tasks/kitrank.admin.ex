@@ -15,9 +15,9 @@ defmodule Mix.Tasks.Kitrank.Admin do
   warum sie existiert: beim ersten Admin gibt es noch niemanden, der eine
   Einladung verschicken könnte, und in Produktion steht oft noch kein Mailer.
 
-  Auf Fly.io:
+  Auf dem Server (Railway und überall sonst, wo das Release läuft):
 
-      fly ssh console -C "/app/bin/kitrank eval 'Kitrank.Release.admin(\\"du@example.com\\")'"
+      /app/bin/kitrank eval 'Kitrank.Release.admin("du@example.com")'
   """
   use Mix.Task
 

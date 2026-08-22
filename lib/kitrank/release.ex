@@ -1,7 +1,11 @@
 defmodule Kitrank.Release do
   @moduledoc """
-  Used for executing DB release tasks when run in production without Mix
-  installed.
+  Aufgaben, die in Produktion laufen müssen, wo es kein Mix gibt.
+
+  Aufruf auf dem Server:
+
+      /app/bin/kitrank eval 'Kitrank.Release.migrate()'
+      /app/bin/kitrank eval 'Kitrank.Release.admin("du@example.com")'
   """
   @app :kitrank
 
@@ -16,6 +20,50 @@ defmodule Kitrank.Release do
   def rollback(repo, version) do
     load_app()
     {:ok, _, _} = Ecto.Migrator.with_repo(repo, &Ecto.Migrator.run(&1, :down, to: version))
+  end
+
+  @doc """
+  Legt ein Admin-Konto an oder befördert ein bestehendes und gibt einen
+  fertigen Anmelde-Link aus.
+
+  Das Gegenstück zu `mix kitrank.admin` für den Server. Es gibt bewusst keinen
+  Weg über die Oberfläche, Admin zu werden — und beim ersten Admin gibt es
+  niemanden, der eine Einladung verschicken könnte.
+  """
+  def admin(email) when is_binary(email) do
+    start_app()
+
+    case Kitrank.Accounts.promote_to_admin(email) do
+      {:ok, user} ->
+        {token, user_token} = Kitrank.Accounts.UserToken.build_email_token(user, "login")
+        Kitrank.Repo.insert!(user_token)
+
+        IO.puts("\n#{user.email} ist jetzt Admin.\n")
+        IO.puts("Anmelden über diesen Link (einmalig, läuft ab):\n")
+        IO.puts("  #{KitrankWeb.Endpoint.url()}/users/log-in/#{token}\n")
+        :ok
+
+      {:error, changeset} ->
+        IO.puts("Ging nicht: #{inspect(changeset.errors)}")
+        :error
+    end
+  end
+
+  @doc "Alle Admin-Konten auflisten."
+  def admins do
+    start_app()
+
+    case Kitrank.Accounts.list_admins() do
+      [] -> IO.puts("Noch kein Admin-Konto.")
+      admins -> Enum.each(admins, &IO.puts("  #{&1.email}"))
+    end
+  end
+
+  # migrate/0 kommt mit einem geladenen Repo aus; admin/1 braucht die laufende
+  # Anwendung, weil es den Endpoint fuer die URL und den Mailer-Kontext nutzt.
+  defp start_app do
+    Application.ensure_all_started(:ssl)
+    {:ok, _} = Application.ensure_all_started(@app)
   end
 
   defp repos do

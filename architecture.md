@@ -286,15 +286,37 @@ Im Datenmodell heißt eine leere Liga- oder Typ-Liste "keine Einschränkung" –
 ein Raum über alles ist ein legitimer Raum, und eine Pflichtangabe wäre nur eine
 Hürde für jeden Aufrufer außerhalb der Oberfläche.
 
+### 9.6 Hosting: Railway, nicht Vercel
+
+Vercel scheidet technisch aus. LiveView braucht einen dauerhaft laufenden
+Prozess mit offener WebSocket-Verbindung pro Besucher; Vercel führt kurzlebige
+Serverless-Funktionen aus und hat keine Elixir-Laufzeit. Ein Wechsel dorthin
+hieße, LiveView aufzugeben und ein separates Frontend samt API-Layer zu bauen –
+also genau das, was Abschnitt 1 als Hauptvorteil ausgeschlossen hat.
+
+Gewählt ist Railway, weil dort schon ein Plan läuft und App und Datenbank im
+selben Projekt über privates Netz reden. Nur die Datenbank bei Railway und die
+App woanders wäre schlechter als beides an einem Ort: LiveView fragt viel ab –
+jeder Reveal-Schritt, jedes Umsortieren –, und jede Abfrage liefe über das
+offene Internet.
+
+Im Code steht nichts über den Hoster; alles läuft über Umgebungsvariablen. Das
+Dockerfile bleibt damit überall lauffähig, und ein weiterer Wechsel wäre eine
+Konfigurationsfrage, keine Codeänderung.
+
 ## 10. Noch offen
 
 - Reveal: Soll ein Raum nach `expires_at` per Oban-Job oder simplem Cron
   aufgeräumt werden? `Reveal.delete_expired_rooms/1` ist da, ruft aber noch
   niemand periodisch auf.
 - Mailversand in Produktion: welcher Adapter (Resend, Postmark, SMTP)? Lokal
-  läuft alles über `/dev/mailbox`, für Fly fehlt die Entscheidung.
+  läuft alles über `/dev/mailbox`, in Produktion ist keiner gesetzt – der Login
+  per Magic Link funktioniert dort also noch nicht. Den ersten Admin legt
+  stattdessen `Kitrank.Release.admin/1` über die Konsole an.
 - Rate-Limiting auf den Token-Routen (Abschnitt 7) ist nicht gebaut.
-- Noch nie deployt: `fly.toml` und Dockerfile stehen, ausprobiert wurde es nicht.
+- Noch nie deployt. Das Produktions-Image wurde lokal gebaut und gegen eine
+  frische Datenbank gestartet – Migrationen, Assets und die Auth-Schranken
+  greifen dort –, aber bei einem Hoster lief es noch nicht.
 
 ## 11. Erweiterbarkeit: Mehrsaison, weitere Ligen, andere Sportarten
 

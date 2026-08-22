@@ -14,7 +14,7 @@ Die vollständige Architektur steht in [`architecture.md`](architecture.md).
 
 Alle drei Bereiche stehen: **Übersicht** (Team-Raster, Team-Detail, Direktvergleich, große Ansicht), **Ranking** (auswählen, sortieren, teilen) und **Reveal** (Raum, Beitritt, Platz-für-Platz aufdecken), dazu **Login** mit Admin-UI zur Datenpflege.
 
-Noch offen: Aufräum-Job für abgelaufene Räume, Rate-Limiting, Mail-Adapter für Produktion — und einmal wirklich auf Fly deployen.
+Noch offen: Aufräum-Job für abgelaufene Räume, Rate-Limiting, Mail-Adapter für Produktion — und der erste echte Deploy.
 
 ## Anmelden
 
@@ -36,11 +36,8 @@ Magic Link — lokal landen die Mails unter `/dev/mailbox`.
 ein Formular selbst zu befördern.
 
 Wenn die App später normale Nutzerkonten bekommen soll, ist das ein Schalter,
-kein Umbau — der ganze Registrierungs-Ablauf ist gebaut und getestet:
-
-```bash
-fly secrets set REGISTRATION_OPEN=true
-```
+kein Umbau — der ganze Registrierungs-Ablauf ist gebaut und getestet: die
+Umgebungsvariable `REGISTRATION_OPEN=true` setzen, fertig.
 
 ## Datenpflege
 
@@ -85,17 +82,55 @@ cp .env.example .env && mix phx.gen.secret   # Wert in .env eintragen
 docker compose --profile app up
 ```
 
-## Deploy (Fly.io)
+## Deploy (Railway)
 
-```bash
-fly launch --no-deploy --copy-config
-fly postgres create --name kitrank-db --region fra
-fly postgres attach kitrank-db               # setzt DATABASE_URL
-fly secrets set SECRET_KEY_BASE=$(mix phx.gen.secret)
-fly deploy
+Das Dockerfile ist providerunabhängig — im Code steht nichts über den Hoster,
+alles läuft über Umgebungsvariablen. `railway.json` sagt Railway nur, dass es das
+Dockerfile bauen und vor jedem Deploy die Migrationen fahren soll.
+
+1. Im Railway-Projekt **zwei Services**: einen aus diesem Repo, dazu **Postgres**
+   aus dem Katalog.
+2. Am App-Service diese Variablen setzen:
+
+```
+DATABASE_URL   = ${{Postgres.DATABASE_URL}}   # private Adresse, nicht die public
+ECTO_IPV6      = true
+SECRET_KEY_BASE = <mix phx.gen.secret>
+PHX_HOST       = <deine-domain>.up.railway.app
 ```
 
-Migrationen laufen bei jedem Deploy automatisch über das `release_command` in `fly.toml`.
+`PORT` setzt Railway selbst.
+
+**`ECTO_IPV6=true` ist nicht optional.** Railways internes Netz spricht nur IPv6;
+ohne die Variable verbindet sich Ecto nicht mit der Datenbank.
+
+**`PHX_HOST` muss exakt die ausgelieferte Domain sein.** Der Wert steuert zwei
+Dinge auf einmal: die erzeugten Teilen-Links der Ranglisten und `check_origin`
+für die LiveView-Verbindung. Stimmt er nicht, verbinden sich die WebSockets
+nicht — und das Reveal bleibt stumm.
+
+Migrationen laufen bei jedem Deploy über den Pre-Deploy-Befehl aus
+`railway.json`. Von Hand geht es auch:
+
+```bash
+/app/bin/kitrank eval 'Kitrank.Release.migrate()'
+```
+
+### Ersten Admin anlegen
+
+Ohne eingerichteten Mailversand kommt kein Magic Link an. Deshalb gibt es den
+Weg über die Konsole — er gibt den Anmelde-Link direkt aus:
+
+```bash
+/app/bin/kitrank eval 'Kitrank.Release.admin("du@example.com")'
+```
+
+### Mailversand
+
+Noch offen. Lokal läuft alles über `/dev/mailbox`; in Produktion ist bisher kein
+Adapter gesetzt, das Anmelden per Magic Link funktioniert dort also noch nicht.
+Nötig sind ein Swoosh-Adapter in `config/runtime.exs` und die passenden
+Zugangsdaten.
 
 ## Aufbau
 
