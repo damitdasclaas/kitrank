@@ -253,6 +253,16 @@ Der Grund ist der Zweck des Formats: Bei jedem Schritt geht es um den
 sieht man nie zwei Karten gleichzeitig, und genau das ist der Moment, um den es
 geht. Lieber eine Wischgeste als ein verlorener Vergleich.
 
+### 9.4 Ranking: erst auswählen, dann sortieren
+
+Eine Rangliste enthält nicht automatisch alle Trikots, sondern die, die man
+auswählt. Bei zwei vollen Ligen wären es über hundert – eine Drag-Liste dieser
+Länge ist unbenutzbar, und `Reveal` würde entsprechend viele Runden laufen.
+
+Die Auswahl passiert in einem Raster (Trikot antippen, oder ganze Liga auf
+einmal), sortiert wird danach nur noch das Ausgewählte. `Rankings.create_ranking_with_all_kits/2`
+existiert weiterhin für Tests und für den Fall, dass eine Liga klein genug ist.
+
 ## 10. Noch offen
 
 - Reveal: Soll ein Raum nach `expires_at` per Oban-Job oder simplem Cron

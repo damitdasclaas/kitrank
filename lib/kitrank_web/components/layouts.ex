@@ -44,6 +44,12 @@ defmodule KitrankWeb.Layouts do
         </a>
         <p class="kr-eyebrow hidden sm:block">Trikots der 1. und 2. Bundesliga</p>
         <div class="ml-auto flex items-center gap-3">
+          <.link
+            navigate={~p"/rankings/new"}
+            class="rounded-md bg-ink px-3 py-1.5 text-xs font-semibold text-chalk transition hover:opacity-90"
+          >
+            Rangliste bauen
+          </.link>
           <%!-- Kein Anmelde-Link: Konten sind noch nicht offen, der Weg hinein
                 ist /users/log-in. Wer angemeldet ist, sieht seine Wege. --%>
           <.link

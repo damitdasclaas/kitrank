@@ -27,6 +27,14 @@ defmodule KitrankWeb.Router do
       live "/", OverviewLive, :index
       live "/teams/:id", OverviewLive, :team
       live "/vergleich", OverviewLive, :compare
+
+      # Ranglisten. Kein Login – der Zugriff haengt am Link: /rankings/:token
+      # darf aendern, /r/:slug darf lesen. Beide zeigen denselben Datensatz,
+      # der Teilen-Link ist deshalb immer aktuell.
+      live "/rankings/new", Ranking.NewLive, :new
+      live "/rankings/:edit_token/auswahl", Ranking.EditLive, :select
+      live "/rankings/:edit_token/edit", Ranking.EditLive, :sort
+      live "/r/:share_slug", Ranking.ShowLive, :show
     end
   end
 

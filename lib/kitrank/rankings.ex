@@ -113,6 +113,63 @@ defmodule Kitrank.Rankings do
     end
   end
 
+  @doc """
+  Nimmt mehrere Trikots auf einmal auf – für "ganze Liga hinzufügen".
+
+  Gibt zurück, wie viele wirklich dazugekommen sind; bereits vorhandene werden
+  übersprungen, ohne ihre Notiz zu verlieren.
+  """
+  def add_kits(%Ranking{} = ranking, kit_ids) when is_list(kit_ids) do
+    {count, _} = insert_entries(ranking, kit_ids)
+    count
+  end
+
+  @doc "Nimmt ein Trikot wieder aus der Rangliste – identifiziert über das Trikot."
+  def remove_kit(%Ranking{} = ranking, kit_id) do
+    case Repo.get_by(RankingEntry, ranking_id: ranking.id, kit_id: kit_id) do
+      nil -> {:ok, :not_present}
+      entry -> with {:ok, _} <- remove_entry(entry), do: {:ok, :removed}
+    end
+  end
+
+  @doc """
+  Die Trikots einer Rangliste als `MapSet` – für die Auswahl-Ansicht, die für
+  jede Kachel wissen muss, ob sie schon drin ist.
+  """
+  def selected_kit_ids(%Ranking{id: ranking_id}) do
+    from(e in RankingEntry, where: e.ranking_id == ^ranking_id, select: e.kit_id)
+    |> Repo.all()
+    |> MapSet.new()
+  end
+
+  @doc "Verschiebt einen Eintrag um `delta` Plätze; am Rand passiert nichts."
+  def move_entry(%Ranking{} = ranking, kit_id, delta) do
+    ids =
+      Repo.all(
+        from e in RankingEntry,
+          where: e.ranking_id == ^ranking.id,
+          order_by: e.position,
+          select: e.kit_id
+      )
+
+    case Enum.find_index(ids, &(&1 == kit_id)) do
+      nil ->
+        {:error, :not_found}
+
+      index ->
+        target = index + delta
+
+        if target < 0 or target >= length(ids) do
+          :ok
+        else
+          ids
+          |> List.delete_at(index)
+          |> List.insert_at(target, kit_id)
+          |> then(&reorder(ranking, &1))
+        end
+    end
+  end
+
   def remove_entry(%RankingEntry{} = entry) do
     Multi.new()
     |> Multi.delete(:entry, entry)

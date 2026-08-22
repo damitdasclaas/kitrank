@@ -323,7 +323,12 @@ defmodule KitrankWeb.OverviewLive do
         </h1>
         <p class="mt-4 max-w-md text-sm leading-relaxed text-soft">
           {@kit_count} Trikots von {@team_count} Vereinen. Team antippen für alle Varianten,
-          oder zwei bis drei Trikots nebeneinanderlegen.
+          zwei bis drei nebeneinanderlegen — oder gleich <.link
+            navigate={~p"/rankings/new"}
+            class="text-ink underline underline-offset-4"
+          >
+            eine eigene Rangliste bauen
+          </.link>.
         </p>
       </div>
 

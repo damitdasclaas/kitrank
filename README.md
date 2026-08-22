@@ -12,8 +12,8 @@ Die vollständige Architektur steht in [`architecture.md`](architecture.md).
 
 ## Stand
 
-Fertig: Datenmodell und Contexts, die **Übersicht** (Team-Raster, Team-Detail, Direktvergleich für zwei bis drei Trikots), **Login** und die **Admin-UI** zur Datenpflege.
-Noch offen: Ranking und Reveal.
+Fertig: Datenmodell und Contexts, die **Übersicht** (Team-Raster, Team-Detail, Direktvergleich, große Ansicht), **Login** mit Admin-UI zur Datenpflege und das **Ranking** (auswählen, sortieren, teilen).
+Noch offen: Reveal.
 
 ## Anmelden
 
@@ -116,6 +116,33 @@ lib/kitrank_web/
   color.ex                     # Kontrast- und Mischrechnung für Vereinsfarben
   presence.ex                  # wer ist gerade in einem Reveal-Raum online
 ```
+
+## Ranglisten
+
+Ohne Konto, der Zugriff hängt am Link:
+
+| Link | Wer ihn hat |
+|---|---|
+| `/rankings/:edit_token/auswahl` | wählt Trikots aus |
+| `/rankings/:edit_token/edit` | sortiert sie und schreibt Notizen |
+| `/r/:share_slug` | liest mit |
+
+Beide zeigen denselben Datensatz — der Teilen-Link ist deshalb immer aktuell,
+es gibt keinen Veröffentlichen-Schritt. Unbekannte Tokens liefern 404 statt
+eines Serverfehlers, damit ein Fehlschlag nicht verrät, dass an der Stelle
+überhaupt etwas sein könnte.
+
+**Warum zwei Schritte statt einer Liste:** bei vollständigen 1. und 2. Bundesliga
+stehen über hundert Trikots zur Wahl. Die per Drag in eine Reihenfolge zu
+bringen wäre unbenutzbar, und ein Reveal darüber liefe hundert Runden.
+Ausgewählt wird deshalb in einem Raster, sortiert nur noch, was übrig bleibt.
+
+Sortieren geht per Drag (Sortable.js, `assets/js/hooks/sortable.js`) **und** über
+Pfeil-Knöpfe — Drag ist auf dem Handy fummelig und mit der Tastatur gar nicht zu
+bedienen. Der Hook schickt nach dem Loslassen die komplette neue Reihenfolge,
+nicht "Element X von 3 nach 1": so kann der Server sie gegen seinen Stand prüfen
+und ablehnen, statt eine Verschiebung auf einen Stand anzuwenden, den der
+Browser vielleicht nicht mehr hat.
 
 ## Zur Oberfläche
 
