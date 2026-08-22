@@ -45,7 +45,7 @@ defmodule KitrankWeb.Admin.CrudTest do
       {:ok, view, _html} = live(conn, ~p"/admin/ligen/neu")
 
       view
-      |> form("#admin-form form",
+      |> form("#competition-form",
         competition: %{sport_id: sport.id, name: "Bundesliga", country: "DE", tier: 1}
       )
       |> render_submit()
@@ -64,7 +64,7 @@ defmodule KitrankWeb.Admin.CrudTest do
       {:ok, view, _html} = live(conn, ~p"/admin/vereine/neu")
 
       view
-      |> form("#admin-form form",
+      |> form("#team-form",
         team: %{name: "FC Bayern München", short_code: "fcb", primary_color: "#DC052D"}
       )
       |> render_submit()
@@ -102,7 +102,7 @@ defmodule KitrankWeb.Admin.CrudTest do
       {:ok, view, _html} = live(conn, ~p"/admin/saison/neu")
 
       view
-      |> form("#admin-form form",
+      |> form("#team_season-form",
         team_season: %{team_id: team.id, competition_id: competition.id, season: season}
       )
       |> render_submit()
@@ -121,7 +121,7 @@ defmodule KitrankWeb.Admin.CrudTest do
 
       html =
         view
-        |> form("#admin-form form",
+        |> form("#team_season-form",
           team_season: %{team_id: team.id, competition_id: other.id, season: season}
         )
         |> render_submit()
@@ -142,7 +142,7 @@ defmodule KitrankWeb.Admin.CrudTest do
       {:ok, view, _html} = live(conn, ~p"/admin/trikots/neu")
 
       view
-      |> form("#admin-form form",
+      |> form("#kit-form",
         kit: %{
           team_id: team.id,
           season: season,
@@ -164,7 +164,7 @@ defmodule KitrankWeb.Admin.CrudTest do
 
       html =
         view
-        |> form("#admin-form form",
+        |> form("#kit-form",
           kit: %{
             team_id: team.id,
             season: season,
