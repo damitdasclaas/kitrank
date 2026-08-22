@@ -634,20 +634,14 @@ defmodule KitrankWeb.OverviewLive do
         <.zoom_hint />
       </button>
 
-      <div :if={length(@images) > 1} class="flex gap-1.5 border-t border-line px-3 py-2">
-        <button
-          :for={{_url, index} <- Enum.with_index(@images)}
-          type="button"
-          phx-click="select_image"
-          phx-value-kit-id={@kit.id}
-          phx-value-index={index}
-          class={[
-            "h-1.5 flex-1 rounded-full transition",
-            index == @active_index && "bg-ink",
-            index != @active_index && "bg-line hover:bg-soft"
-          ]}
-          aria-label={"Bild #{index + 1} von #{length(@images)} zeigen"}
-          aria-current={to_string(index == @active_index)}
+      <div :if={length(@images) > 1} class="border-t border-line px-3 py-2.5">
+        <.kit_thumbstrip
+          kit={@kit}
+          team={@team}
+          images={@images}
+          index={@active_index}
+          event="select_image"
+          extra={%{kit_id: @kit.id}}
         />
       </div>
 

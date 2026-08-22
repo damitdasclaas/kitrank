@@ -183,8 +183,10 @@ defmodule KitrankWeb.OverviewLiveTest do
       html = view |> element(~s{button[phx-click="zoom_close"]}) |> render_click()
 
       refute html =~ ~s(id="kit-lightbox")
-      # Der zweite Galerie-Punkt ist jetzt der aktive.
-      assert html =~ ~s(phx-value-index="1" class="h-1.5 flex-1 rounded-full transition bg-ink)
+
+      # Die kleine Galerie steht auf demselben Bild – jetzt ein Vorschaubild
+      # statt eines Strichs.
+      assert has_element?(view, ~s{button[phx-value-index="1"][aria-current="true"]})
     end
 
     test "Escape schließt erst die große Ansicht, nicht gleich das Modal", %{

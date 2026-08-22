@@ -9,7 +9,7 @@ defmodule KitrankWeb.Admin.KitLive do
   use KitrankWeb, :live_view
 
   import KitrankWeb.Admin.Components
-  import KitrankWeb.KitComponents, only: [kit_figure: 1, kit_badge: 1]
+  import KitrankWeb.KitComponents, only: [kit_figure: 1, kit_badge: 1, image_role: 1]
 
   alias Kitrank.Kits
   alias Kitrank.Kits.Kit
@@ -414,7 +414,7 @@ defmodule KitrankWeb.Admin.KitLive do
             <.input field={@form[:cutout_url]} label="Cutout-Bild" placeholder="https://…" />
 
             <div>
-              <label for="kit_model_image_urls" class="text-sm font-medium">Model-Bilder</label>
+              <label for="kit_model_image_urls" class="text-sm font-medium">Weitere Bilder</label>
               <textarea
                 id="kit_model_image_urls"
                 name="kit[model_image_urls]"
@@ -422,7 +422,9 @@ defmodule KitrankWeb.Admin.KitLive do
                 placeholder="https://…\nhttps://…"
                 class="mt-1.5 w-full rounded-md border border-line bg-panel px-3 py-2 font-mono text-xs"
               >{@image_lines}</textarea>
-              <p class="mt-1 text-xs text-soft">Eine URL pro Zeile.</p>
+              <p class="mt-1 text-xs text-soft">
+                Eine URL pro Zeile, in dieser Reihenfolge: Rückseite, dann Model-Bilder.
+              </p>
               <p
                 :for={msg <- Enum.map(@form[:model_image_urls].errors, &translate_error/1)}
                 class="mt-1 text-xs text-red-600"
@@ -519,17 +521,15 @@ defmodule KitrankWeb.Admin.KitLive do
                 {Enum.find_index(@picked, &(&1 == url)) + 1}
               </span>
             </button>
-            <p
-              :if={url in @picked}
-              class="mt-1 text-center font-mono text-[10px] text-soft"
-            >
-              {if Enum.find_index(@picked, &(&1 == url)) == 0, do: "Freisteller", else: "Model"}
+            <p :if={url in @picked} class="mt-1 text-center text-[10px] text-soft">
+              {image_role(Enum.find_index(@picked, &(&1 == url)))}
             </p>
           </li>
         </ul>
 
         <p class="mt-3 text-xs text-soft">
-          Der erste Klick macht das Bild zum Freisteller, jeder weitere hängt ein Model-Bild an.
+          Die Reihenfolge der Klicks legt die Rollen fest: <span class="text-ink">Vorderseite</span>, <span class="text-ink">Rückseite</span>, dann Model-Bilder.
+          Nicht vorhandene einfach überspringen.
         </p>
       </div>
     </div>

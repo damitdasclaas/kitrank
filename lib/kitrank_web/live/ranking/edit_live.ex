@@ -701,40 +701,38 @@ defmodule KitrankWeb.Ranking.EditLive do
       id="entry-detail"
       on_close="close_detail"
       label={"#{@entry.kit.team.name} – #{Kit.label(@entry.kit.kit_type)}"}
-      size="max-w-3xl"
+      size="max-w-4xl"
     >
-      <div class="grid gap-0 sm:grid-cols-2">
-        <div>
+      <%!-- Das Bild bekommt drei von fuenf Spalten: es ist der Grund, warum man
+            das Detail ueberhaupt aufmacht. --%>
+      <div class="grid gap-0 sm:grid-cols-5">
+        <div class="sm:col-span-3">
           <div
-            class="flex aspect-square items-center justify-center rounded-tl-xl p-6 sm:p-10"
+            class="flex aspect-square items-center justify-center rounded-tl-xl p-4 sm:p-8"
             style={"background-color: color-mix(in oklab, #{@color} 13%, #FFFFFF)"}
           >
             <.kit_figure
               kit={@entry.kit}
               team={@entry.kit.team}
               image_url={@src}
+              size={:full}
               class="h-full w-full"
             />
           </div>
 
-          <div :if={length(@images) > 1} class="flex gap-1.5 border-t border-line px-4 py-2.5">
-            <button
-              :for={{_url, i} <- Enum.with_index(@images)}
-              type="button"
-              phx-click="detail_image"
-              phx-value-index={i}
-              class={[
-                "h-1.5 flex-1 rounded-full transition",
-                i == @image && "bg-ink",
-                i != @image && "bg-line hover:bg-soft"
-              ]}
-              aria-label={"Bild #{i + 1} von #{length(@images)} zeigen"}
-              aria-current={to_string(i == @image)}
+          <div :if={length(@images) > 1} class="border-t border-line px-4 py-3">
+            <.kit_thumbstrip
+              kit={@entry.kit}
+              team={@entry.kit.team}
+              images={@images}
+              index={@image}
+              event="detail_image"
             />
+            <p class="mt-2 text-[11px] text-soft">{image_role(@image)}</p>
           </div>
         </div>
 
-        <div class="flex flex-col border-t border-line p-5 sm:border-l sm:border-t-0">
+        <div class="flex flex-col border-t border-line p-5 sm:col-span-2 sm:border-l sm:border-t-0">
           <p class="kr-eyebrow">Platz {@index + 1} von {@total}</p>
           <h2 class="kr-display mt-1.5 text-2xl leading-tight">{@entry.kit.team.name}</h2>
           <p class="mt-1 flex items-baseline gap-2">

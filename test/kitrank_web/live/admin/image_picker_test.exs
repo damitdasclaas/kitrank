@@ -69,14 +69,18 @@ defmodule KitrankWeb.Admin.ImagePickerTest do
     assert html =~ ~s{phx-click="toggle_image"}
   end
 
-  test "erster Klick wird der Freisteller, weitere werden Model-Bilder", %{view: view} do
+  test "die Klick-Reihenfolge legt die Rollen fest", %{view: view} do
+    # Konvention der Datenpflege: 1 Vorderseite, 2 Rueckseite, ab 3 Model.
     html = klick(view, @b)
-    assert html =~ "Freisteller"
+    assert html =~ "Vorderseite"
     assert html =~ "3 Bilder gefunden, 1 gewählt"
 
     html = klick(view, @a)
-    assert html =~ "Model"
+    assert html =~ "Rückseite"
     assert html =~ "3 Bilder gefunden, 2 gewählt"
+
+    html = klick(view, @c)
+    assert html =~ "Model 1"
   end
 
   test "speichert in der Klick-Reihenfolge", %{view: view, kit: kit} do
@@ -97,8 +101,9 @@ defmodule KitrankWeb.Admin.ImagePickerTest do
     html = klick(view, @a)
 
     assert html =~ "3 Bilder gefunden, 1 gewählt"
-    # Jetzt ist b der Freisteller, weil a weg ist.
-    assert html =~ "Freisteller"
+    # Jetzt rutscht b auf die Vorderseite, weil a weg ist. Auf das Fehlen von
+    # "Rückseite" kann man hier nicht pruefen – die Hinweiszeile nennt beide.
+    assert html =~ "Vorderseite"
   end
 
   test "'Auswahl leeren' setzt alles zurück", %{view: view} do

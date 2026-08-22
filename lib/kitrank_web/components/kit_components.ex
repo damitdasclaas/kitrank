@@ -169,6 +169,65 @@ defmodule KitrankWeb.KitComponents do
 
   defp palette(_other, color), do: palette("home", color)
 
+  attr :kit, :map, required: true
+  attr :team, :map, required: true
+  attr :images, :list, required: true
+  attr :index, :integer, required: true
+  attr :event, :string, required: true, doc: "Event beim Umschalten, bekommt index"
+  attr :extra, :map, default: %{}, doc: "weitere phx-value-Angaben, z. B. die kit-id"
+
+  @doc """
+  Bildumschalter als Vorschaubilder.
+
+  Vorher standen dort dünne Striche: schwer zu treffen, und man sah nicht, was
+  dahinter liegt. Vorschaubilder lösen beides — sie sind groß genug für einen
+  Finger und zeigen das Motiv.
+
+  Die Reihenfolge ist Konvention, nicht Technik: Vorderseite, Rückseite, dann
+  Model-Bilder. Die Nummer steht deshalb an der Vorschau.
+  """
+  def kit_thumbstrip(assigns) do
+    ~H"""
+    <div :if={length(@images) > 1} class="flex flex-wrap gap-2">
+      <button
+        :for={{url, i} <- Enum.with_index(@images)}
+        type="button"
+        phx-click={@event}
+        phx-value-index={i}
+        phx-value-kit-id={Map.get(@extra, :kit_id)}
+        aria-label={"#{image_role(i)} zeigen"}
+        aria-current={to_string(i == @index)}
+        title={image_role(i)}
+        class={[
+          "relative h-14 w-14 shrink-0 overflow-hidden rounded-md border-2 bg-white transition",
+          i == @index && "border-ink",
+          i != @index && "border-line hover:border-ink/40"
+        ]}
+      >
+        <img
+          src={ImageVariant.url(url, :thumb)}
+          alt=""
+          loading="lazy"
+          class="h-full w-full object-contain p-0.5"
+        />
+        <span class="absolute left-0 top-0 flex h-4 w-4 items-center justify-center rounded-br-md bg-ink/85 font-mono text-[9px] font-semibold text-chalk">
+          {i + 1}
+        </span>
+      </button>
+    </div>
+    """
+  end
+
+  @doc """
+  Was an einer Bildposition erwartet wird.
+
+  Konvention der Datenpflege: 1 Vorderseite, 2 Rückseite, ab 3 Model-Bilder.
+  Erzwungen wird das nicht — die Reihenfolge legt fest, wer pflegt.
+  """
+  def image_role(0), do: "Vorderseite"
+  def image_role(1), do: "Rückseite"
+  def image_role(index), do: "Model #{index - 1}"
+
   attr :kit_type, :string, required: true
   attr :class, :string, default: nil
 
