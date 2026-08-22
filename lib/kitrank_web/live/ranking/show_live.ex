@@ -173,7 +173,7 @@ defmodule KitrankWeb.Ranking.ShowLive do
               rel="noopener noreferrer"
               class="mt-2 inline-flex items-center gap-1 text-[11px] text-soft underline underline-offset-4 hover:text-ink"
             >
-              Im Shop ansehen <.icon name="hero-arrow-top-right-on-square-mini" class="size-3" />
+              Zum Vereinsshop <.icon name="hero-arrow-top-right-on-square-mini" class="size-3" />
             </a>
           </div>
         </div>

@@ -107,6 +107,14 @@ defmodule KitrankWeb.Layouts do
           Trikotbilder werden von den Vereinsshops verlinkt, nicht kopiert. Fehlt ein Bild,
           zeichnet KitRank das Trikot in den Vereinsfarben.
         </p>
+        <p>
+          <%!-- Die Shop-Links gehen zum Verein, nicht zu einem Haendler mit
+                Provision. Wer an Kaeufen verdient, hat ein Interesse daran, wie
+                das Ranking ausgeht – deshalb steht das hier. --%>
+          <span class="text-ink">Keine Affiliate-Links, keine Provision.</span>
+          Die Shop-Verweise führen zum jeweiligen Vereinsshop; KitRank verdient an keinem
+          Kauf mit.
+        </p>
       </div>
     </footer>
 

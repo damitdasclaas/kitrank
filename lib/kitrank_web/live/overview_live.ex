@@ -704,7 +704,7 @@ defmodule KitrankWeb.OverviewLive do
             rel="noopener noreferrer"
             class="mt-0.5 inline-flex items-center gap-1 text-[11px] text-soft underline underline-offset-4 hover:text-ink"
           >
-            Im Shop ansehen <.icon name="hero-arrow-top-right-on-square-mini" class="size-3" />
+            Zum Vereinsshop <.icon name="hero-arrow-top-right-on-square-mini" class="size-3" />
           </a>
           <p :if={!@kit.source_shop_url} class="mt-0.5 text-[11px] text-soft">
             Kein Shop-Link hinterlegt
@@ -817,7 +817,7 @@ defmodule KitrankWeb.OverviewLive do
                 rel="noopener noreferrer"
                 class="inline-flex items-center gap-1 underline underline-offset-4 hover:opacity-70"
               >
-                Ansehen <.icon name="hero-arrow-top-right-on-square-mini" class="size-3" />
+                Vereinsshop <.icon name="hero-arrow-top-right-on-square-mini" class="size-3" />
               </a>
               <span :if={!entry.kit.source_shop_url} class="text-soft">—</span>
             </:cell>

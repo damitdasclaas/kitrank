@@ -28,6 +28,16 @@ defmodule KitrankWeb.OverviewLiveTest do
       assert view |> element("h1") |> render() =~ "Welches Trikot"
     end
 
+    test "sagt, dass es keine Provision gibt", %{conn: conn} do
+      # Der Wettbewerber finanziert sich ueber Affiliate-Links zu Haendlern.
+      # Wer an Kaeufen verdient, hat ein Interesse daran, wie das Ranking
+      # ausgeht – deshalb steht das Gegenteil hier ausdruecklich.
+      {:ok, _view, html} = live(conn, ~p"/")
+
+      assert html =~ "Keine Affiliate-Links, keine Provision."
+      assert html =~ "verdient an keinem"
+    end
+
     test "nennt im Kopf keine feste Liga", %{conn: conn} do
       # Die App soll weitere Ligen und Sportarten aufnehmen koennen – ein
       # fester Ligenname in Kopfzeile oder Ueberschrift waere dann als erstes

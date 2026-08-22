@@ -846,7 +846,7 @@ defmodule KitrankWeb.Ranking.EditLive do
             rel="noopener noreferrer"
             class="mt-4 inline-flex items-center gap-1 text-xs text-soft underline underline-offset-4 hover:text-ink"
           >
-            Im Shop ansehen <.icon name="hero-arrow-top-right-on-square-mini" class="size-3" />
+            Zum Vereinsshop <.icon name="hero-arrow-top-right-on-square-mini" class="size-3" />
           </a>
 
           <div class="mt-5 flex flex-wrap gap-2 border-t border-line pt-4">
