@@ -395,6 +395,7 @@ defmodule KitrankWeb.OverviewLive do
           kit={@lead_kit}
           team={@team}
           class="h-full w-full transition-transform duration-300 group-hover:-translate-y-1"
+          size={:thumb}
         />
         <span :if={!@lead_kit} class="font-mono text-[11px] text-black/40">kein Trikot</span>
 
@@ -518,7 +519,7 @@ defmodule KitrankWeb.OverviewLive do
         class="flex h-6 w-6 items-center justify-center rounded-full"
         style={"background-color: color-mix(in oklab, #{@color} 18%, #FFFFFF)"}
       >
-        <.kit_figure kit={@entry.kit} team={@entry.team} class="h-4 w-4" />
+        <.kit_figure kit={@entry.kit} team={@entry.team} class="h-4 w-4" size={:thumb} />
       </span>
       <span class="font-mono text-[11px] font-semibold" style={"color: #{@color}"}>
         {@entry.team.short_code}

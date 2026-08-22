@@ -316,9 +316,10 @@ Konfigurationsfrage, keine Codeänderung.
 
 ## 10. Noch offen
 
-- Reveal: Soll ein Raum nach `expires_at` per Oban-Job oder simplem Cron
-  aufgeräumt werden? `Reveal.delete_expired_rooms/1` ist da, ruft aber noch
-  niemand periodisch auf.
+- ~~Reveal-Aufräumen~~ — erledigt: `Kitrank.Reveal.Cleanup` läuft stündlich im
+  Supervision-Tree. Kein Oban: es gibt genau eine wiederkehrende Aufgabe, sie
+  muss nicht garantiert genau einmal laufen, und ein verpasster Durchgang holt
+  beim nächsten Mal alles nach.
 - Mailversand in Produktion: welcher Adapter (Resend, Postmark, SMTP)? Lokal
   läuft alles über `/dev/mailbox`, in Produktion ist keiner gesetzt – der Login
   per Magic Link funktioniert dort also noch nicht. Den ersten Admin legt

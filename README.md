@@ -335,6 +335,7 @@ Saison nicht gibt, fallen still weg statt leere Karten zu erzeugen.
 
 **Zur Gestaltung**, weil es dem Code sonst wie Willkür aussieht:
 
+- **Bilder werden in der Größe geladen, die der Ort braucht.** Gespeichert wird die größte Variante, die der Shop hergibt (beim HSV 1000×1000 bei 108 KB) — im Raster ist die Kachel aber nur ~250 px breit. `Kitrank.Kits.ImageVariant` leitet für bekannte Shop-CDNs die kleinere Adresse ab: 27 KB statt 108 KB, bei 36 Kacheln 0,9 MB statt 3,7 MB. Die große Ansicht lädt weiter das Original. Fremde Muster bleiben unangetastet — lieber ein zu großes Bild als ein gebrochenes, und bewusst kein `srcset`, weil es dort keinen Rückfall gibt.
 - **Fehlt ein Trikotbild, wird das Trikot gezeichnet** statt einen grauen Kasten zu zeigen — als SVG in der Vereinsfarbe, gemustert nach Kit-Typ. Das ist der Normalfall und nicht der Ausnahmefall, weil Bilder verlinkt und nicht gehostet werden.
 - **Die App hat keine eigene Akzentfarbe.** 36 Vereinsfarben tragen die Sättigung der Seite; ausgewählte Zustände nehmen die Farbe des jeweiligen Vereins an, statt mit ihr zu konkurrieren.
 - **Ein Klick auf jede Trikot-Fläche zeigt es groß** — mit Pfeiltasten durch die Bilder, Escape zurück. Escape schließt dabei erst die große Ansicht und nicht gleich das Modal darunter. Funktioniert auch bei Trikots ohne Foto, dort eben mit der Zeichnung.

@@ -29,6 +29,9 @@ config :kitrank, KitrankWeb.Endpoint,
 # KitrankWeb.RegistrationGateTest ausdruecklich fuer beide Zustaende.
 config :kitrank, :registration_open, true
 
+# Im Test raeumt nichts von sich aus auf – die Tests rufen run_now/0 selbst.
+config :kitrank, :reveal_cleanup_interval, :timer.hours(24)
+
 # Kein echter Shop-Abruf im Test.
 config :kitrank, :product_images, Kitrank.Kits.ProductImagesStub
 

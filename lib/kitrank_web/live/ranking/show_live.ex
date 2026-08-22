@@ -148,6 +148,7 @@ defmodule KitrankWeb.Ranking.ShowLive do
               kit={@entry.kit}
               team={@entry.kit.team}
               class="h-16 w-16 transition-transform duration-300 group-hover:scale-105"
+              size={:thumb}
             />
             <.zoom_hint class="!bottom-1 !right-1 !h-5 !w-5" />
           </button>

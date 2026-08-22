@@ -193,6 +193,7 @@ defmodule KitrankWeb.Ranking.Components do
           kit={@entry.kit}
           team={@entry.kit.team}
           class="h-16 w-16 transition-transform duration-300 group-hover:scale-105 sm:h-20 sm:w-20"
+          size={:thumb}
         />
         <span
           class="pointer-events-none absolute bottom-1 right-1 flex h-5 w-5 items-center justify-center rounded-full bg-white/85 text-black/60 opacity-0 backdrop-blur transition group-hover:opacity-100 group-focus-within:opacity-100"

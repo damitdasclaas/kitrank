@@ -13,6 +13,7 @@ defmodule KitrankWeb.KitComponents do
 
   import KitrankWeb.CoreComponents, only: [icon: 1]
 
+  alias Kitrank.Kits.ImageVariant
   alias Kitrank.Kits.Kit
   alias KitrankWeb.Color
 
@@ -29,13 +30,20 @@ defmodule KitrankWeb.KitComponents do
   attr :class, :string, default: nil
   attr :image_url, :string, default: nil, doc: "überschreibt die Auswahl des Bildes"
 
+  attr :size, :atom,
+    default: :medium,
+    values: [:thumb, :medium, :full],
+    doc: "wie gross das Bild geladen wird – siehe Kitrank.Kits.ImageVariant"
+
   @doc """
   Ein Trikot als Bild, falls hinterlegt – sonst als gezeichnete Silhouette.
   """
   def kit_figure(assigns) do
     assigns =
       assigns
-      |> assign_new(:src, fn -> assigns.image_url || assigns.kit.cutout_url end)
+      |> assign_new(:src, fn ->
+        ImageVariant.url(assigns.image_url || assigns.kit.cutout_url, assigns.size)
+      end)
       |> assign(:color, Color.team_color(assigns.team))
 
     ~H"""
@@ -45,6 +53,7 @@ defmodule KitrankWeb.KitComponents do
         src={@src}
         alt={"#{@team.name} – #{Kit.label(@kit.kit_type)}"}
         loading="lazy"
+        decoding="async"
         class="h-full w-full object-contain"
       />
       <.kit_silhouette :if={!@src} kit={@kit} color={@color} />
@@ -272,7 +281,8 @@ defmodule KitrankWeb.KitComponents do
   def kit_lightbox(assigns) do
     assigns =
       assigns
-      |> assign(:src, Enum.at(assigns.images, assigns.index))
+      # Hier zaehlt Qualitaet, nicht Bytes – das Original.
+      |> assign(:src, ImageVariant.url(Enum.at(assigns.images, assigns.index), :full))
       |> assign(:many?, length(assigns.images) > 1)
 
     ~H"""
@@ -339,6 +349,7 @@ defmodule KitrankWeb.KitComponents do
               :if={@src}
               src={@src}
               alt={"#{@team.name} – #{@label}"}
+              decoding="async"
               class="max-h-[72vh] w-auto max-w-full object-contain"
             />
             <div

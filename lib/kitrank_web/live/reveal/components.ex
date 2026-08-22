@@ -293,7 +293,7 @@ defmodule KitrankWeb.Reveal.Components do
           class="flex h-8 w-8 shrink-0 items-center justify-center rounded"
           style={"background-color: color-mix(in oklab, #{@color} 15%, #FFFFFF)"}
         >
-          <.kit_figure kit={@cell.kit} team={@cell.kit.team} class="h-6 w-6" />
+          <.kit_figure kit={@cell.kit} team={@cell.kit.team} class="h-6 w-6" size={:thumb} />
         </span>
         <span class="min-w-0">
           <span class="block font-mono text-[11px] font-semibold" style={"color: #{@color}"}>

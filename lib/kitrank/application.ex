@@ -13,6 +13,7 @@ defmodule Kitrank.Application do
       {DNSCluster, query: Application.get_env(:kitrank, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Kitrank.PubSub},
       KitrankWeb.Presence,
+      Kitrank.Reveal.Cleanup,
       # Start to serve requests, typically the last entry
       KitrankWeb.Endpoint
     ]

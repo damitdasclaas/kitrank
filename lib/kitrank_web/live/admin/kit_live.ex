@@ -335,7 +335,7 @@ defmodule KitrankWeb.Admin.KitLive do
               class="flex h-12 w-12 items-center justify-center rounded-md"
               style={"background-color: color-mix(in oklab, #{Color.team_color(kit.team)} 15%, #FFFFFF)"}
             >
-              <.kit_figure kit={kit} team={kit.team} class="h-9 w-9" />
+              <.kit_figure kit={kit} team={kit.team} class="h-9 w-9" size={:thumb} />
             </span>
           </:col>
           <:col :let={%{kit: kit}} label="Verein">{kit.team.name}</:col>
