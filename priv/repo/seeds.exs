@@ -5,10 +5,8 @@
 # die auseinanderlaufen könnte.
 #
 # Ergänzt werden hier nur Trikots, denn die gehören nicht in die Import-Datei:
-#   * für alle Vereine leere Trikots, damit die Übersicht die gezeichnete
-#     Darstellung zeigt
-#   * für den HSV echte Bilder aus dem Vereinsshop, damit beides nebeneinander
-#     zu sehen ist
+#   * für den HSV echte Bilder aus dem Vereinsshop – alle anderen bleiben bei
+#     der gezeichneten Darstellung, damit beides nebeneinander zu sehen ist
 #
 #     mix run priv/repo/seeds.exs
 #
@@ -30,15 +28,6 @@ upsert = fn schema, keys, attrs ->
   end
 end
 
-# Heim/Auswärts/Ausweich für alle – ohne Bilder, die zeichnet die Übersicht.
-for team <- Kits.list_teams(), kit_type <- ~w(home away third) do
-  upsert.(Kit, [team_id: team.id, season: season, kit_type: kit_type], %{
-    team_id: team.id,
-    season: season,
-    kit_type: kit_type
-  })
-end
-
 # ── Ein Verein mit echten Daten ───────────────────────────────────────────────
 # Der Rest oben ist Platzhalter ohne Bilder. Der HSV ist vollständig gepflegt,
 # damit sich beides nebeneinander ansehen lässt: echte Shop-Bilder gegen die
@@ -48,9 +37,8 @@ end
 # Trikotbilder (Architektur Abschnitt 5). Bricht ein Link, fällt die Übersicht
 # von allein auf die gezeichnete Darstellung zurück.
 
+# Der Shop-Link kommt aus der Import-Datei, hier nur die Trikot-Bilder.
 hsv = Repo.get_by!(Team, short_code: "HSV")
-
-hsv = Ecto.Changeset.change(hsv, shop_url: "https://shop.hsv.de") |> Repo.update!()
 
 hsv_kits = [
   %{

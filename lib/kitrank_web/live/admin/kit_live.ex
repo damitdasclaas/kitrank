@@ -13,6 +13,12 @@ defmodule KitrankWeb.Admin.KitLive do
 
   alias Kitrank.Kits
   alias Kitrank.Kits.Kit
+  alias Kitrank.Kits.ProductImages
+
+  # Der Abruf haengt am Netz und an fremden Shops. Damit Tests den ganzen Weg
+  # gehen koennen – Link eingeben, Bilder anklicken, speichern – ist er
+  # austauschbar.
+  @images Application.compile_env(:kitrank, :product_images, ProductImages)
   alias KitrankWeb.Color
 
   @impl true
@@ -21,7 +27,13 @@ defmodule KitrankWeb.Admin.KitLive do
 
     {:ok,
      socket
-     |> assign(page_title: "Trikots", season: season)
+     |> assign(
+       page_title: "Trikots",
+       season: season,
+       candidates: [],
+       fetching?: false,
+       fetch_error: nil
+     )
      |> load_rows()}
   end
 
@@ -40,9 +52,40 @@ defmodule KitrankWeb.Admin.KitLive do
     assign_form(socket, kit, Kits.change_kit(kit))
   end
 
-  defp apply_action(socket, :index, _params), do: assign(socket, form: nil, kit: nil)
+  defp apply_action(socket, :index, _params) do
+    assign(socket, form: nil, kit: nil, candidates: [], fetch_error: nil)
+  end
+
+  ## Bilder aus dem Shop holen
 
   @impl true
+  def handle_event("fetch_images", %{"product_url" => url}, socket) do
+    # Der Abruf dauert; die Oberflaeche soll derweil nicht einfrieren.
+    send(self(), {:fetch_images, url})
+
+    {:noreply, assign(socket, fetching?: true, fetch_error: nil, candidates: [])}
+  end
+
+  @doc """
+  Bild anklicken: der erste Klick macht es zum Freisteller, jeder weitere hängt
+  ein Model-Bild an. Nochmal klicken nimmt es wieder raus.
+
+  Bewusst keine Automatik: welches Bild der Freisteller ist, sieht man in zwei
+  Sekunden und kein Skript zuverlässig.
+  """
+  def handle_event("toggle_image", %{"url" => url}, socket) do
+    gewaehlt = picked(socket)
+
+    gewaehlt =
+      if url in gewaehlt, do: List.delete(gewaehlt, url), else: gewaehlt ++ [url]
+
+    {:noreply, apply_picked(socket, gewaehlt)}
+  end
+
+  def handle_event("clear_images", _params, socket) do
+    {:noreply, apply_picked(socket, [])}
+  end
+
   def handle_event("select_season", %{"season" => season}, socket) do
     {:noreply, socket |> assign(season: season) |> load_rows()}
   end
@@ -81,6 +124,60 @@ defmodule KitrankWeb.Admin.KitLive do
     {:ok, _} = id |> Kits.get_kit!() |> Kits.delete_kit()
 
     {:noreply, socket |> put_flash(:info, "Trikot gelöscht.") |> load_rows()}
+  end
+
+  @impl true
+  def handle_info({:fetch_images, url}, socket) do
+    case @images.fetch(url) do
+      {:ok, %{images: []}} ->
+        {:noreply,
+         assign(socket,
+           fetching?: false,
+           fetch_error: "Auf der Seite waren keine Bilder zu finden."
+         )}
+
+      {:ok, ergebnis} ->
+        # Den Produktlink gleich als Shop-Deep-Link uebernehmen – dafuer ist er da.
+        attrs = Map.put(current_attrs(socket), "source_shop_url", ergebnis.source_url)
+
+        {:noreply,
+         socket
+         |> assign(fetching?: false, candidates: ergebnis.images)
+         |> assign_form(socket.assigns.kit, Kits.change_kit(socket.assigns.kit, attrs))}
+
+      {:error, grund} ->
+        {:noreply, assign(socket, fetching?: false, fetch_error: ProductImages.message(grund))}
+    end
+  end
+
+  # Die aktuell gewaehlten Bilder in Klick-Reihenfolge: Freisteller zuerst.
+  defp picked(socket), do: picked_urls(socket.assigns.preview)
+
+  defp picked_urls(preview) do
+    Enum.reject([preview.cutout_url | preview.model_image_urls || []], &is_nil/1)
+  end
+
+  defp apply_picked(socket, urls) do
+    attrs =
+      socket
+      |> current_attrs()
+      |> Map.put("cutout_url", List.first(urls))
+      |> Map.put("model_image_urls", Enum.drop(urls, 1))
+
+    assign_form(socket, socket.assigns.kit, Kits.change_kit(socket.assigns.kit, attrs))
+  end
+
+  defp current_attrs(socket) do
+    p = socket.assigns.preview
+
+    %{
+      "team_id" => p.team_id,
+      "season" => p.season,
+      "kit_type" => p.kit_type,
+      "cutout_url" => p.cutout_url,
+      "model_image_urls" => p.model_image_urls || [],
+      "source_shop_url" => p.source_shop_url
+    }
   end
 
   # Model-Bilder kommen als Textfeld mit einer URL pro Zeile herein – das ist
@@ -219,6 +316,13 @@ defmodule KitrankWeb.Admin.KitLive do
             </div>
           </div>
 
+          <.image_picker
+            candidates={@candidates}
+            picked={picked_urls(@preview)}
+            fetching?={@fetching?}
+            error={@fetch_error}
+          />
+
           <div class="mt-4 space-y-4">
             <.input field={@form[:cutout_url]} label="Cutout-Bild" placeholder="https://…" />
 
@@ -247,6 +351,99 @@ defmodule KitrankWeb.Admin.KitLive do
         </.form>
       </.form_modal>
     </Layouts.app>
+    """
+  end
+
+  attr :candidates, :list, required: true
+  attr :picked, :list, required: true
+  attr :fetching?, :boolean, required: true
+  attr :error, :string, default: nil
+
+  # Produktlink rein, Bilder raus, anklicken. Die Reihenfolge der Klicks
+  # bestimmt die Rollen: erstes Bild ist der Freisteller, die naechsten sind
+  # Model-Bilder.
+  defp image_picker(assigns) do
+    ~H"""
+    <div class="mt-5 rounded-lg border border-line bg-sunk p-4">
+      <h3 class="kr-eyebrow">Bilder aus dem Shop holen</h3>
+      <p class="mt-1 text-xs text-soft">
+        Produktlink einfügen — danach anklicken, welche Bilder du willst.
+      </p>
+
+      <%!-- Eigenes Formular, damit Enter hier nicht das Trikot speichert. --%>
+      <div class="mt-3 flex gap-2">
+        <input
+          type="url"
+          id="product_url"
+          name="product_url"
+          placeholder="https://shop.hsv.de/…/products/14284"
+          phx-keydown={JS.push("fetch_images")}
+          phx-key="Enter"
+          class="min-w-0 flex-1 rounded-md border border-line bg-panel px-3 py-2 font-mono text-xs"
+        />
+        <button
+          type="button"
+          phx-click={JS.push("fetch_images")}
+          phx-disable-with="Holt …"
+          disabled={@fetching?}
+          class="shrink-0 rounded-md border border-ink px-3 py-2 text-xs font-semibold transition hover:bg-panel disabled:opacity-40"
+        >
+          {if @fetching?, do: "Holt …", else: "Bilder holen"}
+        </button>
+      </div>
+
+      <p :if={@error} class="mt-2 text-xs text-red-600">{@error}</p>
+
+      <div :if={@candidates != []} class="mt-4">
+        <div class="flex items-baseline gap-2">
+          <p class="text-xs text-soft">
+            {length(@candidates)} Bilder gefunden, {length(@picked)} gewählt
+          </p>
+          <button
+            :if={@picked != []}
+            type="button"
+            phx-click="clear_images"
+            class="ml-auto text-[11px] text-soft underline-offset-4 hover:text-ink hover:underline"
+          >
+            Auswahl leeren
+          </button>
+        </div>
+
+        <ul class="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-5">
+          <li :for={url <- @candidates}>
+            <button
+              type="button"
+              phx-click="toggle_image"
+              phx-value-url={url}
+              aria-pressed={to_string(url in @picked)}
+              class={[
+                "relative block aspect-square w-full overflow-hidden rounded-md border bg-white transition",
+                url in @picked && "border-ink ring-2 ring-ink",
+                url not in @picked && "border-line hover:border-ink/40"
+              ]}
+            >
+              <img src={url} alt="" loading="lazy" class="h-full w-full object-contain p-1" />
+              <span
+                :if={url in @picked}
+                class="absolute left-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-ink font-mono text-[10px] font-semibold text-chalk"
+              >
+                {Enum.find_index(@picked, &(&1 == url)) + 1}
+              </span>
+            </button>
+            <p
+              :if={url in @picked}
+              class="mt-1 text-center font-mono text-[10px] text-soft"
+            >
+              {if Enum.find_index(@picked, &(&1 == url)) == 0, do: "Freisteller", else: "Model"}
+            </p>
+          </li>
+        </ul>
+
+        <p class="mt-3 text-xs text-soft">
+          Der erste Klick macht das Bild zum Freisteller, jeder weitere hängt ein Model-Bild an.
+        </p>
+      </div>
+    </div>
     """
   end
 end

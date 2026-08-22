@@ -1,5 +1,5 @@
 {
-  "_hinweis": "Stammdaten einer Saison. Einspielen mit '/app/bin/kitrank eval \"Kitrank.Release.import_teams()\"' bzw. lokal 'mix kitrank.import'. Der Import ist idempotent: mehrfaches Ausfuehren aendert nichts doppelt. Fuer eine neue Saison diese Datei kopieren, 'season' hochsetzen und Auf-/Abstiege eintragen. Vereinsfarbe ist die erste Markenfarbe; Trikotbilder und Shop-Links gehoeren nicht hierher, die pflegst du ueber /admin.",
+  "_hinweis": "Stammdaten einer Saison. Einspielen mit '/app/bin/kitrank eval \"Kitrank.Release.import_teams()\"' bzw. lokal 'mix kitrank.import'. Der Import ist idempotent. Fuer eine neue Saison diese Datei kopieren, 'season' hochsetzen und Auf-/Abstiege eintragen. 'kit_types' legt pro Verein leere Trikots an, damit die Uebersicht sie zeichnen kann; Bilder traegst du ueber /admin nach. Ein gesetzter 'shop_url' ueberschreibt den im Admin gepflegten Wert, null laesst ihn in Ruhe.",
   "season": "2026/27",
   "sport": {
     "name": "Fußball",
@@ -15,109 +15,109 @@
           "name": "FC Bayern München",
           "short_code": "FCB",
           "primary_color": "#ED0038",
-          "shop_url": null
+          "shop_url": "https://fcbayern.com/store/de-de"
         },
         {
           "name": "Bayer 04 Leverkusen",
           "short_code": "B04",
           "primary_color": "#E32221",
-          "shop_url": null
+          "shop_url": "https://www.bayer04.de/de-de/shop/"
         },
         {
           "name": "Eintracht Frankfurt",
           "short_code": "SGE",
           "primary_color": "#E1020C",
-          "shop_url": null
+          "shop_url": "https://stores.eintracht.de/fanshop/"
         },
         {
           "name": "Borussia Dortmund",
           "short_code": "BVB",
           "primary_color": "#FFD900",
-          "shop_url": null
+          "shop_url": "https://shop.bvb.de/"
         },
         {
           "name": "SC Freiburg",
           "short_code": "SCF",
           "primary_color": "#000000",
-          "shop_url": null
+          "shop_url": "https://shop.scfreiburg.com/"
         },
         {
           "name": "Hamburger SV",
           "short_code": "HSV",
           "primary_color": "#1E5CB3",
-          "shop_url": null
+          "shop_url": "https://shop.hsv.de/"
         },
         {
           "name": "RB Leipzig",
           "short_code": "RBL",
           "primary_color": "#DD0741",
-          "shop_url": null
+          "shop_url": "https://www.redbullshop.com/de-int/rb-leipzig/"
         },
         {
           "name": "FC Augsburg",
           "short_code": "FCA",
           "primary_color": "#BA3733",
-          "shop_url": null
+          "shop_url": "https://shop.fcaugsburg.de/"
         },
         {
           "name": "1. FC Union Berlin",
           "short_code": "FCU",
           "primary_color": "#E30613",
-          "shop_url": null
+          "shop_url": "https://fanartikel.union-zeughaus.de/"
         },
         {
           "name": "SV Werder Bremen",
           "short_code": "SVW",
           "primary_color": "#1D9053",
-          "shop_url": null
+          "shop_url": "https://shop.werder.de/"
         },
         {
           "name": "1. FC Köln",
           "short_code": "KOE",
           "primary_color": "#E20613",
-          "shop_url": null
+          "shop_url": "https://fc.de/fanshop"
         },
         {
           "name": "1. FSV Mainz 05",
           "short_code": "M05",
           "primary_color": "#AE0F0A",
-          "shop_url": null
+          "shop_url": "https://shop.mainz05.de/"
         },
         {
           "name": "Borussia Mönchengladbach",
           "short_code": "BMG",
           "primary_color": "#000000",
-          "shop_url": null
+          "shop_url": "https://shop.borussia.de/de-de"
         },
         {
           "name": "VfB Stuttgart",
           "short_code": "VFB",
           "primary_color": "#D40723",
-          "shop_url": null
+          "shop_url": "https://shop.vfb.de/de"
         },
         {
           "name": "TSG 1899 Hoffenheim",
           "short_code": "TSG",
           "primary_color": "#1961B5",
-          "shop_url": null
+          "shop_url": "https://shop.tsg-hoffenheim.de/de/"
         },
         {
           "name": "FC Schalke 04",
           "short_code": "S04",
           "primary_color": "#004D9E",
-          "shop_url": null
+          "shop_url": "https://shop.schalke04.de/"
         },
         {
           "name": "SV Elversberg",
           "short_code": "SVE",
           "primary_color": "#005CA9",
-          "shop_url": null
+          "shop_url": "https://www.merchandising-onlineshop.com/sv07elversberg/"
         },
         {
           "name": "SC Paderborn 07",
           "short_code": "SCP",
           "primary_color": "#002D5C",
-          "shop_url": null
+          "shop_url": "https://www.merchandising-onlineshop.com/scp07-shop/"
         }
       ]
     },
@@ -130,111 +130,116 @@
           "name": "Hertha BSC",
           "short_code": "BSC",
           "primary_color": "#004D9E",
-          "shop_url": null
+          "shop_url": "https://shop.herthabsc.com/"
         },
         {
           "name": "Arminia Bielefeld",
           "short_code": "DSC",
           "primary_color": "#000000",
-          "shop_url": null
+          "shop_url": "https://www.merchandising-onlineshop.com/arminia-bielefeld/"
         },
         {
           "name": "VfL Bochum",
           "short_code": "BOC",
           "primary_color": "#005CA5",
-          "shop_url": null
+          "shop_url": "https://www.merchandising-onlineshop.com/vflbochum1848/"
         },
         {
           "name": "Eintracht Braunschweig",
           "short_code": "EBS",
           "primary_color": "#FFD400",
-          "shop_url": null
+          "shop_url": "https://www.merchandising-onlineshop.com/eintracht-braunschweig/"
         },
         {
           "name": "Energie Cottbus",
           "short_code": "FCE",
           "primary_color": "#C8102E",
-          "shop_url": null
+          "shop_url": "https://energiefanshop.de/"
         },
         {
           "name": "SV Darmstadt 98",
           "short_code": "D98",
           "primary_color": "#0057A8",
-          "shop_url": null
+          "shop_url": "https://shop.sv98.de/"
         },
         {
           "name": "Dynamo Dresden",
           "short_code": "SGD",
           "primary_color": "#F3AC26",
-          "shop_url": null
+          "shop_url": "https://www.dynamo-fanshop.de/"
         },
         {
           "name": "SpVgg Greuther Fürth",
           "short_code": "SGF",
           "primary_color": "#007A3D",
-          "shop_url": null
+          "shop_url": "https://shop.sgf1903.de/"
         },
         {
           "name": "Hannover 96",
           "short_code": "H96",
           "primary_color": "#000000",
-          "shop_url": null
+          "shop_url": "https://www.merchandising-onlineshop.com/hannover96/"
         },
         {
           "name": "1. FC Heidenheim",
           "short_code": "FCH",
           "primary_color": "#E2001A",
-          "shop_url": null
+          "shop_url": "https://www.merchandising-onlineshop.com/fcheidenheim/"
         },
         {
           "name": "1. FC Kaiserslautern",
           "short_code": "FCK",
           "primary_color": "#DA1116",
-          "shop_url": null
+          "shop_url": "https://shop.fck.de/"
         },
         {
           "name": "Karlsruher SC",
           "short_code": "KSC",
           "primary_color": "#0057A5",
-          "shop_url": null
+          "shop_url": "https://fanshop.ksc.de/"
         },
         {
           "name": "Holstein Kiel",
           "short_code": "KSV",
           "primary_color": "#0F5787",
-          "shop_url": null
+          "shop_url": "https://www.holstein-fanshop.de/"
         },
         {
           "name": "1. FC Magdeburg",
           "short_code": "FCM",
           "primary_color": "#0068B2",
-          "shop_url": null
+          "shop_url": "https://www.merchandising-onlineshop.com/fc-magdeburg/"
         },
         {
           "name": "1. FC Nürnberg",
           "short_code": "FCN",
           "primary_color": "#7F0910",
-          "shop_url": null
+          "shop_url": "https://www.merchandising-onlineshop.com/fcn/"
         },
         {
           "name": "VfL Osnabrück",
           "short_code": "VFL",
           "primary_color": "#6E2585",
-          "shop_url": null
+          "shop_url": "https://www.merchandising-onlineshop.com/vflosnabrueck/"
         },
         {
           "name": "FC St. Pauli",
           "short_code": "STP",
           "primary_color": "#E30613",
-          "shop_url": null
+          "shop_url": "https://www.fcsp-shop.com/"
         },
         {
           "name": "VfL Wolfsburg",
           "short_code": "WOB",
           "primary_color": "#09633D",
-          "shop_url": null
+          "shop_url": "https://shop.vfl-wolfsburg.de/"
         }
       ]
     }
+  ],
+  "kit_types": [
+    "home",
+    "away",
+    "third"
   ]
 }

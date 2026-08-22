@@ -1,0 +1,138 @@
+defmodule KitrankWeb.Admin.ImagePickerTest do
+  @moduledoc """
+  Produktlink einfügen, Bilder anklicken. Die Reihenfolge der Klicks bestimmt,
+  welches Bild der Freisteller ist — das prüft dieser Test, weil es der einzige
+  Teil ist, den kein Skript für dich entscheidet.
+  """
+  use KitrankWeb.ConnCase, async: true
+
+  import Phoenix.LiveViewTest
+  import Kitrank.AccountsFixtures
+  import Kitrank.KitsFixtures
+
+  alias Kitrank.Kits
+
+  # Dieselben Bilder, die der Stub liefert.
+  @a "https://example.com/a.jpg"
+  @b "https://example.com/b.jpg"
+  @c "https://example.com/c.jpg"
+
+  test "der Stub liefert genau diese Bilder" do
+    assert Kitrank.Kits.ProductImagesStub.images() == [@a, @b, @c]
+  end
+
+  setup %{conn: conn} do
+    %{teams: [team], season: season} =
+      league_fixture(season: Kits.current_season(), team_count: 1, kit_types: [])
+
+    kit = kit_fixture(team_id: team.id, season: season, kit_type: "home")
+
+    conn = log_in_user(conn, admin_fixture())
+    {:ok, view, _html} = live(conn, ~p"/admin/trikots/#{kit.id}")
+    hole_bilder(view, "https://stub/produkt/1")
+
+    %{view: view, kit: kit}
+  end
+
+  # Der Abruf laeuft ueber eine Nachricht an den LiveView, damit die
+  # Oberflaeche nicht einfriert – im Test also erst ausloesen, dann abwarten.
+  defp hole_bilder(view, url) do
+    render_hook(view, "fetch_images", %{"product_url" => url})
+    render(view)
+  end
+
+  defp klick(view, url) do
+    view
+    |> element(~s{button[phx-click="toggle_image"][phx-value-url="#{url}"]})
+    |> render_click()
+  end
+
+  test "zeigt die Kandidaten zum Anklicken", %{view: view} do
+    html = render(view)
+
+    assert html =~ "3 Bilder gefunden, 0 gewählt"
+    assert html =~ @a
+    assert html =~ ~s{phx-click="toggle_image"}
+  end
+
+  test "erster Klick wird der Freisteller, weitere werden Model-Bilder", %{view: view} do
+    html = klick(view, @b)
+    assert html =~ "Freisteller"
+    assert html =~ "3 Bilder gefunden, 1 gewählt"
+
+    html = klick(view, @a)
+    assert html =~ "Model"
+    assert html =~ "3 Bilder gefunden, 2 gewählt"
+  end
+
+  test "speichert in der Klick-Reihenfolge", %{view: view, kit: kit} do
+    klick(view, @c)
+    klick(view, @a)
+    klick(view, @b)
+
+    view |> form("#kit-form") |> render_submit()
+
+    gespeichert = Kits.get_kit!(kit.id)
+    assert gespeichert.cutout_url == @c
+    assert gespeichert.model_image_urls == [@a, @b]
+  end
+
+  test "nochmal klicken nimmt das Bild wieder raus", %{view: view} do
+    klick(view, @a)
+    klick(view, @b)
+    html = klick(view, @a)
+
+    assert html =~ "3 Bilder gefunden, 1 gewählt"
+    # Jetzt ist b der Freisteller, weil a weg ist.
+    assert html =~ "Freisteller"
+  end
+
+  test "'Auswahl leeren' setzt alles zurück", %{view: view} do
+    klick(view, @a)
+    klick(view, @b)
+
+    html = view |> element(~s{button[phx-click="clear_images"]}) |> render_click()
+
+    assert html =~ "3 Bilder gefunden, 0 gewählt"
+  end
+
+  test "übernimmt den Produktlink gleich als Shop-Deep-Link", %{view: view, kit: kit} do
+    klick(view, @a)
+    view |> form("#kit-form") |> render_submit()
+
+    assert Kits.get_kit!(kit.id).source_shop_url == "https://stub/produkt/1"
+  end
+
+  test "eine bestehende Auswahl ist beim Öffnen markiert", %{conn: conn} do
+    %{teams: [team], season: season} =
+      league_fixture(season: Kits.current_season(), team_count: 1, kit_types: [])
+
+    kit =
+      kit_fixture(
+        team_id: team.id,
+        season: season,
+        kit_type: "away",
+        cutout_url: @a,
+        model_image_urls: [@b]
+      )
+
+    conn = log_in_user(conn, admin_fixture())
+    {:ok, view, _html} = live(conn, ~p"/admin/trikots/#{kit.id}")
+
+    assert hole_bilder(view, "https://stub/produkt/2") =~ "2 gewählt"
+  end
+
+  describe "Fehlerfälle" do
+    test "meldet, wenn der Shop den Abruf ablehnt", %{view: view} do
+      assert hole_bilder(view, "https://stub/blockiert") =~ "lässt automatisierte Abrufe nicht zu"
+    end
+
+    test "meldet eine unbrauchbare Adresse", %{view: view} do
+      assert hole_bilder(view, "kein-link") =~ "http://"
+    end
+
+    test "meldet eine Seite ohne Bilder", %{view: view} do
+      assert hole_bilder(view, "https://stub/leer") =~ "keine Bilder zu finden"
+    end
+  end
+end

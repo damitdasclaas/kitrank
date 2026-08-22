@@ -29,6 +29,9 @@ config :kitrank, KitrankWeb.Endpoint,
 # KitrankWeb.RegistrationGateTest ausdruecklich fuer beide Zustaende.
 config :kitrank, :registration_open, true
 
+# Kein echter Shop-Abruf im Test.
+config :kitrank, :product_images, Kitrank.Kits.ProductImagesStub
+
 # Mails werden im Test nur gesammelt, nicht verschickt.
 config :kitrank, Kitrank.Mailer, adapter: Swoosh.Adapters.Test
 config :swoosh, :api_client, false

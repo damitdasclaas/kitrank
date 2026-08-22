@@ -69,10 +69,20 @@ Drei Dinge, die er absichtlich **nicht** tut:
 
 ### Trikots: über `/admin`
 
-Bilder und Shop-Links stehen bewusst nicht in der Import-Datei. Sie ändern sich
-laufend, sehen bei jedem Verein anders aus und brauchen ein Auge: welches Bild
-der Freisteller ist und welches eine Model-Aufnahme, entscheidet kein Skript
-zuverlässig.
+Bilder stehen bewusst nicht in der Import-Datei. Sie ändern sich laufend, sehen
+bei jedem Verein anders aus und brauchen ein Auge: welches Bild der Freisteller
+ist und welches eine Model-Aufnahme, entscheidet kein Skript zuverlässig.
+
+Was das Tippen abnimmt: im Trikot-Formular **Produktlink einfügen → „Bilder
+holen"**. Der Server lädt die Seite und sammelt alle Bildkandidaten
+(`og:image`, JSON-LD, `<img>` und `srcset`), entdoppelt Größenvarianten und
+zeigt sie als Raster. Dann klickst du: **erster Klick = Freisteller, jeder
+weitere = Model-Bild.** Der Produktlink wird gleich als Shop-Deep-Link
+übernommen.
+
+Wo ein Shop automatisierte Abrufe ablehnt — Bayern etwa antwortet mit 403 —
+sagt die Oberfläche das und du fügst die Bild-URLs von Hand ein. Der Schutz
+wird nicht umgangen.
 
 `/admin` hat CRUD für alles. Das Dashboard zeigt, was noch fehlt — Trikots ohne
 Bild, ohne Shop-Link, und ob für die Saison überhaupt Zuordnungen existieren.

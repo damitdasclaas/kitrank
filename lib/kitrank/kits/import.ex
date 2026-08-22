@@ -8,16 +8,21 @@ defmodule Kitrank.Kits.Import do
   sich für die nächste Saison kopieren, und Auf-/Abstiege sind dann drei
   geänderte Zeilen statt einer Klickstrecke.
 
-  Trikots gehören bewusst **nicht** hierher. Bilder und Shop-Links ändern sich
-  laufend, unterscheiden sich pro Verein und brauchen ein Auge — die pflegst du
-  über `/admin`.
+  **Trikot-Bilder** gehören bewusst nicht hierher: sie ändern sich laufend,
+  sehen bei jedem Verein anders aus und brauchen ein Auge — die pflegst du über
+  `/admin`.
+
+  Die leeren **Trikot-Datensätze** legt der Import dagegen an (`kit_types` in
+  der Datei). Ohne sie hätte ein frisch importierter Verein gar kein Trikot,
+  und die Übersicht könnte auch nichts zeichnen — die gezeichnete Darstellung
+  ist der Ersatz für ein Trikot ohne Bild, nicht für einen Verein ohne Trikot.
 
   Der Import ist idempotent: mehrfaches Ausführen legt nichts doppelt an und
   überschreibt nur, was sich geändert hat.
   """
 
   alias Kitrank.Kits
-  alias Kitrank.Kits.{Competition, Team, TeamSeason}
+  alias Kitrank.Kits.{Competition, Kit, Team, TeamSeason}
   alias Kitrank.Repo
 
   @default_file "data/teams_2026_27.json"
@@ -48,8 +53,9 @@ defmodule Kitrank.Kits.Import do
     end
   end
 
-  defp import_data(%{"season" => season, "sport" => sport, "competitions" => competitions}) do
+  defp import_data(%{"season" => season, "sport" => sport, "competitions" => competitions} = data) do
     sport = upsert_sport(sport)
+    kit_types = Map.get(data, "kit_types", [])
 
     bericht =
       Enum.reduce(competitions, blank_report(season), fn attrs, bericht ->
@@ -62,6 +68,7 @@ defmodule Kitrank.Kits.Import do
           bericht
           |> count(:teams, team_status)
           |> count(:zuordnungen, season_status)
+          |> Map.update!(:trikots, &(&1 + ensure_kits(team, season, kit_types)))
         end)
         |> Map.update!(:ligen, &(&1 + 1))
       end)
@@ -83,8 +90,24 @@ defmodule Kitrank.Kits.Import do
       ligen: 0,
       teams: %{neu: 0, geaendert: 0, unveraendert: 0},
       zuordnungen: %{neu: 0, geaendert: 0, unveraendert: 0},
+      trikots: 0,
       entfernt: 0
     }
+  end
+
+  # Legt fehlende Trikot-Datensaetze an und ruehrt vorhandene nicht an – sonst
+  # waeren mit jedem Import die im Admin gepflegten Bilder weg.
+  defp ensure_kits(team, season, kit_types) do
+    Enum.count(kit_types, fn kit_type ->
+      case Repo.get_by(Kit, team_id: team.id, season: season, kit_type: kit_type) do
+        nil ->
+          insert!(Kits.create_kit(%{team_id: team.id, season: season, kit_type: kit_type}))
+          true
+
+        _vorhanden ->
+          false
+      end
+    end)
   end
 
   defp count(bericht, schluessel, status) do
@@ -188,9 +211,10 @@ defmodule Kitrank.Kits.Import do
       Ligen:       #{b.ligen}
       Vereine:     #{b.teams.neu} neu, #{b.teams.geaendert} geändert, #{b.teams.unveraendert} unverändert
       Zuordnungen: #{b.zuordnungen.neu} neu, #{b.zuordnungen.geaendert} geändert, #{b.zuordnungen.unveraendert} unverändert
+      Trikots:     #{b.trikots} leere angelegt (vorhandene unangetastet)
       Entfernt:    #{b.entfernt} Zuordnung(en), die nicht mehr in der Datei stehen
 
-    Trikots pflegst du über /admin — die stehen absichtlich nicht in der Datei.
+    Bilder und Shop-Deep-Links pflegst du über /admin.
     """
   end
 end
