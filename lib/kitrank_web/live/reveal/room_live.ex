@@ -44,10 +44,23 @@ defmodule KitrankWeb.Reveal.RoomLive do
            me: nil,
            join_error: nil,
            online: %{},
-           board_open?: true
+           board_open?: true,
+           scope_label: scope_label(room)
          )
          |> load_room()}
     end
+  end
+
+  # Kurzform des Ausschnitts fuer den Kopf: "Bundesliga · Heim, Auswaerts".
+  defp scope_label(room) do
+    ligen =
+      Kitrank.Kits.list_competitions()
+      |> Enum.filter(&(&1.id in room.competition_ids))
+      |> Enum.map_join(", ", & &1.name)
+
+    typen = Enum.map_join(room.kit_types, ", ", &Kitrank.Kits.Kit.label/1)
+
+    [ligen, typen] |> Enum.reject(&(&1 == "")) |> Enum.join(" · ")
   end
 
   ## Host-Erkennung
@@ -233,7 +246,12 @@ defmodule KitrankWeb.Reveal.RoomLive do
       <div id="claim-host" phx-hook="ClaimHost" data-code={@room.room_code} hidden></div>
 
       <div class="mx-auto max-w-[1500px] px-4 py-8 sm:px-6 lg:px-8">
-        <.room_header room={@room} host?={@host?} online={map_size(@online)} />
+        <.room_header
+          room={@room}
+          host?={@host?}
+          online={map_size(@online)}
+          scope={@scope_label}
+        />
 
         <.join_panel
           :if={!@me && @room.status == "waiting"}

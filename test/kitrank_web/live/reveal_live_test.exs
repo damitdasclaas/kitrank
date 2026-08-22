@@ -34,6 +34,11 @@ defmodule KitrankWeb.RevealLiveTest do
 
   describe "Raum anlegen" do
     test "zeigt den Code und legt das Host-Token im Browser ab", %{conn: conn} do
+      # Ohne Liga gibt es keinen Ausschnitt zu waehlen – und ohne Ausschnitt
+      # laesst die Oberflaeche keinen Raum anlegen.
+      %{competition: competition} =
+        league_fixture(season: Kits.current_season(), team_count: 1, kit_types: ["home"])
+
       {:ok, view, _html} = live(conn, ~p"/reveal/new")
 
       html =
@@ -44,6 +49,8 @@ defmodule KitrankWeb.RevealLiveTest do
       assert html =~ ~s(phx-hook="RememberHost")
       assert [room] = Kitrank.Repo.all(Reveal.Room)
       assert room.max_participants == 4
+      assert room.competition_ids == [competition.id]
+      assert room.kit_types == ["home"]
       assert html =~ room.room_code
       assert html =~ ~s(data-host-token="#{room.host_token}")
     end

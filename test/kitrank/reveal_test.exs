@@ -41,6 +41,59 @@ defmodule Kitrank.RevealTest do
     end
   end
 
+  describe "Ausschnitt des Raums" do
+    setup do
+      erste = competition_fixture(name: "Erste", tier: 1)
+      zweite = competition_fixture(name: "Zweite", tier: 2)
+
+      %{kits: erste_kits} =
+        league_fixture(competition: erste, team_count: 2, kit_types: ["home", "away"])
+
+      %{kits: zweite_kits} =
+        league_fixture(competition: zweite, team_count: 2, kit_types: ["home", "away"])
+
+      %{erste: erste, zweite: zweite, erste_kits: erste_kits, zweite_kits: zweite_kits}
+    end
+
+    test "leere Angaben schränken nicht ein", %{erste_kits: a, zweite_kits: b} do
+      room = room_fixture()
+      assert MapSet.size(Reveal.scope_kit_ids(room)) == length(a) + length(b)
+    end
+
+    test "grenzt auf Liga und Kit-Typ ein", %{erste: erste} do
+      {:ok, room} =
+        Reveal.create_room(%{competition_ids: [erste.id], kit_types: ["home"]})
+
+      kits = Reveal.scope_kit_ids(room)
+      assert MapSet.size(kits) == 2
+    end
+
+    test "zählt nur Trikots aus dem Ausschnitt und nummeriert sie neu", %{
+      erste: erste,
+      erste_kits: erste_kits,
+      zweite_kits: zweite_kits
+    } do
+      {:ok, room} = Reveal.create_room(%{competition_ids: [erste.id], kit_types: ["home"]})
+
+      # Eine Rangliste, die quer durch alles geht.
+      ranking = ranking_with_kits_fixture(zweite_kits ++ erste_kits)
+      {:ok, _teilnehmer} = Reveal.join(room, ranking.share_slug, "Tom")
+
+      assert length(Reveal.scoped_entries(room, ranking.id)) == 2
+
+      {:ok, room} = Reveal.start(room)
+      # Startrang ist die Zahl der Trikots im Ausschnitt, nicht die Listenlänge.
+      assert room.current_step == 2
+    end
+
+    test "meldet die Abdeckung", %{erste: erste, erste_kits: erste_kits} do
+      {:ok, room} = Reveal.create_room(%{competition_ids: [erste.id], kit_types: ["home"]})
+      ranking = ranking_with_kits_fixture(Enum.take(erste_kits, 1))
+
+      assert Reveal.coverage(room, ranking.id) == {1, 2}
+    end
+  end
+
   describe "fetch_room/1" do
     test "findet den Raum unabhängig von Groß-/Kleinschreibung und Leerzeichen" do
       room = room_fixture()

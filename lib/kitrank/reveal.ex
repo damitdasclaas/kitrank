@@ -13,6 +13,7 @@ defmodule Kitrank.Reveal do
 
   import Ecto.Query, warn: false
 
+  alias Kitrank.Kits.{Kit, TeamSeason}
   alias Kitrank.Repo
   alias Kitrank.Rankings
   alias Kitrank.Rankings.Ranking
@@ -20,6 +21,65 @@ defmodule Kitrank.Reveal do
 
   @pubsub Kitrank.PubSub
   @max_code_attempts 5
+
+  ## Ausschnitt des Raums
+
+  @doc """
+  Die Trikots, um die es in diesem Raum geht – Saison, Ligen und Kit-Typen wie
+  beim Anlegen festgelegt.
+  """
+  def scope_kit_ids(%Room{} = room) do
+    from(k in Kit,
+      join: ts in TeamSeason,
+      on: ts.team_id == k.team_id and ts.season == k.season,
+      where: k.season == ^room.season,
+      select: k.id
+    )
+    |> restrict(:competition_id, room.competition_ids)
+    |> restrict(:kit_type, room.kit_types)
+    |> Repo.all()
+    |> MapSet.new()
+  end
+
+  # Eine leere Liste schraenkt nicht ein.
+  defp restrict(query, _field, []), do: query
+
+  defp restrict(query, :competition_id, ids),
+    do: from([k, ts] in query, where: ts.competition_id in ^ids)
+
+  defp restrict(query, :kit_type, types), do: from(k in query, where: k.kit_type in ^types)
+
+  @doc "Wie viele Trikots der Ausschnitt umfasst."
+  def scope_size(%Room{} = room), do: room |> scope_kit_ids() |> MapSet.size()
+
+  @doc """
+  Die Einträge einer Rangliste, auf den Ausschnitt gefiltert und neu
+  durchnummeriert.
+
+  Das Umnummerieren ist der Kern: wer im Ausschnitt nur jedes zweite Trikot
+  bewertet hat, soll trotzdem einen lückenlosen Platz 1, 2, 3 haben – sonst
+  entstünden Runden, in denen niemand etwas zeigt.
+  """
+  def scoped_entries(%Room{} = room, ranking_id) do
+    entries_in_scope(scope_kit_ids(room), ranking_id)
+  end
+
+  defp entries_in_scope(scope, ranking_id) do
+    ranking_id
+    |> Rankings.list_entries()
+    |> Enum.filter(&MapSet.member?(scope, &1.kit_id))
+  end
+
+  @doc """
+  Wie weit eine Rangliste den Ausschnitt abdeckt: `{abgedeckt, gesamt}`.
+
+  Wird beim Beitritt und in der Lobby gezeigt – wer nur drei von vierzig
+  Trikots bewertet hat, soll das sehen, bevor es losgeht.
+  """
+  def coverage(%Room{} = room, ranking_id) do
+    scope = scope_kit_ids(room)
+    {length(entries_in_scope(scope, ranking_id)), MapSet.size(scope)}
+  end
 
   ## Räume
 
@@ -236,9 +296,11 @@ defmodule Kitrank.Reveal do
   end
 
   defp starting_step(%Room{} = room) do
+    scope = scope_kit_ids(room)
+
     room
     |> list_participants()
-    |> Enum.map(&Rankings.count_entries(&1.ranking_id))
+    |> Enum.map(&length(entries_in_scope(scope, &1.ranking_id)))
     |> Enum.max(fn -> 0 end)
   end
 
@@ -256,10 +318,12 @@ defmodule Kitrank.Reveal do
   def step_entries(%Room{current_step: nil}), do: []
 
   def step_entries(%Room{current_step: step} = room) do
+    scope = scope_kit_ids(room)
+
     room
     |> list_participants()
     |> Enum.map(fn participant ->
-      entry = Rankings.get_entry_at(participant.ranking_id, step)
+      entry = entries_in_scope(scope, participant.ranking_id) |> Enum.at(step - 1)
 
       %{
         participant_id: participant.id,
@@ -316,14 +380,17 @@ defmodule Kitrank.Reveal do
 
   def revealed_board(%Room{current_step: current} = room) do
     participants = list_participants(room)
+    scope = scope_kit_ids(room)
 
-    # Einmal alle Einträge laden statt pro Zelle zu fragen.
+    # Einmal alle Einträge laden statt pro Zelle zu fragen. Die Position ist
+    # die im Ausschnitt, nicht die in der ganzen Rangliste.
     by_participant =
       Map.new(participants, fn participant ->
         entries =
-          participant.ranking_id
-          |> Rankings.list_entries()
-          |> Map.new(&{&1.position, &1})
+          scope
+          |> entries_in_scope(participant.ranking_id)
+          |> Enum.with_index(1)
+          |> Map.new(fn {entry, position} -> {position, entry} end)
 
         {participant.id, entries}
       end)
@@ -373,28 +440,21 @@ defmodule Kitrank.Reveal do
   """
   def ranking_fit(%Room{} = room) do
     participants = list_participants(room)
+    scope = scope_kit_ids(room)
+    scope_size = MapSet.size(scope)
 
-    kit_sets =
+    lengths =
       Enum.map(participants, fn participant ->
-        participant.ranking_id
-        |> Rankings.list_entries()
-        |> MapSet.new(& &1.kit_id)
+        {participant.display_name, length(entries_in_scope(scope, participant.ranking_id))}
       end)
 
-    lengths = Enum.map(participants, &{&1.display_name, Rankings.count_entries(&1.ranking_id)})
     counts = Enum.map(lengths, &elem(&1, 1))
-
-    shared =
-      case kit_sets do
-        [] -> 0
-        [first | rest] -> rest |> Enum.reduce(first, &MapSet.intersection/2) |> MapSet.size()
-      end
 
     %{
       lengths: lengths,
       shortest: Enum.min(counts, fn -> 0 end),
       longest: Enum.max(counts, fn -> 0 end),
-      shared: shared
+      scope_size: scope_size
     }
   end
 

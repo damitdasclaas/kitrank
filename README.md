@@ -171,6 +171,17 @@ Raum erstellen. `/reveal/:room_code` ist der Raum selbst. Beigetreten wird mit
 dem **Teilen-Link** der eigenen Rangliste, nicht mit dem Bearbeiten-Link — das
 Reveal braucht Leserechte, nicht mehr.
 
+**Der Raum gibt den Ausschnitt vor.** Beim Erstellen legt der Host Saison, Ligen
+und Kit-Typen fest; alle Ranglisten werden darauf gefiltert und im Ausschnitt neu
+durchnummeriert. Ohne das vergleicht der Reveal Rang gegen Rang über völlig
+verschiedene Mengen — „Platz 2" hieße bei einer Zweierliste „mein schlechtestes"
+und bei einer Neunerliste „fast mein bestes". Die Lobby zeigt vor dem Start, wer
+wie viel vom Ausschnitt abdeckt.
+
+Im Datenmodell heißt eine leere Liga- oder Typ-Liste **keine Einschränkung** — ein
+Raum über alles ist ein legitimer Raum. Dass beim Anlegen über die Oberfläche
+trotzdem etwas gewählt sein muss, prüft die Oberfläche.
+
 **Aufgedeckt wird einzeln.** Der Host schaltet die Plätze weiter, aber jede:r
 dreht die eigene Karte selbst um. Fremde Karten bleiben zu, bis ihr Besitzer
 klickt. Karten von Listen, die so weit nicht reichen, gelten als aufgedeckt —

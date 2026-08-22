@@ -26,6 +26,12 @@ defmodule Kitrank.Reveal.Room do
     field :host_token, :string
     field :expires_at, :utc_datetime
 
+    # Der Ausschnitt, um den es in diesem Raum geht. Alle Ranglisten werden
+    # darauf gefiltert, damit "Platz 3" bei allen dasselbe bedeutet.
+    field :season, :string
+    field :competition_ids, {:array, :integer}, default: []
+    field :kit_types, {:array, :string}, default: []
+
     has_many :participants, Kitrank.Reveal.Participant, foreign_key: :room_id
 
     # Wer die Steuerung gerade hat, wenn sie abgegeben wurde. `nil` heisst:
@@ -41,8 +47,15 @@ defmodule Kitrank.Reveal.Room do
   """
   def create_changeset(room, attrs \\ %{}) do
     room
-    |> cast(attrs, [:max_participants])
+    |> cast(attrs, [:max_participants, :season, :competition_ids, :kit_types])
     |> validate_number(:max_participants, greater_than: 0, less_than_or_equal_to: 32)
+    # Leere Listen heissen "keine Einschraenkung" – ein Raum ueber alles ist ein
+    # legitimer Raum. Dass beim Anlegen ueber die Oberflaeche trotzdem etwas
+    # gewaehlt sein muss, prueft die Oberflaeche; hier waere es nur eine Huerde
+    # fuer jeden anderen Aufrufer.
+    |> put_default(:season, &Kitrank.Kits.current_season/0)
+    |> Kitrank.Kits.Season.validate(:season)
+    |> validate_subset(:kit_types, Kitrank.Kits.Kit.kit_types())
     |> put_change(:room_code, generate_room_code())
     |> put_change(:host_token, generate_host_token())
     |> put_change(:expires_at, default_expiry())
@@ -56,6 +69,13 @@ defmodule Kitrank.Reveal.Room do
     |> cast(attrs, [:status, :current_step])
     |> validate_inclusion(:status, @statuses)
     |> validate_number(:current_step, greater_than: 0)
+  end
+
+  defp put_default(changeset, field, fun) do
+    case get_field(changeset, field) do
+      nil -> put_change(changeset, field, fun.())
+      _ -> changeset
+    end
   end
 
   @doc "Changeset fuer die Uebergabe der Steuerung."

@@ -266,6 +266,26 @@ würde ein Klick auf "Alle Heim" stillschweigend auch Ligen mitnehmen, die man
 gerade bewusst ausgeblendet hat. Sortiert wird danach nur noch das Ausgewählte. `Rankings.create_ranking_with_all_kits/2`
 existiert weiterhin für Tests und für den Fall, dass eine Liga klein genug ist.
 
+### 9.5 Reveal: der Raum gibt den Ausschnitt vor
+
+Beim Anlegen eines Raums werden Saison, Ligen und Kit-Typen festgelegt. Alle
+Ranglisten werden darauf gefiltert und im Ausschnitt neu durchnummeriert.
+
+Ohne das vergleicht der Reveal Rang gegen Rang über verschiedene Mengen: Hat
+eine Person neun Zweitliga-Trikots bewertet und eine andere zwei
+Erstliga-Ausweichtrikots, laufen sieben Runden als Soloauftritt, und "Platz 2"
+bedeutet bei beiden etwas völlig Verschiedenes. Das ließ sich nicht wegrechnen –
+nur die gemeinsame Grundmenge löst es.
+
+Die Lobby zeigt vor dem Start, wer wie viel vom Ausschnitt abdeckt, damit noch
+jemand nachpflegen kann. Wer nichts im Ausschnitt hat, bekommt leere Karten;
+die gelten als aufgedeckt, sonst wartet die Runde auf jemanden, der nichts
+zeigen kann.
+
+Im Datenmodell heißt eine leere Liga- oder Typ-Liste "keine Einschränkung" –
+ein Raum über alles ist ein legitimer Raum, und eine Pflichtangabe wäre nur eine
+Hürde für jeden Aufrufer außerhalb der Oberfläche.
+
 ## 10. Noch offen
 
 - Reveal: Soll ein Raum nach `expires_at` per Oban-Job oder simplem Cron

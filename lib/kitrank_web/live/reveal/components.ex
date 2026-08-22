@@ -18,6 +18,7 @@ defmodule KitrankWeb.Reveal.Components do
   attr :room, :map, required: true
   attr :host?, :boolean, required: true
   attr :online, :integer, required: true
+  attr :scope, :string, default: nil
 
   def room_header(assigns) do
     ~H"""
@@ -26,6 +27,11 @@ defmodule KitrankWeb.Reveal.Components do
         <p class="kr-eyebrow">Raumcode</p>
         <p class="kr-display text-3xl tracking-[0.12em]">{@room.room_code}</p>
       </div>
+
+      <p :if={@scope} class="min-w-0 text-xs text-soft">
+        <span class="kr-eyebrow block">Ausschnitt</span>
+        {@scope}
+      </p>
 
       <div class="ml-auto flex items-center gap-4">
         <span class="flex items-center gap-1.5 text-xs text-soft">
@@ -187,35 +193,27 @@ defmodule KitrankWeb.Reveal.Components do
   # solange sich noch etwas daran aendern laesst.
   defp fit_warning(assigns) do
     ~H"""
-    <div
-      :if={@fit.longest != @fit.shortest or @fit.shared == 0}
-      class="mt-5 rounded-lg border border-line bg-sunk p-4"
-    >
-      <p class="kr-eyebrow">Eure Listen passen nicht ganz zusammen</p>
+    <div class="mt-5 rounded-lg border border-line bg-sunk p-4">
+      <p class="kr-eyebrow">Abdeckung des Ausschnitts</p>
 
-      <ul class="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm">
-        <li :for={{name, count} <- @fit.lengths} class="text-soft">
-          {name}
-          <span class="font-mono tabular-nums text-ink">{count}</span>
+      <ul class="mt-2 space-y-1 text-sm">
+        <li :for={{name, count} <- @fit.lengths} class="flex items-baseline gap-2">
+          <span class="min-w-0 flex-1 truncate text-soft">{name}</span>
+          <span class="font-mono tabular-nums">
+            {count}<span class="text-soft">/{@fit.scope_size}</span>
+          </span>
         </li>
       </ul>
 
-      <p class="mt-2 text-xs leading-relaxed text-soft">
-        <span :if={@fit.longest != @fit.shortest}>
-          Das Reveal läuft über {@fit.longest} Plätze. Die ersten {@fit.longest - @fit.shortest} davon zeigen nicht alle etwas.
-        </span>
-        <span :if={@fit.shared == 0}>
-          Ihr habt kein einziges Trikot gemeinsam bewertet — verglichen wird dann nur die
-          Platzierung, nicht dasselbe Trikot.
-        </span>
-        <span :if={@fit.shared > 0}>
-          {@fit.shared} {if @fit.shared == 1, do: "Trikot steht", else: "Trikots stehen"} in allen Listen.
-        </span>
+      <p :if={@fit.longest != @fit.shortest} class="mt-2 text-xs leading-relaxed text-soft">
+        Das Reveal läuft über {@fit.longest} Plätze. Bei den ersten {@fit.longest - @fit.shortest} zeigen nicht alle etwas — wer will, ergänzt vorher
+        noch seine Rangliste.
       </p>
-
-      <p class="mt-2 text-xs text-soft">
-        Am gleichmäßigsten wird es, wenn ihr euch vorher auf denselben Ausschnitt einigt —
-        etwa alle Heimtrikots der Bundesliga.
+      <p :if={@fit.longest == @fit.shortest and @fit.longest > 0} class="mt-2 text-xs text-soft">
+        Alle haben gleich viele Trikots im Ausschnitt. Kann losgehen.
+      </p>
+      <p :if={@fit.longest == 0} class="mt-2 text-xs text-red-600">
+        Niemand hat ein Trikot aus diesem Ausschnitt bewertet — so gibt es nichts aufzudecken.
       </p>
     </div>
     """

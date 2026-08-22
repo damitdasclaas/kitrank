@@ -12,14 +12,41 @@ defmodule KitrankWeb.Reveal.NewLive do
   """
   use KitrankWeb, :live_view
 
+  alias Kitrank.Kits
+  alias Kitrank.Kits.Kit
   alias Kitrank.Reveal
 
   @impl true
   def mount(_params, _session, socket) do
-    {:ok, assign(socket, page_title: "Reveal", max: 8, room: nil, code_error: nil)}
+    season = Kits.current_season()
+    competitions = Enum.filter(Kits.list_competitions(), &(&1.id in seasons_competitions(season)))
+
+    {:ok,
+     assign(socket,
+       page_title: "Reveal",
+       max: 8,
+       room: nil,
+       code_error: nil,
+       season: season,
+       competitions: competitions,
+       # Standard: alles, was es in dieser Saison gibt. Einschraenken kann man
+       # danach – aufmachen muss man nichts.
+       chosen_leagues: MapSet.new(competitions, & &1.id),
+       chosen_types: MapSet.new(available_types(season)),
+       types: available_types(season),
+       scope_error: nil
+     )}
   end
 
   @impl true
+  def handle_event("toggle_league", %{"id" => id}, socket) do
+    {:noreply, update(socket, :chosen_leagues, &toggle(&1, String.to_integer(id)))}
+  end
+
+  def handle_event("toggle_type", %{"type" => type}, socket) do
+    {:noreply, update(socket, :chosen_types, &toggle(&1, type))}
+  end
+
   def handle_event("join", %{"room_code" => code}, socket) do
     case Reveal.fetch_room(code) do
       {:ok, room} ->
@@ -35,13 +62,46 @@ defmodule KitrankWeb.Reveal.NewLive do
 
   @impl true
   def handle_event("create", %{"max_participants" => max}, socket) do
-    case Reveal.create_room(%{max_participants: String.to_integer(max)}) do
+    cond do
+      MapSet.size(socket.assigns.chosen_leagues) == 0 ->
+        {:noreply, assign(socket, :scope_error, "Wähl mindestens eine Liga.")}
+
+      MapSet.size(socket.assigns.chosen_types) == 0 ->
+        {:noreply, assign(socket, :scope_error, "Wähl mindestens einen Trikot-Typ.")}
+
+      true ->
+        create_room(socket, max)
+    end
+  end
+
+  defp create_room(socket, max) do
+    attrs = %{
+      max_participants: String.to_integer(max),
+      season: socket.assigns.season,
+      competition_ids: MapSet.to_list(socket.assigns.chosen_leagues),
+      kit_types: MapSet.to_list(socket.assigns.chosen_types)
+    }
+
+    case Reveal.create_room(attrs) do
       {:ok, room} ->
         {:noreply, assign(socket, room: room, page_title: "Raum #{room.room_code}")}
 
       {:error, _changeset} ->
-        {:noreply, put_flash(socket, :error, "Der Raum ließ sich nicht anlegen. Nochmal?")}
+        {:noreply, assign(socket, :scope_error, "Der Raum ließ sich nicht anlegen. Nochmal?")}
     end
+  end
+
+  defp toggle(set, value) do
+    if MapSet.member?(set, value), do: MapSet.delete(set, value), else: MapSet.put(set, value)
+  end
+
+  defp seasons_competitions(season) do
+    season |> Kits.overview() |> Enum.map(fn {competition, _teams} -> competition.id end)
+  end
+
+  defp available_types(season) do
+    vorhanden = season |> Kits.list_kits() |> MapSet.new(& &1.kit_type)
+    Enum.filter(Kit.kit_types(), &MapSet.member?(vorhanden, &1))
   end
 
   @impl true
@@ -58,7 +118,15 @@ defmodule KitrankWeb.Reveal.NewLive do
 
         <div :if={!@room} class="mt-8 grid gap-4 sm:grid-cols-2">
           <.join_form error={@code_error} />
-          <.setup_form max={@max} />
+          <.setup_form
+            max={@max}
+            season={@season}
+            competitions={@competitions}
+            chosen_leagues={@chosen_leagues}
+            types={@types}
+            chosen_types={@chosen_types}
+            error={@scope_error}
+          />
         </div>
 
         <.how_it_works :if={!@room} />
@@ -104,12 +172,53 @@ defmodule KitrankWeb.Reveal.NewLive do
   end
 
   attr :max, :integer, required: true
+  attr :season, :string, required: true
+  attr :competitions, :list, required: true
+  attr :chosen_leagues, :any, required: true
+  attr :types, :list, required: true
+  attr :chosen_types, :any, required: true
+  attr :error, :string, default: nil
 
   defp setup_form(assigns) do
     ~H"""
     <form phx-submit="create" class="rounded-xl border border-line bg-panel p-5">
       <h2 class="kr-display text-lg">Raum erstellen</h2>
       <p class="mt-1 text-xs text-soft">Du bekommst einen Code zum Weitergeben.</p>
+
+      <%!-- Der Ausschnitt ist das Wichtigste an dieser Seite: er sorgt dafuer,
+            dass "Platz 3" spaeter bei allen dasselbe bedeutet. --%>
+      <fieldset class="mt-4">
+        <legend class="kr-eyebrow">Worum geht es? · {@season}</legend>
+
+        <div class="mt-2 flex flex-wrap gap-1.5">
+          <.chip
+            :for={competition <- @competitions}
+            event="toggle_league"
+            value={competition.id}
+            key="id"
+            label={competition.name}
+            on?={MapSet.member?(@chosen_leagues, competition.id)}
+          />
+        </div>
+
+        <div class="mt-2 flex flex-wrap gap-1.5">
+          <.chip
+            :for={type <- @types}
+            event="toggle_type"
+            value={type}
+            key="type"
+            label={Kit.label(type)}
+            on?={MapSet.member?(@chosen_types, type)}
+          />
+        </div>
+
+        <p class="mt-2 text-xs text-soft">
+          Alle Ranglisten werden auf diesen Ausschnitt gefiltert — dadurch vergleicht ihr
+          dieselben Trikots, egal wie lang eure Listen sind.
+        </p>
+      </fieldset>
+
+      <p :if={@error} class="mt-2 text-xs text-red-600">{@error}</p>
 
       <label for="max" class="mt-4 block text-xs font-medium">Wie viele macht ihr mit?</label>
       <select
@@ -131,6 +240,31 @@ defmodule KitrankWeb.Reveal.NewLive do
         Raum öffnen
       </button>
     </form>
+    """
+  end
+
+  attr :event, :string, required: true
+  attr :value, :any, required: true
+  attr :key, :string, required: true
+  attr :label, :string, required: true
+  attr :on?, :boolean, required: true
+
+  defp chip(assigns) do
+    ~H"""
+    <button
+      type="button"
+      phx-click={@event}
+      phx-value-id={@key == "id" && @value}
+      phx-value-type={@key == "type" && @value}
+      aria-pressed={to_string(@on?)}
+      class={[
+        "rounded-full border px-3 py-1 text-xs transition",
+        @on? && "border-transparent bg-ink text-chalk",
+        !@on? && "border-line text-soft hover:border-ink hover:text-ink"
+      ]}
+    >
+      {@label}
+    </button>
     """
   end
 
