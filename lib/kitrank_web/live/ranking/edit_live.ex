@@ -33,7 +33,9 @@ defmodule KitrankWeb.Ranking.EditLive do
          |> assign(
            ranking: ranking,
            season: season,
-           overview: Kits.overview(season),
+           all_seasons: seasons_with_data(season),
+           all_competitions: Kits.list_competitions(),
+           all_teams: Kits.list_rankable_teams(),
            name_form: to_form(Rankings.change_ranking(ranking)),
            share_url: url(~p"/r/#{ranking.share_slug}"),
            detail: nil,
@@ -42,7 +44,7 @@ defmodule KitrankWeb.Ranking.EditLive do
            note_epoch: 0
          )
          |> load_entries()
-         |> init_leagues()}
+         |> init_scope()}
     end
   end
 
@@ -57,55 +59,107 @@ defmodule KitrankWeb.Ranking.EditLive do
     {:noreply, assign(socket, page_title: title)}
   end
 
-  # Die Liga-Vorauswahl steht im Socket, nicht in der Datenbank: sie sagt nur,
-  # worueber gerade entschieden wird, und gehoert nicht zur Rangliste selbst.
-  # Beim Wiederkommen ergibt sie sich aus dem, was schon drin ist – wer bisher
-  # nur Bundesliga gewaehlt hat, landet wieder dort.
-  defp init_leagues(socket) do
-    gewaehlt =
-      for {competition, teams} <- socket.assigns.overview,
-          {_team, kits} <- teams,
-          kit <- kits,
-          MapSet.member?(socket.assigns.selected, kit.id),
-          into: MapSet.new(),
-          do: competition.id
+  # Der Ausschnitt steht im Socket, nicht in der Datenbank: er sagt nur, worüber
+  # gerade entschieden wird, und gehört nicht zur Rangliste selbst. Beim
+  # Wiederkommen ergibt er sich aus dem, was schon drin ist – wer bisher nur
+  # HSV-Trikots gewählt hat, landet wieder dort.
+  #
+  # Eine leere Menge heißt überall "keine Einschränkung", wie beim Reveal-Raum.
+  defp init_scope(socket) do
+    eintraege = socket.assigns.entries
 
-    active =
-      if MapSet.size(gewaehlt) > 0,
-        do: gewaehlt,
-        else: MapSet.new(socket.assigns.overview, fn {competition, _} -> competition.id end)
+    scope =
+      if eintraege == [] do
+        %{
+          seasons: MapSet.new([socket.assigns.season]),
+          competitions: MapSet.new(),
+          teams: MapSet.new()
+        }
+      else
+        %{
+          seasons: MapSet.new(eintraege, & &1.kit.season),
+          competitions: MapSet.new(),
+          teams: MapSet.new()
+        }
+      end
 
-    assign(socket, :active_leagues, active)
+    socket |> assign(:scope, scope) |> load_catalog()
   end
 
-  ## Ligen-Vorauswahl
+  # Alle Saisons, für die es Daten gibt – plus die laufende, damit sie auch
+  # vor dem ersten Trikot wählbar ist.
+  defp seasons_with_data(current) do
+    [current | Kits.list_seasons()] |> Enum.uniq() |> Enum.sort(:desc)
+  end
+
+  defp load_catalog(socket) do
+    scope = socket.assigns.scope
+
+    catalog =
+      Kits.list_kits_for_scope(%{
+        seasons: MapSet.to_list(scope.seasons),
+        competition_ids: MapSet.to_list(scope.competitions),
+        team_ids: MapSet.to_list(scope.teams)
+      })
+
+    # Bei mehreren Saisons nach Saison gruppieren, sonst nach Liga. Wer die
+    # Trikots eines Vereins über Jahre sortiert, denkt in Jahren – wer eine
+    # Saison rankt, in Ligen.
+    mehrere_saisons? = MapSet.size(scope.seasons) != 1
+
+    gruppen =
+      if mehrere_saisons? do
+        catalog
+        |> Enum.group_by(& &1.kit.season)
+        |> Enum.sort_by(&elem(&1, 0), :desc)
+      else
+        catalog
+        |> Enum.group_by(& &1.competition.name)
+        |> Enum.sort_by(fn {_name, [%{competition: c} | _]} -> {c.tier, c.name} end)
+      end
+
+    assign(socket, catalog: catalog, groups: gruppen, multi_season?: mehrere_saisons?)
+  end
+
+  ## Ausschnitt wählen
 
   @impl true
-  def handle_event("toggle_league", %{"id" => id}, socket) do
-    id = String.to_integer(id)
-    active = socket.assigns.active_leagues
+  def handle_event("toggle_filter", %{"axis" => axis, "value" => value}, socket) do
+    achse = achse(axis)
+    wert = if achse == :seasons, do: value, else: String.to_integer(value)
 
-    active =
-      if MapSet.member?(active, id),
-        do: MapSet.delete(active, id),
-        else: MapSet.put(active, id)
+    scope =
+      Map.update!(socket.assigns.scope, achse, fn menge ->
+        if MapSet.member?(menge, wert),
+          do: MapSet.delete(menge, wert),
+          else: MapSet.put(menge, wert)
+      end)
 
-    {:noreply, assign(socket, :active_leagues, active)}
+    {:noreply, socket |> assign(:scope, scope) |> load_catalog()}
   end
 
-  def handle_event("all_leagues", _params, socket) do
-    all = MapSet.new(socket.assigns.overview, fn {competition, _} -> competition.id end)
-    {:noreply, assign(socket, :active_leagues, all)}
+  def handle_event("clear_filter", %{"axis" => axis}, socket) do
+    scope = Map.put(socket.assigns.scope, achse(axis), MapSet.new())
+    {:noreply, socket |> assign(:scope, scope) |> load_catalog()}
   end
 
-  def handle_event("no_leagues", _params, socket) do
-    {:noreply, assign(socket, :active_leagues, MapSet.new())}
-  end
-
-  ## Schnellauswahl – wirkt nur auf die vorgewaehlten Ligen
+  ## Schnellauswahl – wirkt nur auf den gewählten Ausschnitt
 
   def handle_event("quick_select", %{"type" => type}, socket) do
     kit_ids = scoped_kit_ids(socket, type)
+    ranking = socket.assigns.ranking
+
+    if kit_ids != [] and Enum.all?(kit_ids, &MapSet.member?(socket.assigns.selected, &1)) do
+      Enum.each(kit_ids, &Rankings.remove_kit(ranking, &1))
+    else
+      Rankings.add_kits(ranking, kit_ids)
+    end
+
+    {:noreply, load_entries(socket)}
+  end
+
+  def handle_event("toggle_group", %{"name" => name}, socket) do
+    kit_ids = group_kit_ids(socket, name)
     ranking = socket.assigns.ranking
 
     if kit_ids != [] and Enum.all?(kit_ids, &MapSet.member?(socket.assigns.selected, &1)) do
@@ -125,20 +179,6 @@ defmodule KitrankWeb.Ranking.EditLive do
       {:ok, _} = Rankings.remove_kit(ranking, id)
     else
       {:ok, _} = Rankings.add_kit(ranking, id)
-    end
-
-    {:noreply, load_entries(socket)}
-  end
-
-  def handle_event("toggle_competition", %{"id" => id}, socket) do
-    kit_ids = competition_kit_ids(socket, String.to_integer(id))
-    ranking = socket.assigns.ranking
-
-    # Alles-oder-nichts: sind schon alle drin, nimmt der Knopf sie wieder raus.
-    if Enum.all?(kit_ids, &MapSet.member?(socket.assigns.selected, &1)) do
-      Enum.each(kit_ids, &Rankings.remove_kit(ranking, &1))
-    else
-      Rankings.add_kits(ranking, kit_ids)
     end
 
     {:noreply, load_entries(socket)}
@@ -255,15 +295,6 @@ defmodule KitrankWeb.Ranking.EditLive do
     )
   end
 
-  defp competition_kit_ids(socket, competition_id) do
-    socket.assigns.overview
-    |> Enum.find(fn {competition, _teams} -> competition.id == competition_id end)
-    |> case do
-      nil -> []
-      {_competition, teams} -> for {_team, kits} <- teams, kit <- kits, do: kit.id
-    end
-  end
-
   ## Render
 
   @impl true
@@ -287,9 +318,14 @@ defmodule KitrankWeb.Ranking.EditLive do
 
         <.selection
           :if={@live_action == :select}
-          overview={@overview}
+          groups={@groups}
+          catalog={@catalog}
           selected={@selected}
-          active_leagues={@active_leagues}
+          scope={@scope}
+          all_seasons={@all_seasons}
+          all_competitions={@all_competitions}
+          all_teams={@all_teams}
+          multi_season?={@multi_season?}
         />
 
         <.sorting
@@ -321,123 +357,141 @@ defmodule KitrankWeb.Ranking.EditLive do
 
   ## Auswahl-Ansicht
 
-  attr :overview, :list, required: true
+  attr :groups, :list, required: true
+  attr :catalog, :list, required: true
   attr :selected, :any, required: true
-  attr :active_leagues, :any, required: true
+  attr :scope, :map, required: true
+  attr :all_seasons, :list, required: true
+  attr :all_competitions, :list, required: true
+  attr :all_teams, :list, required: true
+  attr :multi_season?, :boolean, required: true
 
   defp selection(assigns) do
-    assigns =
-      assign(
-        assigns,
-        :scoped,
-        Enum.filter(assigns.overview, fn {c, _} ->
-          MapSet.member?(assigns.active_leagues, c.id)
-        end)
-      )
-
     ~H"""
-    <div
-      :if={@overview == []}
-      class="mt-10 rounded-lg border border-dashed border-line p-12 text-center"
-    >
-      <p class="text-sm text-soft">Für diese Saison sind noch keine Trikots hinterlegt.</p>
-    </div>
+    <div class="mt-8 space-y-4 rounded-lg border border-line p-5">
+      <h2 class="kr-eyebrow">Worüber rankst du?</h2>
 
-    <div :if={@overview != []} class="mt-8 rounded-lg border border-line p-5">
-      <div class="flex flex-wrap items-center gap-2">
-        <h2 class="kr-eyebrow">Welche Ligen?</h2>
-        <button
-          type="button"
-          phx-click="all_leagues"
-          class="ml-auto text-[11px] text-soft underline-offset-4 hover:text-ink hover:underline"
-        >
-          Alle
-        </button>
-        <button
-          type="button"
-          phx-click="no_leagues"
-          class="text-[11px] text-soft underline-offset-4 hover:text-ink hover:underline"
-        >
-          Keine
-        </button>
-      </div>
+      <.filter_row axis="seasons" label="Saison" chosen={@scope.seasons}>
+        <:chip :for={season <- @all_seasons} value={season} label={season} />
+      </.filter_row>
 
-      <div class="mt-3 flex flex-wrap gap-2">
-        <button
-          :for={{competition, teams} <- @overview}
-          type="button"
-          phx-click="toggle_league"
-          phx-value-id={competition.id}
-          aria-pressed={to_string(MapSet.member?(@active_leagues, competition.id))}
-          class={[
-            "flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-sm transition",
-            MapSet.member?(@active_leagues, competition.id) && "border-transparent bg-ink text-chalk",
-            !MapSet.member?(@active_leagues, competition.id) &&
-              "border-line text-soft hover:border-ink hover:text-ink"
-          ]}
-        >
-          {competition.name}
-          <span class="font-mono text-[10px] opacity-60">{length(teams)}</span>
-        </button>
-      </div>
+      <.filter_row axis="competitions" label="Liga" chosen={@scope.competitions}>
+        <:chip :for={c <- @all_competitions} value={c.id} label={c.name} />
+      </.filter_row>
 
-      <div :if={@scoped != []} class="mt-5 border-t border-line pt-4">
+      <.filter_row axis="teams" label="Verein" chosen={@scope.teams}>
+        <:chip :for={t <- @all_teams} value={t.id} label={t.short_code} title={t.name} />
+      </.filter_row>
+
+      <div :if={@catalog != []} class="border-t border-line pt-4">
         <div class="flex flex-wrap items-baseline gap-2">
           <h3 class="kr-eyebrow">Schnell auswählen</h3>
-          <span class="text-[11px] text-soft">wirkt nur auf {league_names(@scoped)}</span>
+          <span class="text-[11px] text-soft">
+            {length(@catalog)} Trikots · {scope_label(@scope, @all_teams)}
+          </span>
         </div>
         <div class="mt-3 flex flex-wrap gap-2">
           <.quick_button
-            :for={type <- available_types(@scoped)}
+            :for={type <- available_types(@catalog)}
             type={type}
             label={Kit.label(type)}
-            all_selected?={type_all_selected?(@scoped, @selected, type)}
+            all_selected?={type_all_selected?(@catalog, @selected, type)}
           />
           <.quick_button
             type="all"
             label="Trikots"
-            all_selected?={type_all_selected?(@scoped, @selected, "all")}
+            all_selected?={type_all_selected?(@catalog, @selected, "all")}
           />
         </div>
       </div>
     </div>
 
     <div
-      :if={@overview != [] && @scoped == []}
+      :if={@catalog == []}
       class="mt-8 rounded-lg border border-dashed border-line p-12 text-center"
     >
-      <p class="kr-display text-xl">Erst eine Liga wählen</p>
+      <p class="kr-display text-xl">Nichts im Ausschnitt</p>
       <p class="mx-auto mt-2 max-w-sm text-sm text-soft">
-        Dann erscheinen hier die Trikots, und die Schnellauswahl weiß, worauf sie sich bezieht.
+        Für diese Kombination gibt es keine Trikots. Nimm eine Einschränkung heraus.
       </p>
     </div>
 
-    <section :for={{competition, teams} <- @scoped} class="mt-10">
+    <section :for={{name, eintraege} <- @groups} class="mt-10">
       <div class="flex flex-wrap items-baseline gap-3 border-b border-line pb-2">
-        <h2 class="kr-display text-lg">{competition.name}</h2>
-        <span class="kr-eyebrow">{competition.country} · Liga {competition.tier}</span>
+        <h2 class="kr-display text-lg">{name}</h2>
+        <span class="kr-eyebrow">{length(eintraege)} Trikots</span>
         <button
           type="button"
-          phx-click="toggle_competition"
-          phx-value-id={competition.id}
+          phx-click="toggle_group"
+          phx-value-name={name}
           class="ml-auto rounded-md border border-line px-3 py-1 font-mono text-[11px] text-soft transition hover:border-ink hover:text-ink"
         >
-          {if all_selected?(teams, @selected), do: "Alle abwählen", else: "Alle auswählen"}
+          {if group_all_selected?(eintraege, @selected), do: "Alle abwählen", else: "Alle auswählen"}
         </button>
       </div>
 
       <div class="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
-        <%= for {team, kits} <- teams, kit <- kits do %>
-          <.pick_tile kit={kit} team={team} selected={MapSet.member?(@selected, kit.id)} />
-        <% end %>
+        <.pick_tile
+          :for={%{kit: kit} <- eintraege}
+          kit={kit}
+          team={kit.team}
+          selected={MapSet.member?(@selected, kit.id)}
+        />
       </div>
     </section>
     """
   end
 
-  defp all_selected?(teams, selected) do
-    kits = for {_team, kits} <- teams, kit <- kits, do: kit.id
-    kits != [] and Enum.all?(kits, &MapSet.member?(selected, &1))
+  attr :axis, :string, required: true
+  attr :label, :string, required: true
+  attr :chosen, :any, required: true
+
+  slot :chip do
+    attr :value, :any, required: true
+    attr :label, :string, required: true
+    attr :title, :string
+  end
+
+  # Eine leere Menge heisst "keine Einschraenkung". Damit das nicht wie ein
+  # Versehen aussieht, ist "Alle" ein eigener Knopf, der dann aktiv leuchtet.
+  defp filter_row(assigns) do
+    ~H"""
+    <div class="flex flex-wrap items-baseline gap-2">
+      <span class="kr-eyebrow w-14 shrink-0">{@label}</span>
+
+      <button
+        type="button"
+        phx-click="clear_filter"
+        phx-value-axis={@axis}
+        aria-pressed={to_string(MapSet.size(@chosen) == 0)}
+        class={[
+          "rounded-full border px-3 py-1 text-xs transition",
+          MapSet.size(@chosen) == 0 && "border-transparent bg-ink text-chalk",
+          MapSet.size(@chosen) > 0 && "border-line text-soft hover:border-ink hover:text-ink"
+        ]}
+      >
+        Alle
+      </button>
+
+      <button
+        :for={chip <- @chip}
+        type="button"
+        phx-click="toggle_filter"
+        phx-value-axis={@axis}
+        phx-value-value={chip.value}
+        title={Map.get(chip, :title)}
+        aria-pressed={to_string(MapSet.member?(@chosen, chip.value))}
+        class={[
+          "rounded-full border px-3 py-1 text-xs transition",
+          MapSet.member?(@chosen, chip.value) && "border-transparent bg-ink text-chalk",
+          !MapSet.member?(@chosen, chip.value) &&
+            "border-line text-soft hover:border-ink hover:text-ink"
+        ]}
+      >
+        {chip.label}
+      </button>
+    </div>
+    """
   end
 
   attr :kit, :map, required: true
@@ -531,53 +585,73 @@ defmodule KitrankWeb.Ranking.EditLive do
   ## Bausteine der Auswahl
 
   # "all" nimmt alles aus den vorgewaehlten Ligen, sonst nur den Kit-Typ.
-  defp scoped_kit_ids(socket, "all") do
-    for {competition, teams} <- socket.assigns.overview,
-        MapSet.member?(socket.assigns.active_leagues, competition.id),
-        {_team, kits} <- teams,
-        kit <- kits,
-        do: kit.id
-  end
+  defp achse("seasons"), do: :seasons
+  defp achse("competitions"), do: :competitions
+  defp achse("teams"), do: :teams
+
+  defp scoped_kit_ids(socket, "all"), do: Enum.map(socket.assigns.catalog, & &1.kit.id)
 
   defp scoped_kit_ids(socket, kit_type) do
-    for {competition, teams} <- socket.assigns.overview,
-        MapSet.member?(socket.assigns.active_leagues, competition.id),
-        {_team, kits} <- teams,
-        kit <- kits,
-        kit.kit_type == kit_type,
-        do: kit.id
+    socket.assigns.catalog
+    |> Enum.filter(&(&1.kit.kit_type == kit_type))
+    |> Enum.map(& &1.kit.id)
   end
 
-  defp league_names(scoped) do
-    scoped |> Enum.map(fn {competition, _} -> competition.name end) |> to_sentence()
+  defp group_kit_ids(socket, name) do
+    case Enum.find(socket.assigns.groups, fn {gruppe, _} -> gruppe == name end) do
+      nil -> []
+      {_gruppe, eintraege} -> Enum.map(eintraege, & &1.kit.id)
+    end
   end
 
-  defp to_sentence([one]), do: one
-  defp to_sentence([a, b]), do: "#{a} und #{b}"
-  defp to_sentence(names), do: Enum.join(names, ", ")
-
-  # Nur Kit-Typen anbieten, die es in den gewaehlten Ligen ueberhaupt gibt –
-  # ein Knopf "Sonder", der nichts tut, waere nur Rauschen.
-  defp available_types(scoped) do
-    vorhanden =
-      for {_competition, teams} <- scoped,
-          {_team, kits} <- teams,
-          kit <- kits,
-          into: MapSet.new(),
-          do: kit.kit_type
-
+  # Nur Kit-Typen anbieten, die es im Ausschnitt ueberhaupt gibt – ein Knopf
+  # "Sonder", der nichts tut, waere nur Rauschen.
+  defp available_types(catalog) do
+    vorhanden = MapSet.new(catalog, & &1.kit.kit_type)
     Enum.filter(Kit.kit_types(), &MapSet.member?(vorhanden, &1))
   end
 
-  defp type_all_selected?(scoped, selected, type) do
+  defp type_all_selected?(catalog, selected, type) do
     ids =
-      for {_competition, teams} <- scoped,
-          {_team, kits} <- teams,
-          kit <- kits,
-          type == "all" or kit.kit_type == type,
-          do: kit.id
+      catalog
+      |> Enum.filter(&(type == "all" or &1.kit.kit_type == type))
+      |> Enum.map(& &1.kit.id)
 
     ids != [] and Enum.all?(ids, &MapSet.member?(selected, &1))
+  end
+
+  defp group_all_selected?(eintraege, selected) do
+    eintraege != [] and Enum.all?(eintraege, &MapSet.member?(selected, &1.kit.id))
+  end
+
+  # Kurzform des Ausschnitts fuer die Zeile ueber der Schnellauswahl.
+  defp scope_label(scope, all_teams) do
+    teile = [
+      saison_teil(scope.seasons),
+      if(MapSet.size(scope.teams) > 0, do: team_teil(scope.teams, all_teams))
+    ]
+
+    teile |> Enum.reject(&is_nil/1) |> Enum.join(", ")
+  end
+
+  defp saison_teil(seasons) do
+    case MapSet.size(seasons) do
+      0 -> "alle Saisons"
+      1 -> MapSet.to_list(seasons) |> hd()
+      n -> "#{n} Saisons"
+    end
+  end
+
+  defp team_teil(teams, all_teams) do
+    namen =
+      all_teams
+      |> Enum.filter(&MapSet.member?(teams, &1.id))
+      |> Enum.map(& &1.short_code)
+
+    case namen do
+      [einer] -> einer
+      viele -> "#{length(viele)} Vereine"
+    end
   end
 
   attr :type, :string, required: true

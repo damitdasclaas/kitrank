@@ -66,30 +66,24 @@ defmodule KitrankWeb.RankingLiveTest do
       assert Rankings.count_entries(r.id) == 0
     end
 
-    test "nimmt eine ganze Liga auf und wieder heraus", %{
+    test "nimmt eine ganze Gruppe auf und wieder heraus", %{
       conn: conn,
       ranking: r,
       competition: competition,
       kits: kits
     } do
       {:ok, view, _html} = live(conn, ~p"/rankings/#{r.edit_token}/auswahl")
+      sel = ~s{button[phx-click="toggle_group"][phx-value-name="#{competition.name}"]}
 
-      html =
-        view
-        |> element(~s{button[phx-click="toggle_competition"][phx-value-id="#{competition.id}"]})
-        |> render_click()
-
+      html = view |> element(sel) |> render_click()
       assert Rankings.count_entries(r.id) == length(kits)
       assert html =~ "Alle abwählen"
 
-      view
-      |> element(~s{button[phx-click="toggle_competition"][phx-value-id="#{competition.id}"]})
-      |> render_click()
-
+      view |> element(sel) |> render_click()
       assert Rankings.count_entries(r.id) == 0
     end
 
-    test "behält die Notiz, wenn eine Liga nochmal komplett hinzugefügt wird", %{
+    test "behält die Notiz, wenn eine Gruppe nochmal komplett hinzugefügt wird", %{
       conn: conn,
       ranking: r,
       competition: competition,
@@ -101,7 +95,7 @@ defmodule KitrankWeb.RankingLiveTest do
       {:ok, view, _html} = live(conn, ~p"/rankings/#{r.edit_token}/auswahl")
 
       view
-      |> element(~s{button[phx-click="toggle_competition"][phx-value-id="#{competition.id}"]})
+      |> element(~s{button[phx-click="toggle_group"][phx-value-name="#{competition.name}"]})
       |> render_click()
 
       assert Rankings.get_entry_at(r.id, 1).note == "wichtig"
@@ -182,7 +176,7 @@ defmodule KitrankWeb.RankingLiveTest do
     end
   end
 
-  describe "Liga-Vorauswahl" do
+  describe "Ausschnitt wählen" do
     setup do
       erste = competition_fixture(name: "Erste Liga", tier: 1)
       zweite = competition_fixture(name: "Zweite Liga", tier: 2)
@@ -202,52 +196,177 @@ defmodule KitrankWeb.RankingLiveTest do
       }
     end
 
-    test "zeigt anfangs alle Ligen, solange nichts gewählt ist", %{conn: conn, ranking: r} do
+    test "zeigt alle drei Achsen", %{conn: conn, ranking: r} do
       {:ok, _view, html} = live(conn, ~p"/rankings/#{r.edit_token}/auswahl")
 
-      assert html =~ "Welche Ligen?"
-      assert html =~ "Erste Liga"
-      assert html =~ "Zweite Liga"
-      assert html =~ "Schnell auswählen"
+      assert html =~ "Worüber rankst du?"
+      assert html =~ ~s{phx-value-axis="seasons"}
+      assert html =~ ~s{phx-value-axis="competitions"}
+      assert html =~ ~s{phx-value-axis="teams"}
     end
 
-    test "blendet abgewählte Ligen aus dem Raster aus", %{
-      conn: conn,
-      ranking: r,
-      zweite: zweite,
-      zweite_kits: [kit | _]
-    } do
+    test "startet bei der laufenden Saison, ohne weitere Einschränkung", %{conn: conn, ranking: r} do
+      {:ok, _view, html} = live(conn, ~p"/rankings/#{r.edit_token}/auswahl")
+
+      # 4 Vereine × 2 Trikots
+      assert html =~ "8 Trikots · #{Kits.current_season()}"
+    end
+
+    test "grenzt auf eine Liga ein", %{conn: conn, ranking: r, erste: erste, zweite_kits: [z | _]} do
       {:ok, view, _html} = live(conn, ~p"/rankings/#{r.edit_token}/auswahl")
 
       html =
         view
-        |> element(~s{button[phx-click="toggle_league"][phx-value-id="#{zweite.id}"]})
+        |> element(~s{button[phx-value-axis="competitions"][phx-value-value="#{erste.id}"]})
         |> render_click()
 
-      refute html =~ ~s{phx-click="toggle_kit" phx-value-id="#{kit.id}"}
+      assert html =~ "4 Trikots"
+      refute html =~ ~s{phx-click="toggle_kit" phx-value-id="#{z.id}"}
     end
 
-    test "ohne Liga gibt es nichts auszuwählen", %{conn: conn, ranking: r} do
+    test "grenzt auf einen Verein ein", %{conn: conn, ranking: r, erste_kits: kits} do
+      team_id = hd(kits).team_id
       {:ok, view, _html} = live(conn, ~p"/rankings/#{r.edit_token}/auswahl")
 
-      html = view |> element(~s{button[phx-click="no_leagues"]}) |> render_click()
+      html =
+        view
+        |> element(~s{button[phx-value-axis="teams"][phx-value-value="#{team_id}"]})
+        |> render_click()
 
-      assert html =~ "Erst eine Liga wählen"
-      refute html =~ "Schnell auswählen"
+      assert html =~ "2 Trikots"
     end
 
-    test "kommt man wieder, sind die Ligen der bisherigen Auswahl aktiv", %{
+    test "'Alle' hebt die Einschränkung wieder auf", %{conn: conn, ranking: r, erste: erste} do
+      {:ok, view, _html} = live(conn, ~p"/rankings/#{r.edit_token}/auswahl")
+
+      view
+      |> element(~s{button[phx-value-axis="competitions"][phx-value-value="#{erste.id}"]})
+      |> render_click()
+
+      html =
+        view
+        |> element(~s{button[phx-click="clear_filter"][phx-value-axis="competitions"]})
+        |> render_click()
+
+      assert html =~ "8 Trikots"
+    end
+
+    test "sagt es, wenn die Kombination nichts übrig lässt", %{
       conn: conn,
       ranking: r,
-      erste_kits: [kit | _],
-      zweite_kits: [fremd | _]
+      erste: erste,
+      zweite_kits: kits
+    } do
+      {:ok, view, _html} = live(conn, ~p"/rankings/#{r.edit_token}/auswahl")
+
+      # Erste Liga, aber ein Verein aus der zweiten.
+      view
+      |> element(~s{button[phx-value-axis="competitions"][phx-value-value="#{erste.id}"]})
+      |> render_click()
+
+      html =
+        view
+        |> element(~s{button[phx-value-axis="teams"][phx-value-value="#{hd(kits).team_id}"]})
+        |> render_click()
+
+      assert html =~ "Nichts im Ausschnitt"
+    end
+
+    test "kommt man wieder, ist der Ausschnitt der bisherigen Auswahl aktiv", %{
+      conn: conn,
+      ranking: r,
+      erste_kits: [kit | _]
     } do
       {:ok, _} = Rankings.add_kit(r, kit.id)
 
       {:ok, _view, html} = live(conn, ~p"/rankings/#{r.edit_token}/auswahl")
 
-      assert html =~ ~s{phx-value-id="#{kit.id}"}
-      refute html =~ ~s{phx-click="toggle_kit" phx-value-id="#{fremd.id}"}
+      assert html =~ "· #{kit.season}"
+    end
+  end
+
+  describe "Über mehrere Saisons" do
+    setup do
+      competition = competition_fixture(name: "Bundesliga", tier: 1)
+
+      # Derselbe Verein in drei Saisons – der Fall "Trikots eines Vereins über
+      # die Jahre ranken".
+      team = team_fixture(name: "Hamburger SV", short_code: "HSV")
+
+      kits =
+        for season <- ["2026/27", "2025/26", "2024/25"] do
+          {:ok, _} =
+            Kits.create_team_season(%{
+              team_id: team.id,
+              competition_id: competition.id,
+              season: season
+            })
+
+          kit_fixture(team_id: team.id, season: season, kit_type: "home")
+        end
+
+      # Ein zweiter Verein, nur in der laufenden Saison.
+      %{teams: [anderer]} = league(competition: competition, team_count: 1, kit_types: ["home"])
+
+      %{team: team, anderer: anderer, kits: kits, ranking: ranking_with([])}
+    end
+
+    test "'Alle' bei der Saison öffnet das Archiv", %{conn: conn, ranking: r} do
+      {:ok, view, _html} = live(conn, ~p"/rankings/#{r.edit_token}/auswahl")
+
+      html =
+        view
+        |> element(~s{button[phx-click="clear_filter"][phx-value-axis="seasons"]})
+        |> render_click()
+
+      assert html =~ "4 Trikots · alle Saisons"
+      # Über mehrere Saisons wird nach Saison gruppiert, nicht nach Liga.
+      assert html =~ "2024/25"
+      assert html =~ "2025/26"
+    end
+
+    test "ein Verein über zehn Jahre", %{conn: conn, ranking: r, team: team} do
+      {:ok, view, _html} = live(conn, ~p"/rankings/#{r.edit_token}/auswahl")
+
+      view
+      |> element(~s{button[phx-click="clear_filter"][phx-value-axis="seasons"]})
+      |> render_click()
+
+      html =
+        view
+        |> element(~s{button[phx-value-axis="teams"][phx-value-value="#{team.id}"]})
+        |> render_click()
+
+      assert html =~ "3 Trikots · alle Saisons, HSV"
+      assert html =~ "2024/25"
+    end
+
+    test "nimmt alle drei Saisons in die Rangliste", %{conn: conn, ranking: r, team: team} do
+      {:ok, view, _html} = live(conn, ~p"/rankings/#{r.edit_token}/auswahl")
+
+      view
+      |> element(~s{button[phx-click="clear_filter"][phx-value-axis="seasons"]})
+      |> render_click()
+
+      view
+      |> element(~s{button[phx-value-axis="teams"][phx-value-value="#{team.id}"]})
+      |> render_click()
+
+      view
+      |> element(~s{button[phx-click="quick_select"][phx-value-type="all"]})
+      |> render_click()
+
+      saisons = Rankings.list_entries(r) |> Enum.map(& &1.kit.season) |> Enum.sort()
+      assert saisons == ["2024/25", "2025/26", "2026/27"]
+    end
+
+    test "der Ausschnitt kehrt beim Wiederkommen zurück", %{conn: conn, ranking: r, kits: kits} do
+      Enum.each(kits, &Rankings.add_kit(r, &1.id))
+
+      {:ok, _view, html} = live(conn, ~p"/rankings/#{r.edit_token}/auswahl")
+
+      # Drei Saisons in der Liste -> drei Saisons im Ausschnitt.
+      assert html =~ "3 Saisons"
     end
   end
 
@@ -262,7 +381,6 @@ defmodule KitrankWeb.RankingLiveTest do
 
       %{
         erste: erste,
-        zweite: zweite,
         erste_kits: erste_kits,
         zweite_kits: zweite_kits,
         ranking: ranking_with([])
@@ -281,17 +399,16 @@ defmodule KitrankWeb.RankingLiveTest do
       assert Rankings.count_entries(r.id) == 4
     end
 
-    test "wirkt nur auf die vorgewählten Ligen", %{
+    test "wirkt nur auf den gewählten Ausschnitt", %{
       conn: conn,
       ranking: r,
-      zweite: zweite,
+      erste: erste,
       zweite_kits: zweite_kits
     } do
       {:ok, view, _html} = live(conn, ~p"/rankings/#{r.edit_token}/auswahl")
 
-      # Zweite Liga abwählen, dann alle Heimtrikots nehmen.
       view
-      |> element(~s{button[phx-click="toggle_league"][phx-value-id="#{zweite.id}"]})
+      |> element(~s{button[phx-value-axis="competitions"][phx-value-value="#{erste.id}"]})
       |> render_click()
 
       view
@@ -302,7 +419,7 @@ defmodule KitrankWeb.RankingLiveTest do
       assert Rankings.count_entries(r.id) == 2
 
       for kit <- zweite_kits do
-        refute MapSet.member?(gewaehlt, kit.id), "Trikot aus der abgewählten Liga ist drin"
+        refute MapSet.member?(gewaehlt, kit.id), "Trikot ausserhalb des Ausschnitts ist drin"
       end
     end
 
@@ -317,28 +434,24 @@ defmodule KitrankWeb.RankingLiveTest do
       assert Rankings.count_entries(r.id) == 0
     end
 
-    test "'Alle Trikots' nimmt alles aus den vorgewählten Ligen", %{
-      conn: conn,
-      ranking: r,
-      erste_kits: erste_kits,
-      zweite_kits: zweite_kits
-    } do
-      {:ok, view, _html} = live(conn, ~p"/rankings/#{r.edit_token}/auswahl")
-
-      view
-      |> element(~s{button[phx-click="quick_select"][phx-value-type="all"]})
-      |> render_click()
-
-      assert Rankings.count_entries(r.id) == length(erste_kits) + length(zweite_kits)
-    end
-
     test "bietet keinen Knopf für Kit-Typen an, die es nicht gibt", %{conn: conn, ranking: r} do
       {:ok, _view, html} = live(conn, ~p"/rankings/#{r.edit_token}/auswahl")
 
       assert html =~ ~s{phx-value-type="home"}
       assert html =~ ~s{phx-value-type="away"}
       refute html =~ ~s{phx-value-type="third"}
-      refute html =~ ~s{phx-value-type="special"}
+    end
+
+    test "eine Gruppe auf einmal", %{conn: conn, ranking: r, erste_kits: erste_kits} do
+      {:ok, view, _html} = live(conn, ~p"/rankings/#{r.edit_token}/auswahl")
+
+      html =
+        view
+        |> element(~s{button[phx-click="toggle_group"][phx-value-name="Erste Liga"]})
+        |> render_click()
+
+      assert Rankings.count_entries(r.id) == length(erste_kits)
+      assert html =~ "Alle abwählen"
     end
   end
 

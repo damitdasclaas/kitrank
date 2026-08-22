@@ -210,16 +210,35 @@ stehen über hundert Trikots zur Wahl. Die per Drag in eine Reihenfolge zu
 bringen wäre unbenutzbar, und ein Reveal darüber liefe hundert Runden.
 Ausgewählt wird deshalb in einem Raster, sortiert nur noch, was übrig bleibt.
 
-Die Auswahl beginnt mit den **Ligen**: erst legt man fest, worüber überhaupt
-entschieden wird, danach zeigt das Raster nur diese Ligen. Die Schnellauswahl
-(„Alle Heim", „Alle Auswärts", „Alle Trikots") bezieht sich immer genau auf
-diesen Ausschnitt — ein Knopf, der stillschweigend auch die zweite Liga
-mitnimmt, wäre eine böse Überraschung. Angeboten werden nur Kit-Typen, die in
-den gewählten Ligen wirklich vorkommen.
+Die Auswahl beginnt mit dem **Ausschnitt** — drei Achsen, frei kombinierbar:
 
-Die Liga-Vorauswahl steht bewusst **nicht** in der Datenbank: sie sagt nur, worüber
-gerade entschieden wird, und gehört nicht zur Rangliste selbst. Beim Wiederkommen
-ergibt sie sich aus dem, was schon drin ist.
+| Achse | wofür |
+|---|---|
+| **Saison** | eine, mehrere, oder „Alle" fürs Archiv |
+| **Liga** | Bundesliga, 2. Bundesliga, … |
+| **Verein** | einer oder mehrere |
+
+Damit geht beides: „alle Heimtrikots der Bundesliga 2026/27" genauso wie
+**„alle HSV-Trikots der letzten zehn Jahre"** — Saison auf „Alle", Verein auf
+HSV, fertig.
+
+Eine leere Menge heißt überall **keine Einschränkung**, wie beim Reveal-Raum.
+Damit das nicht wie ein Versehen aussieht, ist „Alle" ein eigener Knopf, der
+dann aktiv leuchtet.
+
+Die Gruppierung passt sich an: bei **einer** Saison nach Liga, bei **mehreren**
+nach Saison. Wer Trikots über Jahre sortiert, denkt in Jahren; wer eine Saison
+rankt, in Ligen.
+
+Die Schnellauswahl („Alle Heim", „Alle Trikots") bezieht sich immer genau auf
+den gewählten Ausschnitt — ein Knopf, der stillschweigend mehr mitnimmt, wäre
+eine böse Überraschung. Angeboten werden nur Kit-Typen, die es im Ausschnitt
+wirklich gibt.
+
+Der Ausschnitt steht bewusst **nicht** in der Datenbank: er sagt nur, worüber
+gerade entschieden wird, und gehört nicht zur Rangliste selbst. Beim
+Wiederkommen ergibt er sich aus dem, was schon drin ist — wer bisher nur
+HSV-Trikots gewählt hat, landet wieder dort.
 
 Jede Zeile beim Sortieren hat eine **Detailansicht** — großes Bild mit Galerie,
 großes Notizfeld, Shop-Link und die Schiebe-Knöpfe.

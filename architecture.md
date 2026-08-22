@@ -259,11 +259,21 @@ Eine Rangliste enthält nicht automatisch alle Trikots, sondern die, die man
 auswählt. Bei zwei vollen Ligen wären es über hundert – eine Drag-Liste dieser
 Länge ist unbenutzbar, und `Reveal` würde entsprechend viele Runden laufen.
 
-Die Auswahl beginnt mit den Ligen und passiert danach in einem Raster (Trikot
-antippen, ganze Liga auf einmal, oder per Schnellauswahl alle Trikots eines
-Typs). Die Schnellauswahl wirkt immer nur auf die vorgewählten Ligen – sonst
-würde ein Klick auf "Alle Heim" stillschweigend auch Ligen mitnehmen, die man
-gerade bewusst ausgeblendet hat. Sortiert wird danach nur noch das Ausgewählte. `Rankings.create_ranking_with_all_kits/2`
+Die Auswahl beginnt mit einem Ausschnitt über drei Achsen – **Saison, Liga,
+Verein** – und passiert danach in einem Raster. Die Schnellauswahl wirkt immer
+nur auf diesen Ausschnitt; sonst würde ein Klick auf "Alle Heim" stillschweigend
+mehr mitnehmen, als gerade sichtbar ist.
+
+Die Verein-Achse ist das, was das Archiv nutzbar macht: "alle HSV-Trikots der
+letzten zehn Jahre" ist Saison auf "Alle" plus Verein auf HSV. Ohne sie ließe
+sich nur saisonweise ranken, und alte Trikots lägen zwar in der Datenbank, wären
+aber nicht erreichbar.
+
+Bei einer Saison wird nach Liga gruppiert, bei mehreren nach Saison – wer über
+Jahre sortiert, denkt in Jahren.
+
+Eine leere Menge heißt auf jeder Achse "keine Einschränkung", wie beim
+Reveal-Raum. Sortiert wird danach nur noch das Ausgewählte. `Rankings.create_ranking_with_all_kits/2`
 existiert weiterhin für Tests und für den Fall, dass eine Liga klein genug ist.
 
 ### 9.5 Reveal: der Raum gibt den Ausschnitt vor

@@ -74,6 +74,58 @@ defmodule Kitrank.Kits do
     |> Repo.all()
   end
 
+  @doc """
+  Trikots für einen frei gewählten Ausschnitt – Saisons, Ligen, Vereine.
+
+  Jede leere Liste heißt "keine Einschränkung", wie beim Reveal-Raum. Damit ist
+  `%{}` schlicht "alles, was es gibt".
+
+  Das ist die Grundlage dafür, eine Rangliste über etwas anderes als die
+  laufende Saison zu bauen: alle Heimtrikots der Bundesliga 2026/27 genauso wie
+  sämtliche Trikots eines Vereins über zehn Jahre.
+
+  Gibt `[%{kit:, competition:}]` zurück – die Liga steht dabei, weil sie
+  saisonabhängig ist und sich nicht am Trikot ablesen lässt. Sortiert nach
+  Saison (neueste zuerst), dann Liga, Verein und Kit-Typ.
+  """
+  def list_kits_for_scope(scope \\ %{}) do
+    from(k in Kit,
+      join: t in assoc(k, :team),
+      join: ts in TeamSeason,
+      on: ts.team_id == k.team_id and ts.season == k.season,
+      join: c in assoc(ts, :competition),
+      order_by: [desc: k.season, asc: c.tier, asc: c.name, asc: t.name, asc: kit_type_order(k)],
+      preload: [team: t],
+      select: %{kit: k, competition: c}
+    )
+    |> scope_by(:season, Map.get(scope, :seasons, []))
+    |> scope_by(:competition_id, Map.get(scope, :competition_ids, []))
+    |> scope_by(:team_id, Map.get(scope, :team_ids, []))
+    |> Repo.all()
+  end
+
+  defp scope_by(query, _field, []), do: query
+  defp scope_by(query, :season, values), do: from([k] in query, where: k.season in ^values)
+
+  defp scope_by(query, :competition_id, values),
+    do: from([k, _t, ts] in query, where: ts.competition_id in ^values)
+
+  defp scope_by(query, :team_id, values), do: from([k] in query, where: k.team_id in ^values)
+
+  @doc """
+  Die Vereine, die in mindestens einer Saison einer Liga zugeordnet sind –
+  also alles, worüber sich eine Rangliste bauen lässt.
+  """
+  def list_rankable_teams do
+    from(t in Team,
+      join: ts in TeamSeason,
+      on: ts.team_id == t.id,
+      distinct: true,
+      order_by: t.name
+    )
+    |> Repo.all()
+  end
+
   defp kits_by_team([], _season), do: %{}
 
   defp kits_by_team(team_ids, season) do
