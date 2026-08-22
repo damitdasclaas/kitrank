@@ -140,6 +140,10 @@ defmodule KitrankWeb.Ranking.Components do
   attr :index, :integer, required: true
   attr :last?, :boolean, required: true
 
+  attr :note_epoch, :integer,
+    default: 0,
+    doc: "erzwingt einen Neuaufbau des ignorierten Notizfeldes"
+
   @doc "Eine Zeile der Sortierliste: Platz, Trikot, Notiz, Griff."
   def entry_row(assigns) do
     assigns = assign(assigns, :color, Color.team_color(assigns.entry.kit.team))
@@ -163,12 +167,27 @@ defmodule KitrankWeb.Ranking.Components do
         {@index + 1}
       </span>
 
-      <span
-        class="flex h-14 w-14 shrink-0 items-center justify-center rounded-md"
+      <button
+        type="button"
+        phx-click="open_detail"
+        phx-value-id={@entry.kit_id}
+        data-role="detail-figure"
+        class="group relative flex h-20 w-20 shrink-0 items-center justify-center rounded-md transition sm:h-24 sm:w-24"
         style={"background-color: color-mix(in oklab, #{@color} 14%, #FFFFFF)"}
+        aria-label={"#{@entry.kit.team.name} #{Kit.label(@entry.kit.kit_type)} im Detail"}
       >
-        <.kit_figure kit={@entry.kit} team={@entry.kit.team} class="h-11 w-11" />
-      </span>
+        <.kit_figure
+          kit={@entry.kit}
+          team={@entry.kit.team}
+          class="h-16 w-16 transition-transform duration-300 group-hover:scale-105 sm:h-20 sm:w-20"
+        />
+        <span
+          class="pointer-events-none absolute bottom-1 right-1 flex h-5 w-5 items-center justify-center rounded-full bg-white/85 text-black/60 opacity-0 backdrop-blur transition group-hover:opacity-100 group-focus-within:opacity-100"
+          aria-hidden="true"
+        >
+          <.icon name="hero-arrows-pointing-out-mini" class="size-3" />
+        </span>
+      </button>
 
       <div class="min-w-0 flex-1">
         <p class="flex flex-wrap items-baseline gap-x-2">
@@ -177,16 +196,25 @@ defmodule KitrankWeb.Ranking.Components do
           </span>
           <span class="text-sm">{@entry.kit.team.name}</span>
           <span class="text-xs text-soft">{Kit.label(@entry.kit.kit_type)}</span>
+          <button
+            type="button"
+            phx-click="open_detail"
+            phx-value-id={@entry.kit_id}
+            data-role="detail-link"
+            class="text-[11px] text-soft underline-offset-4 hover:text-ink hover:underline"
+          >
+            Detail
+          </button>
         </p>
 
         <%!-- Der Server schickt die Notiz nur beim ersten Rendern; sonst wuerde
               ein Speichern waehrend des Tippens den Cursor verlieren. --%>
-        <div id={"note-#{@entry.id}"} phx-update="ignore" class="mt-1.5">
+        <div id={"note-#{@entry.id}-#{@note_epoch}"} phx-update="ignore" class="mt-1.5">
           <form id={"note-form-#{@entry.id}"} phx-change="save_note">
             <input type="hidden" name="entry_id" value={@entry.id} />
             <textarea
               name="note"
-              rows="1"
+              rows="3"
               phx-debounce="600"
               maxlength="500"
               placeholder="Notiz — warum steht es hier?"

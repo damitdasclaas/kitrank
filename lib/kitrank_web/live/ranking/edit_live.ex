@@ -35,9 +35,14 @@ defmodule KitrankWeb.Ranking.EditLive do
            season: season,
            overview: Kits.overview(season),
            name_form: to_form(Rankings.change_ranking(ranking)),
-           share_url: url(~p"/r/#{ranking.share_slug}")
+           share_url: url(~p"/r/#{ranking.share_slug}"),
+           detail: nil,
+           # Aendert sich nur, wenn eine Notiz von ausserhalb ihres eigenen
+           # Feldes gespeichert wird – siehe Kommentar an `entry_row/1`.
+           note_epoch: 0
          )
-         |> load_entries()}
+         |> load_entries()
+         |> init_leagues()}
     end
   end
 
@@ -52,9 +57,66 @@ defmodule KitrankWeb.Ranking.EditLive do
     {:noreply, assign(socket, page_title: title)}
   end
 
-  ## Auswahl
+  # Die Liga-Vorauswahl steht im Socket, nicht in der Datenbank: sie sagt nur,
+  # worueber gerade entschieden wird, und gehoert nicht zur Rangliste selbst.
+  # Beim Wiederkommen ergibt sie sich aus dem, was schon drin ist – wer bisher
+  # nur Bundesliga gewaehlt hat, landet wieder dort.
+  defp init_leagues(socket) do
+    gewaehlt =
+      for {competition, teams} <- socket.assigns.overview,
+          {_team, kits} <- teams,
+          kit <- kits,
+          MapSet.member?(socket.assigns.selected, kit.id),
+          into: MapSet.new(),
+          do: competition.id
+
+    active =
+      if MapSet.size(gewaehlt) > 0,
+        do: gewaehlt,
+        else: MapSet.new(socket.assigns.overview, fn {competition, _} -> competition.id end)
+
+    assign(socket, :active_leagues, active)
+  end
+
+  ## Ligen-Vorauswahl
 
   @impl true
+  def handle_event("toggle_league", %{"id" => id}, socket) do
+    id = String.to_integer(id)
+    active = socket.assigns.active_leagues
+
+    active =
+      if MapSet.member?(active, id),
+        do: MapSet.delete(active, id),
+        else: MapSet.put(active, id)
+
+    {:noreply, assign(socket, :active_leagues, active)}
+  end
+
+  def handle_event("all_leagues", _params, socket) do
+    all = MapSet.new(socket.assigns.overview, fn {competition, _} -> competition.id end)
+    {:noreply, assign(socket, :active_leagues, all)}
+  end
+
+  def handle_event("no_leagues", _params, socket) do
+    {:noreply, assign(socket, :active_leagues, MapSet.new())}
+  end
+
+  ## Schnellauswahl – wirkt nur auf die vorgewaehlten Ligen
+
+  def handle_event("quick_select", %{"type" => type}, socket) do
+    kit_ids = scoped_kit_ids(socket, type)
+    ranking = socket.assigns.ranking
+
+    if kit_ids != [] and Enum.all?(kit_ids, &MapSet.member?(socket.assigns.selected, &1)) do
+      Enum.each(kit_ids, &Rankings.remove_kit(ranking, &1))
+    else
+      Rankings.add_kits(ranking, kit_ids)
+    end
+
+    {:noreply, load_entries(socket)}
+  end
+
   def handle_event("toggle_kit", %{"id" => id}, socket) do
     id = String.to_integer(id)
     ranking = socket.assigns.ranking
@@ -128,6 +190,38 @@ defmodule KitrankWeb.Ranking.EditLive do
     end
   end
 
+  ## Detailansicht beim Sortieren
+
+  def handle_event("open_detail", %{"id" => id}, socket) do
+    {:noreply, assign(socket, :detail, %{kit_id: String.to_integer(id), image: 0})}
+  end
+
+  def handle_event("close_detail", _params, socket), do: {:noreply, assign(socket, :detail, nil)}
+
+  def handle_event("detail_image", %{"index" => index}, socket) do
+    {:noreply,
+     assign(socket, :detail, %{socket.assigns.detail | image: String.to_integer(index)})}
+  end
+
+  def handle_event("save_detail_note", %{"entry_id" => entry_id, "note" => note}, socket) do
+    entry_id = String.to_integer(entry_id)
+
+    case Enum.find(socket.assigns.entries, &(&1.id == entry_id)) do
+      nil ->
+        {:noreply, socket}
+
+      entry ->
+        # Die Notiz aus der Detailansicht muss auch in der Zeile darunter
+        # ankommen. Deren Feld steht unter phx-update="ignore", damit der Cursor
+        # beim Tippen nicht springt – ein neuer Epoch-Wert zwingt es dazu, sich
+        # doch einmal neu aufzubauen.
+        {:noreply,
+         socket
+         |> note_saved(entry, note)
+         |> update(:note_epoch, &(&1 + 1))}
+    end
+  end
+
   ## Name
 
   def handle_event("save_name", %{"ranking" => attrs}, socket) do
@@ -195,26 +289,52 @@ defmodule KitrankWeb.Ranking.EditLive do
           :if={@live_action == :select}
           overview={@overview}
           selected={@selected}
+          active_leagues={@active_leagues}
         />
 
         <.sorting
           :if={@live_action == :sort}
           entries={@entries}
           edit_token={@ranking.edit_token}
+          note_epoch={@note_epoch}
         />
       </div>
 
       <.step_bar live_action={@live_action} edit_token={@ranking.edit_token} count={@count} />
+
+      <.entry_detail
+        :if={@detail && detail_entry(@entries, @detail)}
+        entry={detail_entry(@entries, @detail)}
+        index={detail_index(@entries, @detail)}
+        total={@count}
+        image={@detail.image}
+      />
     </Layouts.app>
     """
   end
+
+  defp detail_entry(entries, %{kit_id: kit_id}),
+    do: Enum.find(entries, &(&1.kit_id == kit_id))
+
+  defp detail_index(entries, %{kit_id: kit_id}),
+    do: Enum.find_index(entries, &(&1.kit_id == kit_id))
 
   ## Auswahl-Ansicht
 
   attr :overview, :list, required: true
   attr :selected, :any, required: true
+  attr :active_leagues, :any, required: true
 
   defp selection(assigns) do
+    assigns =
+      assign(
+        assigns,
+        :scoped,
+        Enum.filter(assigns.overview, fn {c, _} ->
+          MapSet.member?(assigns.active_leagues, c.id)
+        end)
+      )
+
     ~H"""
     <div
       :if={@overview == []}
@@ -223,7 +343,76 @@ defmodule KitrankWeb.Ranking.EditLive do
       <p class="text-sm text-soft">Für diese Saison sind noch keine Trikots hinterlegt.</p>
     </div>
 
-    <section :for={{competition, teams} <- @overview} class="mt-10">
+    <div :if={@overview != []} class="mt-8 rounded-lg border border-line p-5">
+      <div class="flex flex-wrap items-center gap-2">
+        <h2 class="kr-eyebrow">Welche Ligen?</h2>
+        <button
+          type="button"
+          phx-click="all_leagues"
+          class="ml-auto text-[11px] text-soft underline-offset-4 hover:text-ink hover:underline"
+        >
+          Alle
+        </button>
+        <button
+          type="button"
+          phx-click="no_leagues"
+          class="text-[11px] text-soft underline-offset-4 hover:text-ink hover:underline"
+        >
+          Keine
+        </button>
+      </div>
+
+      <div class="mt-3 flex flex-wrap gap-2">
+        <button
+          :for={{competition, teams} <- @overview}
+          type="button"
+          phx-click="toggle_league"
+          phx-value-id={competition.id}
+          aria-pressed={to_string(MapSet.member?(@active_leagues, competition.id))}
+          class={[
+            "flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-sm transition",
+            MapSet.member?(@active_leagues, competition.id) && "border-transparent bg-ink text-chalk",
+            !MapSet.member?(@active_leagues, competition.id) &&
+              "border-line text-soft hover:border-ink hover:text-ink"
+          ]}
+        >
+          {competition.name}
+          <span class="font-mono text-[10px] opacity-60">{length(teams)}</span>
+        </button>
+      </div>
+
+      <div :if={@scoped != []} class="mt-5 border-t border-line pt-4">
+        <div class="flex flex-wrap items-baseline gap-2">
+          <h3 class="kr-eyebrow">Schnell auswählen</h3>
+          <span class="text-[11px] text-soft">wirkt nur auf {league_names(@scoped)}</span>
+        </div>
+        <div class="mt-3 flex flex-wrap gap-2">
+          <.quick_button
+            :for={type <- available_types(@scoped)}
+            type={type}
+            label={Kit.label(type)}
+            all_selected?={type_all_selected?(@scoped, @selected, type)}
+          />
+          <.quick_button
+            type="all"
+            label="Trikots"
+            all_selected?={type_all_selected?(@scoped, @selected, "all")}
+          />
+        </div>
+      </div>
+    </div>
+
+    <div
+      :if={@overview != [] && @scoped == []}
+      class="mt-8 rounded-lg border border-dashed border-line p-12 text-center"
+    >
+      <p class="kr-display text-xl">Erst eine Liga wählen</p>
+      <p class="mx-auto mt-2 max-w-sm text-sm text-soft">
+        Dann erscheinen hier die Trikots, und die Schnellauswahl weiß, worauf sie sich bezieht.
+      </p>
+    </div>
+
+    <section :for={{competition, teams} <- @scoped} class="mt-10">
       <div class="flex flex-wrap items-baseline gap-3 border-b border-line pb-2">
         <h2 class="kr-display text-lg">{competition.name}</h2>
         <span class="kr-eyebrow">{competition.country} · Liga {competition.tier}</span>
@@ -298,6 +487,7 @@ defmodule KitrankWeb.Ranking.EditLive do
 
   attr :entries, :list, required: true
   attr :edit_token, :string, required: true
+  attr :note_epoch, :integer, default: 0
 
   defp sorting(assigns) do
     ~H"""
@@ -328,12 +518,222 @@ defmodule KitrankWeb.Ranking.EditLive do
         entry={entry}
         index={index}
         last?={index == length(@entries) - 1}
+        note_epoch={@note_epoch}
       />
     </ul>
 
     <p :if={@entries != []} class="mt-4 text-xs text-soft">
       Ziehen am Griff sortiert um. Ohne Maus gehen auch die Pfeile — beides speichert sofort.
     </p>
+    """
+  end
+
+  ## Bausteine der Auswahl
+
+  # "all" nimmt alles aus den vorgewaehlten Ligen, sonst nur den Kit-Typ.
+  defp scoped_kit_ids(socket, "all") do
+    for {competition, teams} <- socket.assigns.overview,
+        MapSet.member?(socket.assigns.active_leagues, competition.id),
+        {_team, kits} <- teams,
+        kit <- kits,
+        do: kit.id
+  end
+
+  defp scoped_kit_ids(socket, kit_type) do
+    for {competition, teams} <- socket.assigns.overview,
+        MapSet.member?(socket.assigns.active_leagues, competition.id),
+        {_team, kits} <- teams,
+        kit <- kits,
+        kit.kit_type == kit_type,
+        do: kit.id
+  end
+
+  defp league_names(scoped) do
+    scoped |> Enum.map(fn {competition, _} -> competition.name end) |> to_sentence()
+  end
+
+  defp to_sentence([one]), do: one
+  defp to_sentence([a, b]), do: "#{a} und #{b}"
+  defp to_sentence(names), do: Enum.join(names, ", ")
+
+  # Nur Kit-Typen anbieten, die es in den gewaehlten Ligen ueberhaupt gibt –
+  # ein Knopf "Sonder", der nichts tut, waere nur Rauschen.
+  defp available_types(scoped) do
+    vorhanden =
+      for {_competition, teams} <- scoped,
+          {_team, kits} <- teams,
+          kit <- kits,
+          into: MapSet.new(),
+          do: kit.kit_type
+
+    Enum.filter(Kit.kit_types(), &MapSet.member?(vorhanden, &1))
+  end
+
+  defp type_all_selected?(scoped, selected, type) do
+    ids =
+      for {_competition, teams} <- scoped,
+          {_team, kits} <- teams,
+          kit <- kits,
+          type == "all" or kit.kit_type == type,
+          do: kit.id
+
+    ids != [] and Enum.all?(ids, &MapSet.member?(selected, &1))
+  end
+
+  attr :type, :string, required: true
+  attr :label, :string, required: true
+  attr :all_selected?, :boolean, required: true
+
+  defp quick_button(assigns) do
+    ~H"""
+    <button
+      type="button"
+      phx-click="quick_select"
+      phx-value-type={@type}
+      aria-pressed={to_string(@all_selected?)}
+      class={[
+        "flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs transition",
+        @all_selected? && "border-ink bg-sunk font-medium text-ink",
+        !@all_selected? && "border-line text-soft hover:border-ink hover:text-ink"
+      ]}
+    >
+      <.icon
+        name={if @all_selected?, do: "hero-minus-mini", else: "hero-plus-mini"}
+        class="size-3"
+      />
+      {if @all_selected?, do: "#{@label} abwählen", else: "Alle #{@label}"}
+    </button>
+    """
+  end
+
+  ## Detailansicht beim Sortieren
+
+  attr :entry, :map, required: true
+  attr :index, :integer, required: true
+  attr :total, :integer, required: true
+  attr :image, :integer, required: true
+
+  defp entry_detail(assigns) do
+    images = kit_images(assigns.entry.kit)
+
+    assigns =
+      assigns
+      |> assign(:images, images)
+      |> assign(:src, Enum.at(images, assigns.image))
+      |> assign(:color, Color.team_color(assigns.entry.kit.team))
+
+    ~H"""
+    <.modal
+      id="entry-detail"
+      on_close="close_detail"
+      label={"#{@entry.kit.team.name} – #{Kit.label(@entry.kit.kit_type)}"}
+      size="max-w-3xl"
+    >
+      <div class="grid gap-0 sm:grid-cols-2">
+        <div>
+          <div
+            class="flex aspect-square items-center justify-center rounded-tl-xl p-6 sm:p-10"
+            style={"background-color: color-mix(in oklab, #{@color} 13%, #FFFFFF)"}
+          >
+            <.kit_figure
+              kit={@entry.kit}
+              team={@entry.kit.team}
+              image_url={@src}
+              class="h-full w-full"
+            />
+          </div>
+
+          <div :if={length(@images) > 1} class="flex gap-1.5 border-t border-line px-4 py-2.5">
+            <button
+              :for={{_url, i} <- Enum.with_index(@images)}
+              type="button"
+              phx-click="detail_image"
+              phx-value-index={i}
+              class={[
+                "h-1.5 flex-1 rounded-full transition",
+                i == @image && "bg-ink",
+                i != @image && "bg-line hover:bg-soft"
+              ]}
+              aria-label={"Bild #{i + 1} von #{length(@images)} zeigen"}
+              aria-current={to_string(i == @image)}
+            />
+          </div>
+        </div>
+
+        <div class="flex flex-col border-t border-line p-5 sm:border-l sm:border-t-0">
+          <p class="kr-eyebrow">Platz {@index + 1} von {@total}</p>
+          <h2 class="kr-display mt-1.5 text-2xl leading-tight">{@entry.kit.team.name}</h2>
+          <p class="mt-1 flex items-baseline gap-2">
+            <span class="font-mono text-xs font-semibold" style={"color: #{@color}"}>
+              {@entry.kit.team.short_code}
+            </span>
+            <span class="text-sm text-soft">{Kit.label(@entry.kit.kit_type)}</span>
+          </p>
+
+          <form
+            id="detail-note"
+            phx-change="save_detail_note"
+            class="mt-5 flex min-h-0 flex-1 flex-col"
+          >
+            <label for="detail-note-field" class="kr-eyebrow">Notiz</label>
+            <input type="hidden" name="entry_id" value={@entry.id} />
+            <textarea
+              id="detail-note-field"
+              name="note"
+              rows="7"
+              maxlength="500"
+              phx-debounce="600"
+              placeholder="Warum steht es genau hier? Was stört, was gefällt?"
+              class="mt-2 w-full flex-1 resize-y rounded-md border border-line bg-panel px-3 py-2.5 text-sm leading-relaxed placeholder:text-soft/70"
+            >{@entry.note}</textarea>
+            <p class="mt-1 text-xs text-soft">
+              Höchstens 500 Zeichen. Wird laufend gespeichert und steht später im Reveal.
+            </p>
+          </form>
+
+          <a
+            :if={@entry.kit.source_shop_url}
+            href={@entry.kit.source_shop_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            class="mt-4 inline-flex items-center gap-1 text-xs text-soft underline underline-offset-4 hover:text-ink"
+          >
+            Im Shop ansehen <.icon name="hero-arrow-top-right-on-square-mini" class="size-3" />
+          </a>
+
+          <div class="mt-5 flex flex-wrap gap-2 border-t border-line pt-4">
+            <button
+              type="button"
+              phx-click="move"
+              phx-value-id={@entry.kit_id}
+              phx-value-delta="-1"
+              disabled={@index == 0}
+              class="flex items-center gap-1 rounded-md border border-line px-3 py-1.5 text-xs transition enabled:hover:border-ink disabled:opacity-30"
+            >
+              <.icon name="hero-chevron-up-mini" class="size-3.5" /> Höher
+            </button>
+            <button
+              type="button"
+              phx-click="move"
+              phx-value-id={@entry.kit_id}
+              phx-value-delta="1"
+              disabled={@index == @total - 1}
+              class="flex items-center gap-1 rounded-md border border-line px-3 py-1.5 text-xs transition enabled:hover:border-ink disabled:opacity-30"
+            >
+              <.icon name="hero-chevron-down-mini" class="size-3.5" /> Tiefer
+            </button>
+            <button
+              type="button"
+              phx-click="remove"
+              phx-value-id={@entry.kit_id}
+              class="ml-auto rounded-md border border-line px-3 py-1.5 text-xs text-soft transition hover:border-red-500 hover:text-red-600"
+            >
+              Aus der Liste nehmen
+            </button>
+          </div>
+        </div>
+      </div>
+    </.modal>
     """
   end
 end

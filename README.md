@@ -137,6 +137,20 @@ stehen über hundert Trikots zur Wahl. Die per Drag in eine Reihenfolge zu
 bringen wäre unbenutzbar, und ein Reveal darüber liefe hundert Runden.
 Ausgewählt wird deshalb in einem Raster, sortiert nur noch, was übrig bleibt.
 
+Die Auswahl beginnt mit den **Ligen**: erst legt man fest, worüber überhaupt
+entschieden wird, danach zeigt das Raster nur diese Ligen. Die Schnellauswahl
+(„Alle Heim", „Alle Auswärts", „Alle Trikots") bezieht sich immer genau auf
+diesen Ausschnitt — ein Knopf, der stillschweigend auch die zweite Liga
+mitnimmt, wäre eine böse Überraschung. Angeboten werden nur Kit-Typen, die in
+den gewählten Ligen wirklich vorkommen.
+
+Die Liga-Vorauswahl steht bewusst **nicht** in der Datenbank: sie sagt nur, worüber
+gerade entschieden wird, und gehört nicht zur Rangliste selbst. Beim Wiederkommen
+ergibt sie sich aus dem, was schon drin ist.
+
+Jede Zeile beim Sortieren hat eine **Detailansicht** — großes Bild mit Galerie,
+großes Notizfeld, Shop-Link und die Schiebe-Knöpfe.
+
 Sortieren geht per Drag (Sortable.js, `assets/js/hooks/sortable.js`) **und** über
 Pfeil-Knöpfe — Drag ist auf dem Handy fummelig und mit der Tastatur gar nicht zu
 bedienen. Der Hook schickt nach dem Loslassen die komplette neue Reihenfolge,

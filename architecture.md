@@ -259,8 +259,11 @@ Eine Rangliste enthält nicht automatisch alle Trikots, sondern die, die man
 auswählt. Bei zwei vollen Ligen wären es über hundert – eine Drag-Liste dieser
 Länge ist unbenutzbar, und `Reveal` würde entsprechend viele Runden laufen.
 
-Die Auswahl passiert in einem Raster (Trikot antippen, oder ganze Liga auf
-einmal), sortiert wird danach nur noch das Ausgewählte. `Rankings.create_ranking_with_all_kits/2`
+Die Auswahl beginnt mit den Ligen und passiert danach in einem Raster (Trikot
+antippen, ganze Liga auf einmal, oder per Schnellauswahl alle Trikots eines
+Typs). Die Schnellauswahl wirkt immer nur auf die vorgewählten Ligen – sonst
+würde ein Klick auf "Alle Heim" stillschweigend auch Ligen mitnehmen, die man
+gerade bewusst ausgeblendet hat. Sortiert wird danach nur noch das Ausgewählte. `Rankings.create_ranking_with_all_kits/2`
 existiert weiterhin für Tests und für den Fall, dass eine Liga klein genug ist.
 
 ## 10. Noch offen

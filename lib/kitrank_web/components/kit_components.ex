@@ -191,7 +191,15 @@ defmodule KitrankWeb.KitComponents do
   def kit_images(_), do: []
 
   attr :id, :string, required: true
-  attr :close_path, :string, required: true, doc: "Ziel beim Schliessen"
+
+  attr :close_path, :string,
+    default: nil,
+    doc: "Ziel beim Schliessen – fuer Modals, die eine eigene Adresse haben"
+
+  attr :on_close, :string,
+    default: nil,
+    doc: "Event statt Adresse – fuer Modals, die nur ein Zustand der Seite sind"
+
   attr :label, :string, required: true, doc: "Beschriftung fuer Screenreader"
   attr :size, :string, default: "max-w-3xl"
 
@@ -203,6 +211,10 @@ defmodule KitrankWeb.KitComponents do
 
   @doc "Modal-Huelle: Backdrop, Escape zum Schliessen, Fokus auf dem Dialog."
   def modal(assigns) do
+    # Genau eines von beidem muss gesetzt sein, sonst laesst sich das Modal
+    # nicht schliessen.
+    assigns = assign(assigns, :close, close_action(assigns))
+
     ~H"""
     <div
       id={@id}
@@ -210,13 +222,13 @@ defmodule KitrankWeb.KitComponents do
       role="dialog"
       aria-modal="true"
       aria-label={@label}
-      phx-window-keydown={@close_on_escape && JS.patch(@close_path)}
+      phx-window-keydown={@close_on_escape && @close}
       phx-key={@close_on_escape && "Escape"}
     >
       <div
         class="fixed inset-0 bg-black/45 backdrop-blur-[2px]"
         aria-hidden="true"
-        phx-click={JS.patch(@close_path)}
+        phx-click={@close}
       >
       </div>
 
@@ -225,19 +237,23 @@ defmodule KitrankWeb.KitComponents do
           "kr-rise relative w-full rounded-xl border border-line bg-panel shadow-2xl",
           @size
         ]}>
-          <.link
-            patch={@close_path}
+          <button
+            type="button"
+            phx-click={@close}
             class="absolute right-3 top-3 z-10 flex h-8 w-8 items-center justify-center rounded-full border border-line bg-panel text-soft transition hover:text-ink"
             aria-label="Schliessen"
           >
             <.icon name="hero-x-mark-mini" class="size-4" />
-          </.link>
+          </button>
           {render_slot(@inner_block)}
         </div>
       </div>
     </div>
     """
   end
+
+  defp close_action(%{close_path: path}) when is_binary(path), do: JS.patch(path)
+  defp close_action(%{on_close: event}) when is_binary(event), do: JS.push(event)
 
   attr :kit, :map, required: true
   attr :team, :map, required: true
