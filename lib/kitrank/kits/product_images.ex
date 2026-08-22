@@ -23,7 +23,8 @@ defmodule Kitrank.Kits.ProductImages do
 
   require Logger
 
-  @timeout 20_000
+  # Kurz genug, dass ein blockender Shop nicht wie ein Haenger wirkt.
+  @timeout 12_000
   @max_bytes 3_000_000
   @max_images 40
 
@@ -42,6 +43,17 @@ defmodule Kitrank.Kits.ProductImages do
   def fetch(url) when is_binary(url) do
     with {:ok, url} <- normalize(url),
          {:ok, body} <- get(url) do
+      parse(body, url)
+    end
+  end
+
+  def fetch(_), do: {:error, :invalid_url}
+
+  # Fremdes HTML ist unberechenbar. Statt die aufrufende LiveView mitzureissen,
+  # wird ein unerwarteter Fehler zu einer Meldung – und landet im Log, damit er
+  # sich nachvollziehen laesst.
+  defp parse(body, url) do
+    try do
       images =
         []
         |> collect_json_ld(body)
@@ -55,11 +67,24 @@ defmodule Kitrank.Kits.ProductImages do
         |> dedupe_by_file()
         |> Enum.take(@max_images)
 
-      {:ok, %{title: title(body), images: images, source_url: url}}
+      cond do
+        images != [] ->
+          {:ok, %{title: title(body), images: images, source_url: url}}
+
+        # Eine winzige Seite ohne Bilder ist fast immer eine JS-Huelle, die
+        # ihren Inhalt erst im Browser nachlaedt.
+        byte_size(body) < 50_000 ->
+          {:error, :javascript}
+
+        true ->
+          {:error, :no_images}
+      end
+    rescue
+      e ->
+        Logger.warning("ProductImages: #{url} -> #{Exception.format(:error, e, __STACKTRACE__)}")
+        {:error, :unparsable}
     end
   end
-
-  def fetch(_), do: {:error, :invalid_url}
 
   defp normalize(url) do
     case URI.parse(String.trim(url)) do
@@ -92,8 +117,20 @@ defmodule Kitrank.Kits.ProductImages do
       {:ok, %{status: 404}} ->
         {:error, :not_found}
 
-      other ->
-        Logger.debug("ProductImages: #{url} -> #{inspect(other)}")
+      {:ok, %{status: status}} ->
+        Logger.info("ProductImages: #{url} -> HTTP #{status}")
+        {:error, {:status, status}}
+
+      # Shops mit Bot-Schutz lassen die Verbindung oft einfach offen, statt
+      # abzulehnen – das kommt hier als Timeout an.
+      {:error, %Req.TransportError{reason: :timeout}} ->
+        {:error, :timeout}
+
+      {:error, %Req.TransportError{reason: :nxdomain}} ->
+        {:error, :unknown_host}
+
+      {:error, exception} ->
+        Logger.info("ProductImages: #{url} -> #{Exception.message(exception)}")
         {:error, :unreachable}
     end
   end
@@ -257,14 +294,38 @@ defmodule Kitrank.Kits.ProductImages do
     end
   end
 
-  @doc "Fehlermeldung in Klartext für die Oberfläche."
+  @doc """
+  Fehlermeldung in Klartext – mit dem nächsten Schritt, nicht nur der Diagnose.
+
+  Der Ausweg ist überall derselbe: Bild-URLs im Browser per Rechtsklick kopieren
+  und unten von Hand einfügen. Deshalb steht er dabei, wo er hilft.
+  """
+  def message(:timeout),
+    do:
+      "Der Shop hat nicht geantwortet. Viele Shops blocken automatisierte Abrufe still — " <>
+        "kopier die Bild-Adressen im Browser per Rechtsklick und füg sie unten ein."
+
   def message(:blocked),
-    do: "Dieser Shop lässt automatisierte Abrufe nicht zu. Bild-URLs bitte von Hand einfügen."
+    do:
+      "Dieser Shop lässt automatisierte Abrufe nicht zu. Bild-Adressen im Browser " <>
+        "per Rechtsklick kopieren und unten einfügen."
 
+  def message(:javascript),
+    do:
+      "Diese Seite lädt ihre Bilder erst im Browser nach, der Server sieht sie nicht. " <>
+        "Bild-Adressen per Rechtsklick kopieren und unten einfügen."
+
+  def message(:no_images), do: "Auf der Seite waren keine Bilder zu finden."
   def message(:not_found), do: "Die Seite gibt es nicht (404). Stimmt der Link?"
+  def message(:unknown_host), do: "Diese Adresse gibt es nicht. Vertippt?"
 
-  def message(:unreachable),
-    do: "Die Seite war nicht erreichbar. Bild-URLs kannst du auch von Hand einfügen."
+  def message({:status, status}), do: "Der Shop hat mit HTTP #{status} geantwortet."
+
+  def message(:unparsable),
+    do: "Die Seite ließ sich nicht auswerten. Bild-Adressen bitte von Hand einfügen."
 
   def message(:invalid_url), do: "Das sieht nicht nach einer Adresse aus (http:// oder https://)."
+
+  def message(:unreachable),
+    do: "Die Seite war nicht erreichbar. Bild-Adressen kannst du auch von Hand einfügen."
 end

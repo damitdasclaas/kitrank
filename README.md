@@ -80,9 +80,21 @@ zeigt sie als Raster. Dann klickst du: **erster Klick = Freisteller, jeder
 weitere = Model-Bild.** Der Produktlink wird gleich als Shop-Deep-Link
 übernommen.
 
-Wo ein Shop automatisierte Abrufe ablehnt — Bayern etwa antwortet mit 403 —
-sagt die Oberfläche das und du fügst die Bild-URLs von Hand ein. Der Schutz
-wird nicht umgangen.
+Nicht jeder Shop lässt sich lesen, und die Oberfläche sagt jeweils warum:
+
+| Was passiert | Warum |
+|---|---|
+| „Der Shop hat nicht geantwortet" | Bot-Schutz lässt die Verbindung still offen (Bayern, merchandising-onlineshop.com) |
+| „Lädt Bilder erst im Browser nach" | JS-gerenderte Seite, der Server sieht nichts (shop.bvb.de) |
+| „Lässt automatisierte Abrufe nicht zu" | Antwortet mit 403 oder 429 |
+
+In allen Fällen ist der Ausweg derselbe und steht in der Meldung: Bild-Adressen
+im Browser per Rechtsklick kopieren und unten einfügen. Bot-Schutz wird nicht
+umgangen.
+
+Der Abruf läuft in einem eigenen Prozess (`start_async`) — ein Shop, der zwölf
+Sekunden nicht antwortet, würde die Oberfläche sonst so lange einfrieren, und
+ein eingefrorenes Fenster sieht aus wie ein Fehler.
 
 `/admin` hat CRUD für alles. Das Dashboard zeigt, was noch fehlt — Trikots ohne
 Bild, ohne Shop-Link, und ob für die Saison überhaupt Zuordnungen existieren.

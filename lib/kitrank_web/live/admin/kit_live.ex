@@ -60,10 +60,13 @@ defmodule KitrankWeb.Admin.KitLive do
 
   @impl true
   def handle_event("fetch_images", %{"product_url" => url}, socket) do
-    # Der Abruf dauert; die Oberflaeche soll derweil nicht einfrieren.
-    send(self(), {:fetch_images, url})
-
-    {:noreply, assign(socket, fetching?: true, fetch_error: nil, candidates: [])}
+    # In einem eigenen Prozess: ein Shop, der nicht antwortet, wuerde die
+    # Oberflaeche sonst bis zum Timeout einfrieren – und ein eingefrorenes
+    # Fenster sieht aus wie ein Fehler, obwohl nur gewartet wird.
+    {:noreply,
+     socket
+     |> assign(fetching?: true, fetch_error: nil, candidates: [])
+     |> start_async(:fetch_images, fn -> @images.fetch(url) end)}
   end
 
   @doc """
@@ -127,15 +130,8 @@ defmodule KitrankWeb.Admin.KitLive do
   end
 
   @impl true
-  def handle_info({:fetch_images, url}, socket) do
-    case @images.fetch(url) do
-      {:ok, %{images: []}} ->
-        {:noreply,
-         assign(socket,
-           fetching?: false,
-           fetch_error: "Auf der Seite waren keine Bilder zu finden."
-         )}
-
+  def handle_async(:fetch_images, {:ok, ergebnis_oder_fehler}, socket) do
+    case ergebnis_oder_fehler do
       {:ok, ergebnis} ->
         # Den Produktlink gleich als Shop-Deep-Link uebernehmen – dafuer ist er da.
         attrs = Map.put(current_attrs(socket), "source_shop_url", ergebnis.source_url)
@@ -148,6 +144,19 @@ defmodule KitrankWeb.Admin.KitLive do
       {:error, grund} ->
         {:noreply, assign(socket, fetching?: false, fetch_error: ProductImages.message(grund))}
     end
+  end
+
+  # Der Abrufprozess selbst ist gestorben – auch das darf die Seite nicht
+  # mitnehmen.
+  def handle_async(:fetch_images, {:exit, grund}, socket) do
+    require Logger
+    Logger.warning("Bildabruf abgebrochen: #{inspect(grund)}")
+
+    {:noreply,
+     assign(socket,
+       fetching?: false,
+       fetch_error: "Der Abruf ist abgebrochen. Bild-Adressen kannst du von Hand einfügen."
+     )}
   end
 
   # Die aktuell gewaehlten Bilder in Klick-Reihenfolge: Freisteller zuerst.

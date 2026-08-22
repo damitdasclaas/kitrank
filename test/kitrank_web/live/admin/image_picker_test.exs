@@ -34,11 +34,12 @@ defmodule KitrankWeb.Admin.ImagePickerTest do
     %{view: view, kit: kit}
   end
 
-  # Der Abruf laeuft ueber eine Nachricht an den LiveView, damit die
-  # Oberflaeche nicht einfriert – im Test also erst ausloesen, dann abwarten.
+  # Der Abruf laeuft in einem eigenen Prozess, damit ein blockender Shop die
+  # Oberflaeche nicht einfriert. Im Test heisst das: ausloesen und auf das
+  # Ergebnis warten, sonst rendert man den Zwischenstand.
   defp hole_bilder(view, url) do
     render_hook(view, "fetch_images", %{"product_url" => url})
-    render(view)
+    render_async(view)
   end
 
   defp klick(view, url) do
@@ -133,6 +134,18 @@ defmodule KitrankWeb.Admin.ImagePickerTest do
 
     test "meldet eine Seite ohne Bilder", %{view: view} do
       assert hole_bilder(view, "https://stub/leer") =~ "keine Bilder zu finden"
+    end
+
+    test "erklärt einen Timeout, statt nur 'nicht erreichbar' zu sagen", %{view: view} do
+      html = hole_bilder(view, "https://stub/timeout")
+
+      assert html =~ "hat nicht geantwortet"
+      # Und sagt, was man stattdessen tun kann.
+      assert html =~ "Rechtsklick"
+    end
+
+    test "erklärt eine Seite, die ihre Bilder erst im Browser lädt", %{view: view} do
+      assert hole_bilder(view, "https://stub/js") =~ "erst im Browser nach"
     end
   end
 end

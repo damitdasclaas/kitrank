@@ -15,9 +15,11 @@ defmodule Kitrank.Kits.ProductImagesStub do
 
   def images, do: @images
 
-  def fetch("https://stub/leer"),
-    do: {:ok, %{title: "Leer", images: [], source_url: "https://stub/leer"}}
-
+  # Dieselben Rueckgaben wie das echte Modul – "keine Bilder" ist dort ein
+  # Fehler und kein Erfolg mit leerer Liste.
+  def fetch("https://stub/leer"), do: {:error, :no_images}
+  def fetch("https://stub/js"), do: {:error, :javascript}
+  def fetch("https://stub/timeout"), do: {:error, :timeout}
   def fetch("https://stub/blockiert"), do: {:error, :blocked}
   def fetch("kein-link"), do: {:error, :invalid_url}
 
