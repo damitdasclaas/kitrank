@@ -11,10 +11,18 @@ defmodule Kitrank.Reveal.Participant do
   schema "reveal_participants" do
     field :display_name, :string
 
+    # Der Rang, den diese Person zuletzt selbst aufgedeckt hat.
+    field :revealed_step, :integer
+
     belongs_to :room, Kitrank.Reveal.Room
     belongs_to :ranking, Kitrank.Rankings.Ranking
 
     timestamps(type: :utc_datetime)
+  end
+
+  @doc "Markiert diese Runde als aufgedeckt."
+  def reveal_changeset(participant, step) do
+    change(participant, revealed_step: step)
   end
 
   def changeset(participant, attrs) do

@@ -166,9 +166,22 @@ Browser vielleicht nicht mehr hat.
 
 ## Reveal
 
-`/reveal/new` öffnet einen Raum, `/reveal/:room_code` ist der Raum. Beigetreten
-wird mit dem **Teilen-Link** der eigenen Rangliste, nicht mit dem Bearbeiten-Link
-— das Reveal braucht Leserechte, nicht mehr.
+`/reveal/new` ist der Einstieg: links Code eingeben und beitreten, rechts einen
+Raum erstellen. `/reveal/:room_code` ist der Raum selbst. Beigetreten wird mit
+dem **Teilen-Link** der eigenen Rangliste, nicht mit dem Bearbeiten-Link — das
+Reveal braucht Leserechte, nicht mehr.
+
+**Aufgedeckt wird einzeln.** Der Host schaltet die Plätze weiter, aber jede:r
+dreht die eigene Karte selbst um. Fremde Karten bleiben zu, bis ihr Besitzer
+klickt. Karten von Listen, die so weit nicht reichen, gelten als aufgedeckt —
+sonst würde die Runde auf jemanden warten, der nichts zeigen kann. Der Host darf
+trotzdem weiterschalten, damit eine abwesende Person nicht alles blockiert.
+
+Eine **Gesamtübersicht** zeigt jederzeit den bisherigen Verlauf als Tabelle:
+eine Zeile je Platz, eine Spalte je Person. Die Regel dafür ist bewusst einfach —
+vergangene Runden sind offen, die laufende zeigt nur, was umgedreht wurde. Eine
+Karte dauerhaft zu verstecken, nur weil jemand nicht geklickt hat, würde die
+Tabelle für alle anderen unbrauchbar machen.
 
 Der Ablauf hängt an zwei getrennten Dingen: der **Raumcode** ist kurz, zum
 Vorlesen gedacht und wird geteilt; die **Steuerung** hängt an einem eigenen

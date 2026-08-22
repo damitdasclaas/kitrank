@@ -244,11 +244,14 @@ defmodule Kitrank.Reveal do
 
   @doc """
   Was auf dem aktuellen Rang bei allen Teilnehmern steht – eine Liste
-  `%{participant_id, participant_name, kit, note}`.
+  `%{participant_id, participant_name, kit, note, revealed?}`.
 
   Wird einmal geladen und mitgebroadcastet, damit kein Client selbst nachlädt.
   `kit` ist `nil`, wenn eine Rangliste so weit nicht reicht; die UI zeigt dort
   eine leere Karte statt den Teilnehmer verschwinden zu lassen.
+
+  Solche leeren Karten gelten als aufgedeckt – es gibt nichts umzudrehen, und
+  sonst würde die Runde auf jemanden warten, der gar nichts zeigen kann.
   """
   def step_entries(%Room{current_step: nil}), do: []
 
@@ -262,9 +265,148 @@ defmodule Kitrank.Reveal do
         participant_id: participant.id,
         participant_name: participant.display_name,
         kit: entry && entry.kit,
-        note: entry && entry.note
+        note: entry && entry.note,
+        revealed?: is_nil(entry) or participant.revealed_step == step
       }
     end)
+  end
+
+  @doc """
+  Ein Teilnehmer deckt sein eigenes Trikot auf.
+
+  Broadcastet den neuen Stand des Schritts, damit die Karte bei allen
+  gleichzeitig umschlägt.
+  """
+  def reveal_own(%Room{current_step: nil}, _participant_id), do: {:error, :not_started}
+
+  def reveal_own(%Room{current_step: step} = room, participant_id) do
+    case Repo.get_by(Participant, id: participant_id, room_id: room.id) do
+      nil ->
+        {:error, :not_a_participant}
+
+      participant ->
+        participant
+        |> Participant.reveal_changeset(step)
+        |> Repo.update()
+        |> case do
+          {:ok, participant} ->
+            broadcast(room, {:step_revealed, step, step_entries(room)})
+            {:ok, participant}
+
+          {:error, changeset} ->
+            {:error, changeset}
+        end
+    end
+  end
+
+  @doc """
+  Der bisherige Verlauf als Tabelle: eine Zeile je Rang, eine Spalte je
+  Teilnehmer.
+
+  Sichtbar ist nur, was schon aufgedeckt wurde. Die Regel dafür ist bewusst
+  einfach: **vergangene Runden sind offen, die laufende zeigt nur, was
+  umgedreht wurde.** Sobald der Host weiterschaltet, ist die Runde vorbei –
+  eine Karte dann noch dauerhaft zu verstecken, nur weil jemand nicht geklickt
+  hat, würde die Tabelle für alle anderen kaputtmachen.
+
+  Gibt `%{participants: [...], rows: [%{step:, cells: [...]}]}` zurück, Zeilen
+  vom schlechtesten bereits gezeigten Rang bis zum aktuellen.
+  """
+  def revealed_board(%Room{current_step: nil}), do: %{participants: [], rows: []}
+
+  def revealed_board(%Room{current_step: current} = room) do
+    participants = list_participants(room)
+
+    # Einmal alle Einträge laden statt pro Zelle zu fragen.
+    by_participant =
+      Map.new(participants, fn participant ->
+        entries =
+          participant.ranking_id
+          |> Rankings.list_entries()
+          |> Map.new(&{&1.position, &1})
+
+        {participant.id, entries}
+      end)
+
+    start = Enum.max([map_size_max(by_participant), current], fn -> current end)
+
+    rows =
+      for step <- start..current//-1 do
+        cells =
+          Enum.map(participants, fn participant ->
+            entry = by_participant |> Map.fetch!(participant.id) |> Map.get(step)
+
+            %{
+              participant_id: participant.id,
+              kit: entry && entry.kit,
+              note: entry && entry.note,
+              visible?: step > current or is_nil(entry) or participant.revealed_step == current
+            }
+          end)
+
+        %{step: step, cells: cells}
+      end
+
+    %{
+      participants: Enum.map(participants, &%{id: &1.id, name: &1.display_name}),
+      rows: rows
+    }
+  end
+
+  defp map_size_max(by_participant) do
+    by_participant
+    |> Map.values()
+    |> Enum.map(&map_size/1)
+    |> Enum.max(fn -> 0 end)
+  end
+
+  @doc """
+  Wie gut passen die Ranglisten im Raum zusammen?
+
+  Gibt `%{lengths: [{name, anzahl}], shortest:, longest:, shared:}` zurück –
+  `shared` ist die Zahl der Trikots, die wirklich in *allen* Listen vorkommen.
+
+  Der Reveal vergleicht Rang gegen Rang. Wenn eine Liste neun Einträge hat und
+  eine andere zwei, laufen sieben Runden als Soloauftritt, und "Platz 2" heißt
+  bei beiden etwas völlig Verschiedenes. Das kann die App nicht reparieren –
+  aber sie kann es vor dem Start sichtbar machen.
+  """
+  def ranking_fit(%Room{} = room) do
+    participants = list_participants(room)
+
+    kit_sets =
+      Enum.map(participants, fn participant ->
+        participant.ranking_id
+        |> Rankings.list_entries()
+        |> MapSet.new(& &1.kit_id)
+      end)
+
+    lengths = Enum.map(participants, &{&1.display_name, Rankings.count_entries(&1.ranking_id)})
+    counts = Enum.map(lengths, &elem(&1, 1))
+
+    shared =
+      case kit_sets do
+        [] -> 0
+        [first | rest] -> rest |> Enum.reduce(first, &MapSet.intersection/2) |> MapSet.size()
+      end
+
+    %{
+      lengths: lengths,
+      shortest: Enum.min(counts, fn -> 0 end),
+      longest: Enum.max(counts, fn -> 0 end),
+      shared: shared
+    }
+  end
+
+  @doc "Haben auf dem aktuellen Rang schon alle aufgedeckt?"
+  def all_revealed?(%Room{} = room) do
+    room |> step_entries() |> Enum.all?(& &1.revealed?)
+  end
+
+  @doc "Wie viele von wie vielen haben aufgedeckt – für die Anzeige beim Host."
+  def reveal_progress(%Room{} = room) do
+    entries = step_entries(room)
+    {Enum.count(entries, & &1.revealed?), length(entries)}
   end
 
   ## PubSub

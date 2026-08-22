@@ -36,7 +36,10 @@ defmodule KitrankWeb.RevealLiveTest do
     test "zeigt den Code und legt das Host-Token im Browser ab", %{conn: conn} do
       {:ok, view, _html} = live(conn, ~p"/reveal/new")
 
-      html = view |> form("form", %{"max_participants" => "4"}) |> render_submit()
+      html =
+        view
+        |> form(~s{form[phx-submit="create"]}, %{"max_participants" => "4"})
+        |> render_submit()
 
       assert html =~ ~s(phx-hook="RememberHost")
       assert [room] = Kitrank.Repo.all(Reveal.Room)
@@ -99,7 +102,10 @@ defmodule KitrankWeb.RevealLiveTest do
 
       html =
         view
-        |> form("form", %{"display_name" => "Tom", "share_slug" => r.share_slug})
+        |> form(~s{form[phx-submit="join"]}, %{
+          "display_name" => "Tom",
+          "share_slug" => r.share_slug
+        })
         |> render_submit()
 
       assert html =~ "Tom"
@@ -111,7 +117,7 @@ defmodule KitrankWeb.RevealLiveTest do
       {:ok, view, _html} = live(conn, ~p"/reveal/#{room.room_code}")
 
       view
-      |> form("form", %{
+      |> form(~s{form[phx-submit="join"]}, %{
         "display_name" => "Tom",
         "share_slug" => "https://kitrank.fly.dev/r/#{r.share_slug}/"
       })
@@ -125,7 +131,10 @@ defmodule KitrankWeb.RevealLiveTest do
 
       html =
         view
-        |> form("form", %{"display_name" => "Tom", "share_slug" => r.edit_token})
+        |> form(~s{form[phx-submit="join"]}, %{
+          "display_name" => "Tom",
+          "share_slug" => r.edit_token
+        })
         |> render_submit()
 
       assert html =~ "kennen wir nicht"
@@ -138,7 +147,10 @@ defmodule KitrankWeb.RevealLiveTest do
 
       html =
         view
-        |> form("form", %{"display_name" => "Tom nochmal", "share_slug" => r.share_slug})
+        |> form(~s{form[phx-submit="join"]}, %{
+          "display_name" => "Tom nochmal",
+          "share_slug" => r.share_slug
+        })
         |> render_submit()
 
       assert html =~ "schon dabei"
@@ -219,6 +231,12 @@ defmodule KitrankWeb.RevealLiveTest do
       as_host(view, room)
 
       view |> element(~s{button[phx-click="reveal_next"]}) |> render_click()
+      # Die Notiz steht hinter Toms verdeckter Karte, bis er selbst aufdeckt.
+      refute render(view) =~ "ganz unten, klar"
+
+      {:ok, gestartet} = Reveal.fetch_room(room.room_code)
+      {:ok, _} = Reveal.reveal_own(gestartet, tom.id)
+
       assert render(view) =~ "ganz unten, klar"
     end
 
@@ -253,6 +271,203 @@ defmodule KitrankWeb.RevealLiveTest do
 
       {:ok, room} = Reveal.fetch_room(room.room_code)
       assert room.status == "waiting"
+    end
+  end
+
+  describe "Selbst aufdecken" do
+    setup do
+      room = room_fixture()
+      {:ok, tom} = Reveal.join(room, ranking_with(2).share_slug, "Tom")
+      {:ok, anna} = Reveal.join(room, ranking_with(2).share_slug, "Anna")
+      {:ok, room} = Reveal.start(room)
+      %{room: room, tom: tom, anna: anna}
+    end
+
+    test "Karten liegen erst verdeckt", %{conn: conn, room: room} do
+      {:ok, _view, html} = live(conn, ~p"/reveal/#{room.room_code}")
+
+      assert html =~ "deckt noch auf"
+      refute html =~ ~s(phx-click="reveal_own")
+    end
+
+    test "nur die eigene Karte hat einen Aufdecken-Knopf", %{conn: conn} do
+      # Eigener Raum: dieser Browser tritt wirklich als Tom bei, damit der
+      # LiveView weiss, wer er ist.
+      room = room_fixture()
+      {:ok, _anna} = Reveal.join(room, ranking_with(2).share_slug, "Anna")
+      toms_liste = ranking_with(2)
+
+      {:ok, view, _html} = live(conn, ~p"/reveal/#{room.room_code}")
+
+      view
+      |> form(~s{form[phx-submit="join"]}, %{
+        "display_name" => "Tom",
+        "share_slug" => toms_liste.share_slug
+      })
+      |> render_submit()
+
+      {:ok, _room} = Reveal.start(room)
+
+      html = render(view)
+      # Genau einer – Annas Karte bleibt ohne Knopf.
+      assert length(Regex.scan(~r/phx-click="reveal_own"/, html)) == 1
+      assert html =~ "Anna deckt noch auf"
+    end
+
+    test "aufdecken zeigt das eigene Trikot bei allen", %{conn: conn, room: room, tom: tom} do
+      {:ok, gast, _} = live(conn, ~p"/reveal/#{room.room_code}")
+      assert render(gast) =~ "deckt noch auf"
+
+      {:ok, _} = Reveal.reveal_own(room, tom.id)
+
+      html = render(gast)
+      assert html =~ "Tom"
+      # Anna liegt weiterhin verdeckt.
+      assert html =~ "Anna deckt noch auf"
+    end
+
+    test "leere Karten gelten als aufgedeckt – sonst wartet die Runde ewig" do
+      room = room_fixture()
+      {:ok, _lang} = Reveal.join(room, ranking_with(3).share_slug, "Lang")
+      {:ok, kurz} = Reveal.join(room, ranking_with(1).share_slug, "Kurz")
+      {:ok, room} = Reveal.start(room)
+
+      eintrag = Reveal.step_entries(room) |> Enum.find(&(&1.participant_id == kurz.id))
+      assert eintrag.kit == nil
+      assert eintrag.revealed?
+    end
+
+    test "alle aufgedeckt wird gemeldet", %{room: room, tom: tom, anna: anna} do
+      assert Reveal.reveal_progress(room) == {0, 2}
+      refute Reveal.all_revealed?(room)
+
+      {:ok, _} = Reveal.reveal_own(room, tom.id)
+      assert Reveal.reveal_progress(room) == {1, 2}
+
+      {:ok, _} = Reveal.reveal_own(room, anna.id)
+      assert Reveal.all_revealed?(room)
+    end
+
+    test "der nächste Platz liegt wieder verdeckt", %{room: room, tom: tom} do
+      {:ok, _} = Reveal.reveal_own(room, tom.id)
+      {:ok, room} = Reveal.reveal_next(room)
+
+      refute Reveal.all_revealed?(room)
+      assert Reveal.reveal_progress(room) == {0, 2}
+    end
+
+    test "der Host kann weiterschalten, auch wenn nicht alle aufgedeckt haben", %{
+      conn: conn,
+      room: room
+    } do
+      {:ok, view, _html} = live(conn, ~p"/reveal/#{room.room_code}")
+      as_host(view, room)
+
+      view |> element(~s{button[phx-click="reveal_next"]}) |> render_click()
+
+      {:ok, room} = Reveal.fetch_room(room.room_code)
+      assert room.current_step == 1
+    end
+
+    test "wer nicht mitspielt, kann nichts aufdecken", %{conn: conn, room: room} do
+      {:ok, gast, _} = live(conn, ~p"/reveal/#{room.room_code}")
+
+      render_hook(gast, "reveal_own", %{})
+
+      assert Reveal.reveal_progress(room) == {0, 2}
+      assert render(gast) =~ "Du schaust nur zu"
+    end
+  end
+
+  describe "Gesamtübersicht" do
+    setup do
+      room = room_fixture()
+      {:ok, tom} = Reveal.join(room, ranking_with(3).share_slug, "Tom")
+      {:ok, anna} = Reveal.join(room, ranking_with(3).share_slug, "Anna")
+      {:ok, room} = Reveal.start(room)
+      %{room: room, tom: tom, anna: anna}
+    end
+
+    test "zeigt eine Zeile je bisher offenem Platz", %{room: room, tom: tom} do
+      board = Reveal.revealed_board(room)
+      assert Enum.map(board.rows, & &1.step) == [3]
+      assert Enum.map(board.participants, & &1.name) == ["Tom", "Anna"]
+
+      {:ok, _} = Reveal.reveal_own(room, tom.id)
+      {:ok, room} = Reveal.reveal_next(room)
+
+      assert Reveal.revealed_board(room) |> Map.fetch!(:rows) |> Enum.map(& &1.step) == [3, 2]
+    end
+
+    test "verdeckte Karten der laufenden Runde bleiben verdeckt", %{room: room, tom: tom} do
+      {:ok, _} = Reveal.reveal_own(room, tom.id)
+
+      [zeile] = Reveal.revealed_board(room).rows
+      sichtbar = Map.new(zeile.cells, &{&1.participant_id, &1.visible?})
+
+      assert sichtbar[tom.id]
+      refute Enum.all?(Map.values(sichtbar))
+    end
+
+    test "vergangene Runden sind offen, auch wenn jemand nie geklickt hat", %{
+      room: room,
+      anna: anna
+    } do
+      # Niemand deckt auf, der Host schaltet trotzdem weiter.
+      {:ok, room} = Reveal.reveal_next(room)
+
+      board = Reveal.revealed_board(room)
+      alt = Enum.find(board.rows, &(&1.step == 3))
+      annas_zelle = Enum.find(alt.cells, &(&1.participant_id == anna.id))
+
+      assert annas_zelle.visible?, "die vorige Runde ist vorbei und damit offen"
+    end
+
+    test "steht im Raum und lässt sich zuklappen", %{conn: conn, room: room} do
+      {:ok, view, html} = live(conn, ~p"/reveal/#{room.room_code}")
+
+      assert html =~ "Gesamtübersicht"
+      assert html =~ "<table"
+
+      html = view |> element(~s{button[phx-click="toggle_board"]}) |> render_click()
+      refute html =~ "<table"
+    end
+  end
+
+  describe "Beitreten per Code" do
+    test "führt in den Raum", %{conn: conn} do
+      room = room_fixture()
+      {:ok, view, _html} = live(conn, ~p"/reveal/new")
+
+      assert {:error, {:live_redirect, %{to: to}}} =
+               view
+               |> form(~s{form[phx-submit="join"]}, %{"room_code" => room.room_code})
+               |> render_submit()
+
+      assert to == "/reveal/#{room.room_code}"
+    end
+
+    test "nimmt den Code auch klein geschrieben", %{conn: conn} do
+      room = room_fixture()
+      {:ok, view, _html} = live(conn, ~p"/reveal/new")
+
+      assert {:error, {:live_redirect, %{to: to}}} =
+               view
+               |> form(~s{form[phx-submit="join"]}, %{
+                 "room_code" => String.downcase(room.room_code)
+               })
+               |> render_submit()
+
+      assert to == "/reveal/#{room.room_code}"
+    end
+
+    test "sagt Bescheid, wenn es den Code nicht gibt", %{conn: conn} do
+      {:ok, view, _html} = live(conn, ~p"/reveal/new")
+
+      html =
+        view |> form(~s{form[phx-submit="join"]}, %{"room_code" => "ZZZZZ"}) |> render_submit()
+
+      assert html =~ "Vertippt?"
     end
   end
 

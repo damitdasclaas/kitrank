@@ -43,7 +43,8 @@ defmodule KitrankWeb.Reveal.RoomLive do
            # Wer man selbst ist – erst nach dem Beitritt bekannt.
            me: nil,
            join_error: nil,
-           online: %{}
+           online: %{},
+           board_open?: true
          )
          |> load_room()}
     end
@@ -76,6 +77,23 @@ defmodule KitrankWeb.Reveal.RoomLive do
       {:error, reason} ->
         {:noreply, assign(socket, :join_error, join_message(reason))}
     end
+  end
+
+  ## Aufdecken – das eigene Trikot darf jede:r selbst
+
+  def handle_event("reveal_own", _params, socket) do
+    case socket.assigns.me do
+      nil ->
+        {:noreply, socket}
+
+      participant_id ->
+        Reveal.reveal_own(socket.assigns.room, participant_id)
+        {:noreply, socket}
+    end
+  end
+
+  def handle_event("toggle_board", _params, socket) do
+    {:noreply, update(socket, :board_open?, &(!&1))}
   end
 
   ## Ablauf – nur der Host
@@ -134,11 +152,19 @@ defmodule KitrankWeb.Reveal.RoomLive do
     case Reveal.fetch_room(socket.assigns.room.room_code) do
       {:ok, room} ->
         socket
-        |> assign(
-          room: room,
-          participants: room.participants,
-          step_entries: Reveal.step_entries(room)
-        )
+        |> then(fn socket ->
+          entries = Reveal.step_entries(room)
+
+          assign(socket,
+            room: room,
+            participants: room.participants,
+            step_entries: entries,
+            revealed_count: Enum.count(entries, & &1.revealed?),
+            all_revealed?: entries != [] and Enum.all?(entries, & &1.revealed?),
+            fit: room.status == "waiting" && Reveal.ranking_fit(room),
+            board: room.status != "waiting" && Reveal.revealed_board(room)
+          )
+        end)
         |> assign_host()
         |> assign_online()
 
@@ -223,6 +249,7 @@ defmodule KitrankWeb.Reveal.RoomLive do
           me={@me}
           host?={@host?}
           owner?={@owner?}
+          fit={@fit}
         />
 
         <.stage
@@ -232,12 +259,19 @@ defmodule KitrankWeb.Reveal.RoomLive do
           me={@me}
           host?={@host?}
         />
+
+        <.spectator_hint :if={!@me && @room.status != "waiting"} />
+
+        <.board :if={@board && @board.rows != []} board={@board} open?={@board_open?} me={@me} />
       </div>
 
       <.host_bar
         :if={@host? && @room.status != "done"}
         room={@room}
         ready?={@participants != []}
+        revealed={@revealed_count}
+        total={length(@step_entries)}
+        all_revealed?={@all_revealed?}
       />
     </Layouts.app>
     """

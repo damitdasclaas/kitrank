@@ -109,6 +109,7 @@ defmodule KitrankWeb.Reveal.Components do
   attr :me, :any, required: true
   attr :host?, :boolean, required: true
   attr :owner?, :boolean, required: true
+  attr :fit, :map, default: nil
 
   @doc "Warteraum: wer ist da, wer steuert."
   def lobby(assigns) do
@@ -161,6 +162,8 @@ defmodule KitrankWeb.Reveal.Components do
         </li>
       </ul>
 
+      <.fit_warning :if={@fit && length(@participants) > 1} fit={@fit} />
+
       <p :if={@owner? && @room.host_participant_id} class="mt-4 text-xs text-soft">
         Die Steuerung liegt gerade bei jemand anderem.
         <button
@@ -176,6 +179,144 @@ defmodule KitrankWeb.Reveal.Components do
   end
 
   defp online?(online, participant), do: Map.has_key?(online, to_string(participant.id))
+
+  attr :fit, :map, required: true
+
+  # Der Reveal vergleicht Rang gegen Rang. Passen die Listen nicht zusammen,
+  # kann die App das nicht reparieren – aber sie soll es nicht verschweigen,
+  # solange sich noch etwas daran aendern laesst.
+  defp fit_warning(assigns) do
+    ~H"""
+    <div
+      :if={@fit.longest != @fit.shortest or @fit.shared == 0}
+      class="mt-5 rounded-lg border border-line bg-sunk p-4"
+    >
+      <p class="kr-eyebrow">Eure Listen passen nicht ganz zusammen</p>
+
+      <ul class="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm">
+        <li :for={{name, count} <- @fit.lengths} class="text-soft">
+          {name}
+          <span class="font-mono tabular-nums text-ink">{count}</span>
+        </li>
+      </ul>
+
+      <p class="mt-2 text-xs leading-relaxed text-soft">
+        <span :if={@fit.longest != @fit.shortest}>
+          Das Reveal läuft über {@fit.longest} Plätze. Die ersten {@fit.longest - @fit.shortest} davon zeigen nicht alle etwas.
+        </span>
+        <span :if={@fit.shared == 0}>
+          Ihr habt kein einziges Trikot gemeinsam bewertet — verglichen wird dann nur die
+          Platzierung, nicht dasselbe Trikot.
+        </span>
+        <span :if={@fit.shared > 0}>
+          {@fit.shared} {if @fit.shared == 1, do: "Trikot steht", else: "Trikots stehen"} in allen Listen.
+        </span>
+      </p>
+
+      <p class="mt-2 text-xs text-soft">
+        Am gleichmäßigsten wird es, wenn ihr euch vorher auf denselben Ausschnitt einigt —
+        etwa alle Heimtrikots der Bundesliga.
+      </p>
+    </div>
+    """
+  end
+
+  attr :board, :map, required: true
+  attr :open?, :boolean, required: true
+  attr :me, :any, required: true
+
+  @doc """
+  Gesamtübersicht über den bisherigen Verlauf.
+
+  Zeigt nur, was schon offen ist – vergangene Runden vollständig, die laufende
+  nur, soweit umgedreht wurde. Bei mehr als zwei Spalten scrollt sie waagerecht,
+  die Rang-Spalte bleibt dabei stehen.
+  """
+  def board(assigns) do
+    ~H"""
+    <div class="mt-10 border-t border-line pt-6">
+      <button
+        type="button"
+        phx-click="toggle_board"
+        aria-expanded={to_string(@open?)}
+        class="flex w-full items-center gap-2 text-left"
+      >
+        <h2 class="kr-display text-lg">Gesamtübersicht</h2>
+        <span class="font-mono text-[11px] text-soft">
+          {length(@board.rows)} {if length(@board.rows) == 1, do: "Platz", else: "Plätze"} offen
+        </span>
+        <.icon
+          name={if @open?, do: "hero-chevron-up-mini", else: "hero-chevron-down-mini"}
+          class="ml-auto size-4 text-soft"
+        />
+      </button>
+
+      <div :if={@open?} class="mt-4 overflow-x-auto rounded-lg border border-line">
+        <table class="w-full min-w-max border-collapse text-sm">
+          <thead>
+            <tr class="border-b border-line bg-sunk">
+              <th class="kr-eyebrow sticky left-0 z-10 bg-sunk px-3 py-2.5 text-left">Platz</th>
+              <th
+                :for={participant <- @board.participants}
+                class="kr-eyebrow min-w-[9rem] px-3 py-2.5 text-left"
+              >
+                {participant.name}
+                <span :if={participant.id == @me} class="normal-case">(du)</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr :for={row <- @board.rows} class="border-b border-line last:border-0">
+              <td class="kr-display sticky left-0 z-10 bg-panel px-3 py-2 text-right text-base tabular-nums">
+                {row.step}
+              </td>
+              <.board_cell :for={cell <- row.cells} cell={cell} />
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    """
+  end
+
+  attr :cell, :map, required: true
+
+  defp board_cell(assigns) do
+    assigns =
+      assign(assigns, :color, assigns.cell.kit && Color.team_color(assigns.cell.kit.team))
+
+    ~H"""
+    <td class="px-3 py-2 align-middle">
+      <span :if={!@cell.visible?} class="font-mono text-xs text-soft/60">verdeckt</span>
+      <span :if={@cell.visible? && !@cell.kit} class="font-mono text-xs text-soft/60">—</span>
+
+      <span :if={@cell.visible? && @cell.kit} class="flex items-center gap-2">
+        <span
+          class="flex h-8 w-8 shrink-0 items-center justify-center rounded"
+          style={"background-color: color-mix(in oklab, #{@color} 15%, #FFFFFF)"}
+        >
+          <.kit_figure kit={@cell.kit} team={@cell.kit.team} class="h-6 w-6" />
+        </span>
+        <span class="min-w-0">
+          <span class="block font-mono text-[11px] font-semibold" style={"color: #{@color}"}>
+            {@cell.kit.team.short_code}
+          </span>
+          <span class="block text-[11px] text-soft">{Kit.label(@cell.kit.kit_type)}</span>
+        </span>
+      </span>
+    </td>
+    """
+  end
+
+  @doc "Hinweis für alle, die zuschauen, ohne mitzumachen."
+  def spectator_hint(assigns) do
+    ~H"""
+    <p class="mt-6 rounded-lg border border-dashed border-line px-4 py-3 text-xs text-soft">
+      Du schaust nur zu — du bist keiner Rangliste in diesem Raum zugeordnet und hast deshalb
+      nichts aufzudecken.
+    </p>
+    """
+  end
 
   attr :room, :map, required: true
   attr :entries, :list, required: true
@@ -251,10 +392,37 @@ defmodule KitrankWeb.Reveal.Components do
           {@entry.participant_name}
         </span>
         <span :if={@mine?} class="shrink-0 font-mono text-[10px] text-soft">du</span>
+        <span
+          :if={!@entry.revealed? && !@mine?}
+          class="shrink-0 font-mono text-[10px] text-soft"
+        >
+          verdeckt
+        </span>
+      </div>
+
+      <%!-- Verdeckt: nur die eigene Karte hat einen Knopf. Fremde Karten
+            bleiben zu, bis ihr Besitzer sie selbst umdreht. --%>
+      <div
+        :if={!@entry.revealed?}
+        class="flex aspect-square flex-col items-center justify-center gap-4 bg-sunk px-6 text-center"
+      >
+        <span class="kr-display text-4xl text-soft/40" aria-hidden="true">?</span>
+        <button
+          :if={@mine?}
+          type="button"
+          phx-click="reveal_own"
+          phx-disable-with="…"
+          class="rounded-md bg-ink px-5 py-2.5 text-sm font-semibold text-chalk transition hover:opacity-90"
+        >
+          Aufdecken
+        </button>
+        <p :if={!@mine?} class="text-xs text-soft">
+          {@entry.participant_name} deckt noch auf
+        </p>
       </div>
 
       <div
-        :if={@entry.kit}
+        :if={@entry.revealed? && @entry.kit}
         class="flex aspect-square items-center justify-center p-6"
         style={"background-color: color-mix(in oklab, #{@color} 14%, #FFFFFF)"}
       >
@@ -262,13 +430,13 @@ defmodule KitrankWeb.Reveal.Components do
       </div>
 
       <div
-        :if={!@entry.kit}
+        :if={@entry.revealed? && !@entry.kit}
         class="flex aspect-square items-center justify-center bg-sunk px-6 text-center"
       >
         <p class="text-xs text-soft">Liste reicht nicht so weit</p>
       </div>
 
-      <div :if={@entry.kit} class="px-4 py-3">
+      <div :if={@entry.revealed? && @entry.kit} class="px-4 py-3">
         <p class="flex flex-wrap items-baseline gap-x-2">
           <span class="font-mono text-xs font-semibold" style={"color: #{@color}"}>
             {@entry.kit.team.short_code}
@@ -286,6 +454,9 @@ defmodule KitrankWeb.Reveal.Components do
 
   attr :room, :map, required: true
   attr :ready?, :boolean, required: true
+  attr :revealed, :integer, default: 0
+  attr :total, :integer, default: 0
+  attr :all_revealed?, :boolean, default: false
 
   @doc "Die Steuerung – nur für den, der sie gerade hat."
   def host_bar(assigns) do
@@ -297,7 +468,9 @@ defmodule KitrankWeb.Reveal.Components do
             {if @ready?, do: "Alle da? Dann los.", else: "Warte auf Teilnehmer."}
           </span>
           <span :if={@room.status == "revealing"} class="text-soft">
-            Noch <span class="font-mono tabular-nums text-ink">{@room.current_step}</span>
+            <span class="font-mono tabular-nums text-ink">{@revealed}/{@total}</span>
+            aufgedeckt · noch
+            <span class="font-mono tabular-nums text-ink">{@room.current_step}</span>
             {if @room.current_step == 1, do: "Platz", else: "Plätze"}
           </span>
         </p>
@@ -307,7 +480,16 @@ defmodule KitrankWeb.Reveal.Components do
           phx-click="reveal_next"
           disabled={@room.status == "waiting" && !@ready?}
           phx-disable-with="…"
-          class="ml-auto rounded-md bg-ink px-5 py-2.5 text-sm font-semibold text-chalk transition hover:opacity-90 disabled:opacity-40"
+          class={[
+            "ml-auto rounded-md px-5 py-2.5 text-sm font-semibold transition disabled:opacity-40",
+            @room.status == "waiting" || (@all_revealed? && "bg-ink text-chalk hover:opacity-90"),
+            @room.status != "waiting" && !@all_revealed? &&
+              "border border-line text-soft hover:border-ink hover:text-ink"
+          ]}
+          title={
+            if @room.status != "waiting" && !@all_revealed?,
+              do: "Es haben noch nicht alle aufgedeckt – du kannst trotzdem weiter."
+          }
         >
           {cond do
             @room.status == "waiting" -> "Reveal starten"

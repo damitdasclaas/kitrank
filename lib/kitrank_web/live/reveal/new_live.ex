@@ -1,6 +1,6 @@
 defmodule KitrankWeb.Reveal.NewLive do
   @moduledoc """
-  Einen Reveal-Raum aufmachen.
+  Einstieg ins Reveal: einem Raum beitreten oder einen aufmachen.
 
   Der Raumcode ist kurz und zum Vorlesen gedacht. Die Steuerung hängt nicht an
   ihm, sondern an einem eigenen langen Token – sonst könnte jeder, der den Code
@@ -16,7 +16,21 @@ defmodule KitrankWeb.Reveal.NewLive do
 
   @impl true
   def mount(_params, _session, socket) do
-    {:ok, assign(socket, page_title: "Reveal starten", max: 8, room: nil)}
+    {:ok, assign(socket, page_title: "Reveal", max: 8, room: nil, code_error: nil)}
+  end
+
+  @impl true
+  def handle_event("join", %{"room_code" => code}, socket) do
+    case Reveal.fetch_room(code) do
+      {:ok, room} ->
+        {:noreply, push_navigate(socket, to: ~p"/reveal/#{room.room_code}")}
+
+      {:error, :expired} ->
+        {:noreply, assign(socket, :code_error, "Dieser Raum ist abgelaufen.")}
+
+      {:error, :not_found} ->
+        {:noreply, assign(socket, :code_error, "Diesen Code kennen wir nicht. Vertippt?")}
+    end
   end
 
   @impl true
@@ -38,14 +52,54 @@ defmodule KitrankWeb.Reveal.NewLive do
         <p class="kr-eyebrow">Reveal</p>
         <h1 class="kr-display mt-2 text-4xl leading-[0.95]">Gemeinsam aufdecken</h1>
         <p class="mt-4 text-sm leading-relaxed text-soft">
-          Ihr deckt eure Ranglisten Platz für Platz auf — vom letzten Rang nach vorn, und bei
-          jedem Schritt zeigen alle gleichzeitig, was bei ihnen dort steht.
+          Ihr geht eure Ranglisten Platz für Platz durch — vom letzten Rang nach vorn. Bei jedem
+          Schritt deckt jede:r das eigene Trikot selbst auf.
         </p>
 
-        <.setup_form :if={!@room} max={@max} />
+        <div :if={!@room} class="mt-8 grid gap-4 sm:grid-cols-2">
+          <.join_form error={@code_error} />
+          <.setup_form max={@max} />
+        </div>
+
+        <.how_it_works :if={!@room} />
         <.room_opened :if={@room} room={@room} />
       </div>
     </Layouts.app>
+    """
+  end
+
+  attr :error, :string, default: nil
+
+  defp join_form(assigns) do
+    ~H"""
+    <div class="rounded-xl border border-line bg-panel p-5">
+      <h2 class="kr-display text-lg">Raum beitreten</h2>
+      <p class="mt-1 text-xs text-soft">Du hast einen Code bekommen?</p>
+
+      <form phx-submit="join" class="mt-4">
+        <label for="room_code" class="sr-only">Raumcode</label>
+        <input
+          id="room_code"
+          name="room_code"
+          required
+          maxlength="8"
+          autocomplete="off"
+          autocapitalize="characters"
+          spellcheck="false"
+          placeholder="ABC23"
+          class="kr-display w-full rounded-md border border-line bg-panel px-3 py-3 text-center text-2xl tracking-[0.2em] uppercase placeholder:text-soft/40"
+        />
+        <p :if={@error} class="mt-2 text-xs text-red-600">{@error}</p>
+
+        <button
+          type="submit"
+          phx-disable-with="Suche …"
+          class="mt-3 w-full rounded-md border border-ink px-4 py-2.5 text-sm font-semibold transition hover:bg-sunk"
+        >
+          Beitreten
+        </button>
+      </form>
+    </div>
     """
   end
 
@@ -53,8 +107,11 @@ defmodule KitrankWeb.Reveal.NewLive do
 
   defp setup_form(assigns) do
     ~H"""
-    <form phx-submit="create" class="mt-8">
-      <label for="max" class="text-sm font-medium">Wie viele macht ihr mit?</label>
+    <form phx-submit="create" class="rounded-xl border border-line bg-panel p-5">
+      <h2 class="kr-display text-lg">Raum erstellen</h2>
+      <p class="mt-1 text-xs text-soft">Du bekommst einen Code zum Weitergeben.</p>
+
+      <label for="max" class="mt-4 block text-xs font-medium">Wie viele macht ihr mit?</label>
       <select
         id="max"
         name="max_participants"
@@ -63,19 +120,23 @@ defmodule KitrankWeb.Reveal.NewLive do
         <option :for={n <- 2..12} value={n} selected={n == @max}>{n} Personen</option>
       </select>
       <p class="mt-1.5 text-xs text-soft">
-        Lässt sich später nicht ändern. Ab etwa acht wird es auf kleinen Bildschirmen eng.
+        Lässt sich später nicht ändern.
       </p>
 
       <button
         type="submit"
         phx-disable-with="Raum wird geöffnet …"
-        class="mt-6 w-full rounded-md bg-ink px-4 py-3 text-sm font-semibold text-chalk transition hover:opacity-90"
+        class="mt-3 w-full rounded-md bg-ink px-4 py-2.5 text-sm font-semibold text-chalk transition hover:opacity-90"
       >
         Raum öffnen
       </button>
     </form>
+    """
+  end
 
-    <div class="mt-10 rounded-lg border border-line p-5">
+  defp how_it_works(assigns) do
+    ~H"""
+    <div class="mt-8 rounded-lg border border-line p-5">
       <h2 class="kr-eyebrow">So läuft es ab</h2>
       <ol class="mt-3 space-y-2 text-sm text-soft">
         <li><span class="text-ink">1.</span> Du bekommst einen Raumcode und gibst ihn weiter.</li>
