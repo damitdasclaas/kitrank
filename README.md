@@ -268,6 +268,25 @@ gerade entschieden wird, und gehört nicht zur Rangliste selbst. Beim
 Wiederkommen ergibt er sich aus dem, was schon drin ist — wer bisher nur
 HSV-Trikots gewählt hat, landet wieder dort.
 
+### Sortieren durch Vergleichen
+
+Statt von Hand zu ziehen geht es auch als **Duell**: zwei Trikots, du wählst
+eines, weiter bis die Reihenfolge steht. Das Ergebnis ist ein Entwurf, den man
+danach im Sortier-Schritt noch anfassen kann.
+
+Verfahren ist **binäres Einfügen** (`Kitrank.Rankings.Duel`) — der sortierte Teil
+bleibt sortiert, jedes neue Trikot wird per Halbierungssuche eingeordnet. Kostet
+rund `n · log₂ n` Fragen: **18 Trikots in 52 Vergleichen** statt 153 bei jedem
+gegen jeden.
+
+Kein Elo und keine Zufallspaarungen: die brauchen ein Vielfaches an Vergleichen
+und liefern trotzdem keine garantiert vollständige Ordnung.
+
+Die Logik ist reine Datenstruktur ohne Datenbankbezug — geprüft wird gegen einen
+Vergleicher, der die Wunschordnung kennt: kommt genau die heraus, stimmt das
+Verfahren. Der Zwischenstand ist jederzeit eine gültige Reihenfolge und wird
+nach **jeder** Antwort gespeichert, Abbrechen kostet also nichts.
+
 Jede Zeile beim Sortieren hat eine **Detailansicht** — großes Bild mit Galerie,
 großes Notizfeld, Shop-Link und die Schiebe-Knöpfe.
 

@@ -33,6 +33,7 @@ defmodule KitrankWeb.Router do
       # der Teilen-Link ist deshalb immer aktuell.
       live "/rankings/new", Ranking.NewLive, :new
       live "/rankings/:edit_token/auswahl", Ranking.EditLive, :select
+      live "/rankings/:edit_token/duell", Ranking.EditLive, :duel
       live "/rankings/:edit_token/edit", Ranking.EditLive, :sort
       live "/r/:share_slug", Ranking.ShowLive, :show
 

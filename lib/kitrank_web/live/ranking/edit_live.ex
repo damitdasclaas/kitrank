@@ -17,6 +17,7 @@ defmodule KitrankWeb.Ranking.EditLive do
   alias Kitrank.Kits
   alias Kitrank.Kits.Kit
   alias Kitrank.Rankings
+  alias Kitrank.Rankings.Duel
   alias KitrankWeb.Color
 
   @impl true
@@ -53,10 +54,11 @@ defmodule KitrankWeb.Ranking.EditLive do
     title =
       case socket.assigns.live_action do
         :select -> "Trikots auswählen"
+        :duel -> "Trikots vergleichen"
         _ -> "Rangliste sortieren"
       end
 
-    {:noreply, assign(socket, page_title: title)}
+    {:noreply, socket |> assign(page_title: title) |> ensure_duel()}
   end
 
   # Der Ausschnitt steht im Socket, nicht in der Datenbank: er sagt nur, worüber
@@ -121,6 +123,29 @@ defmodule KitrankWeb.Ranking.EditLive do
     assign(socket, catalog: catalog, groups: gruppen, multi_season?: mehrere_saisons?)
   end
 
+  ## Duell
+
+  def handle_event("duel_pick", %{"side" => side}, socket) do
+    wahl = if side == "new", do: :new, else: :existing
+
+    {:noreply, socket |> update(:duel, &Duel.answer(&1, wahl)) |> persist_duel()}
+  end
+
+  def handle_event("duel_key", %{"key" => key}, socket) do
+    case key do
+      "ArrowLeft" -> handle_event("duel_pick", %{"side" => "new"}, socket)
+      "ArrowRight" -> handle_event("duel_pick", %{"side" => "existing"}, socket)
+      _ -> {:noreply, socket}
+    end
+  end
+
+  def handle_event("duel_restart", _params, socket) do
+    ids = Enum.map(socket.assigns.entries, & &1.kit_id)
+    {:noreply, assign(socket, :duel, Duel.start(ids))}
+  end
+
+  # Nach jeder Antwort speichern: die Zwischenreihenfolge ist immer gueltig,
+  # und so ist beim Abbrechen nichts verloren.
   ## Ausschnitt wählen
 
   @impl true
@@ -331,6 +356,13 @@ defmodule KitrankWeb.Ranking.EditLive do
           all_competitions={@all_competitions}
           all_teams={@all_teams}
           multi_season?={@multi_season?}
+        />
+
+        <.duel_stage
+          :if={@live_action == :duel}
+          duel={@duel}
+          kits={Map.new(@entries, &{&1.kit_id, &1.kit})}
+          edit_token={@ranking.edit_token}
         />
 
         <.sorting
@@ -583,8 +615,47 @@ defmodule KitrankWeb.Ranking.EditLive do
 
     <p :if={@entries != []} class="mt-4 text-xs text-soft">
       Ziehen am Griff sortiert um. Ohne Maus gehen auch die Pfeile — beides speichert sofort.
+      <.link
+        :if={length(@entries) > 1}
+        patch={~p"/rankings/#{@edit_token}/duell"}
+        class="text-ink underline underline-offset-4"
+      >
+        Oder nochmal vergleichen lassen
+      </.link>
     </p>
     """
+  end
+
+  # Das Duell laeuft ueber die aktuelle Reihenfolge der Liste. Hat sich die
+  # Auswahl inzwischen geaendert, waere ein alter Zwischenstand falsch – dann
+  # faengt es neu an.
+  defp ensure_duel(%{assigns: %{live_action: :duel}} = socket) do
+    ids = Enum.map(socket.assigns.entries, & &1.kit_id)
+
+    passend? =
+      case socket.assigns[:duel] do
+        nil -> false
+        duel -> MapSet.new(Duel.order(duel)) == MapSet.new(ids)
+      end
+
+    if passend?, do: socket, else: assign(socket, :duel, Duel.start(ids))
+  end
+
+  defp ensure_duel(socket), do: socket
+
+  defp persist_duel(socket) do
+    case Rankings.reorder(socket.assigns.ranking, Duel.order(socket.assigns.duel)) do
+      :ok ->
+        load_entries(socket)
+
+      {:error, :kit_ids_mismatch} ->
+        socket
+        |> put_flash(:error, "Die Liste hat sich zwischendurch geändert — neuer Anlauf.")
+        |> load_entries()
+        |> then(
+          &assign(&1, :duel, Duel.start(Enum.map(&1.assigns.entries, fn e -> e.kit_id end)))
+        )
+    end
   end
 
   ## Bausteine der Auswahl
@@ -811,6 +882,154 @@ defmodule KitrankWeb.Ranking.EditLive do
         </div>
       </div>
     </.modal>
+    """
+  end
+
+  ## Duell-Ansicht
+
+  attr :duel, :map, required: true
+  attr :kits, :map, required: true
+  attr :edit_token, :string, required: true
+
+  defp duel_stage(assigns) do
+    assigns =
+      assigns
+      |> assign(:frage, Duel.question(assigns.duel))
+      |> assign(:fortschritt, Duel.progress(assigns.duel))
+
+    ~H"""
+    <div
+      :if={@fortschritt.total < 2}
+      class="mt-10 rounded-lg border border-dashed border-line p-12 text-center"
+    >
+      <p class="kr-display text-xl">Dafür braucht es zwei</p>
+      <p class="mx-auto mt-2 max-w-sm text-sm text-soft">
+        Wähl erst ein paar Trikots aus, dann lassen sie sich gegeneinander stellen.
+      </p>
+      <.link
+        navigate={~p"/rankings/#{@edit_token}/auswahl"}
+        class="mt-5 inline-block rounded-md bg-ink px-4 py-2 text-sm font-semibold text-chalk"
+      >
+        Trikots auswählen
+      </.link>
+    </div>
+
+    <div
+      :if={@fortschritt.total >= 2 && @frage == :done}
+      class="mt-10 rounded-lg border border-line p-10 text-center"
+    >
+      <p class="kr-eyebrow">Fertig</p>
+      <p class="kr-display mt-2 text-3xl">Dein Entwurf steht</p>
+      <p class="mx-auto mt-3 max-w-md text-sm leading-relaxed text-soft">
+        {@fortschritt.total} Trikots in {@fortschritt.comparisons} Vergleichen sortiert.
+        Feinschliff und Notizen machst du im nächsten Schritt.
+      </p>
+      <div class="mt-6 flex flex-wrap items-center justify-center gap-3">
+        <.link
+          patch={~p"/rankings/#{@edit_token}/edit"}
+          class="rounded-md bg-ink px-5 py-2.5 text-sm font-semibold text-chalk transition hover:opacity-90"
+        >
+          Zur Rangliste
+        </.link>
+        <button
+          type="button"
+          phx-click="duel_restart"
+          class="rounded-md border border-line px-4 py-2.5 text-sm transition hover:border-ink"
+        >
+          Nochmal durchgehen
+        </button>
+      </div>
+    </div>
+
+    <%!-- Tasten am Fenster, nicht an einem Knopf: waehrend der Vergleiche will
+          man nicht erst irgendwohin klicken muessen. --%>
+    <div
+      :if={@frage != :done}
+      id="duell"
+      phx-window-keydown="duel_key"
+      class="mt-8"
+    >
+      <div class="flex flex-wrap items-baseline gap-3">
+        <p class="kr-eyebrow">
+          Trikot {@fortschritt.placed + 1} von {@fortschritt.total}
+        </p>
+        <p class="text-sm text-soft">
+          Welches gefällt dir besser?
+        </p>
+        <p class="ml-auto font-mono text-[11px] text-soft">
+          {@fortschritt.comparisons} Vergleiche · noch etwa {@fortschritt.remaining_estimate}
+        </p>
+      </div>
+
+      <div class="mt-2 h-1 overflow-hidden rounded-full bg-sunk">
+        <div
+          class="h-full rounded-full bg-ink transition-all duration-300"
+          style={"width: #{round(@fortschritt.placed / @fortschritt.total * 100)}%"}
+        >
+        </div>
+      </div>
+
+      <div class="mt-6 grid gap-4 sm:grid-cols-2">
+        <.duel_card kit={@kits[elem(@frage, 0)]} side="new" hint="Pfeil links" />
+        <.duel_card kit={@kits[elem(@frage, 1)]} side="existing" hint="Pfeil rechts" />
+      </div>
+
+      <p class="mt-4 text-center text-xs text-soft">
+        Jede Antwort wird gespeichert — abbrechen kostet nichts.
+        <.link
+          patch={~p"/rankings/#{@edit_token}/edit"}
+          class="text-ink underline underline-offset-4"
+        >
+          Zur Rangliste
+        </.link>
+        <span class="px-1">·</span>
+        <button
+          type="button"
+          phx-click="duel_restart"
+          class="underline underline-offset-4 hover:text-ink"
+        >
+          Von vorn anfangen
+        </button>
+      </p>
+    </div>
+    """
+  end
+
+  attr :kit, :map, required: true
+  attr :side, :string, required: true
+  attr :hint, :string, required: true
+
+  defp duel_card(assigns) do
+    assigns = assign(assigns, :color, Color.team_color(assigns.kit.team))
+
+    ~H"""
+    <button
+      type="button"
+      phx-click="duel_pick"
+      phx-value-side={@side}
+      class="group overflow-hidden rounded-xl border border-line bg-panel text-left transition hover:border-ink hover:shadow-[0_10px_32px_-18px_rgb(0_0_0/0.5)]"
+    >
+      <div
+        class="flex aspect-square items-center justify-center p-8"
+        style={"background-color: color-mix(in oklab, #{@color} 14%, #FFFFFF)"}
+      >
+        <.kit_figure
+          kit={@kit}
+          team={@kit.team}
+          class="h-full w-full transition-transform duration-300 group-hover:scale-105"
+        />
+      </div>
+      <div class="border-t border-line px-4 py-3">
+        <p class="flex flex-wrap items-baseline gap-x-2">
+          <span class="font-mono text-xs font-semibold" style={"color: #{@color}"}>
+            {@kit.team.short_code}
+          </span>
+          <span class="text-sm font-medium">{@kit.team.name}</span>
+          <span class="text-xs text-soft">{Kit.display_label(@kit)}</span>
+        </p>
+        <p class="mt-1 font-mono text-[10px] text-soft">{@hint}</p>
+      </div>
+    </button>
     """
   end
 end

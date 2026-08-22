@@ -256,6 +256,21 @@ geht. Lieber eine Wischgeste als ein verlorener Vergleich.
 
 ### 9.4 Ranking: erst auswählen, dann sortieren
 
+Sortiert wird auf zwei Wegen, und der zweite ist der interessantere: als
+**Duell**. Zwei Trikots, eines wählen, weiter bis die Reihenfolge steht — per
+binärem Einfügen, also rund `n · log₂ n` Fragen statt `n²/2`. Gemessen: 18
+Trikots in 52 Vergleichen gegen 153 bei jedem gegen jeden.
+
+Bewusst kein Elo und keine Zufallspaarungen. Die brauchen ein Vielfaches an
+Antworten und liefern trotzdem keine garantiert vollständige Ordnung; die
+Vorgabe war aber "bis eine Rangliste steht" — das ist eine Sortierung, kein
+Bewertungssystem.
+
+Das Duell ist ein optionaler Zwischenschritt und liefert einen Entwurf; der
+Feinschliff passiert danach beim Sortieren. Der Zwischenstand ist jederzeit
+gültig und wird nach jeder Antwort geschrieben, Abbrechen verliert also nichts.
+
+
 Eine Rangliste enthält nicht automatisch alle Trikots, sondern die, die man
 auswählt. Bei zwei vollen Ligen wären es über hundert – eine Drag-Liste dieser
 Länge ist unbenutzbar, und `Reveal` würde entsprechend viele Runden laufen.

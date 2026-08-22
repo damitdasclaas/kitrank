@@ -92,11 +92,18 @@ defmodule KitrankWeb.Ranking.Components do
         <span class="font-mono text-[11px] opacity-60">1</span> Auswählen
       </.link>
       <.link
+        patch={~p"/rankings/#{@edit_token}/duell"}
+        class={step_class(@live_action == :duel)}
+        aria-current={@live_action == :duel && "step"}
+      >
+        <span class="font-mono text-[11px] opacity-60">2</span> Vergleichen
+      </.link>
+      <.link
         patch={~p"/rankings/#{@edit_token}/edit"}
         class={step_class(@live_action == :sort)}
         aria-current={@live_action == :sort && "step"}
       >
-        <span class="font-mono text-[11px] opacity-60">2</span>
+        <span class="font-mono text-[11px] opacity-60">3</span>
         Sortieren <span :if={@count > 0} class="font-mono text-[11px] opacity-60">({@count})</span>
       </.link>
     </nav>
@@ -125,13 +132,23 @@ defmodule KitrankWeb.Ranking.Components do
           <span class="text-soft">{if @count == 1, do: "Trikot", else: "Trikots"} in der Liste</span>
         </p>
 
-        <.link
-          :if={@live_action == :select && @count > 0}
-          patch={~p"/rankings/#{@edit_token}/edit"}
-          class="ml-auto rounded-md bg-ink px-4 py-2 text-sm font-semibold text-chalk transition hover:opacity-90"
-        >
-          Weiter zum Sortieren
-        </.link>
+        <%!-- Zwei Wege nach der Auswahl: die Vergleiche liefern einen Entwurf,
+              von Hand geht es auch direkt. --%>
+        <div :if={@live_action == :select && @count > 0} class="ml-auto flex items-center gap-2">
+          <.link
+            patch={~p"/rankings/#{@edit_token}/edit"}
+            class="rounded-md border border-line px-4 py-2 text-sm transition hover:border-ink"
+          >
+            Selbst sortieren
+          </.link>
+          <.link
+            :if={@count > 1}
+            patch={~p"/rankings/#{@edit_token}/duell"}
+            class="rounded-md bg-ink px-4 py-2 text-sm font-semibold text-chalk transition hover:opacity-90"
+          >
+            Vergleichen lassen
+          </.link>
+        </div>
 
         <.link
           :if={@live_action == :sort}

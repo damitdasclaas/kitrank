@@ -663,6 +663,111 @@ defmodule KitrankWeb.RankingLiveTest do
     end
   end
 
+  describe "Vergleichen" do
+    setup do
+      %{kits: kits} = league(team_count: 4, kit_types: ["home"])
+      %{kits: kits, ranking: ranking_with(kits)}
+    end
+
+    defp waehle(view, seite) do
+      view
+      |> element(~s{button[phx-click="duel_pick"][phx-value-side="#{seite}"]})
+      |> render_click()
+    end
+
+    test "stellt zwei Trikots gegeneinander", %{conn: conn, ranking: r} do
+      {:ok, _view, html} = live(conn, ~p"/rankings/#{r.edit_token}/duell")
+
+      assert html =~ "Welches gefällt dir besser?"
+      assert html =~ "Trikot 2 von 4"
+      # Genau zwei Karten, nicht die ganze Liste.
+      assert length(Regex.scan(~r/phx-click="duel_pick"/, html)) == 2
+    end
+
+    test "speichert nach jeder Antwort", %{conn: conn, ranking: r, kits: kits} do
+      {:ok, view, _html} = live(conn, ~p"/rankings/#{r.edit_token}/duell")
+      vorher = Rankings.list_entries(r) |> Enum.map(& &1.kit_id)
+
+      waehle(view, "new")
+
+      nachher = Rankings.list_entries(r) |> Enum.map(& &1.kit_id)
+      # Reihenfolge veraendert, aber nichts verloren – abbrechen kostet nichts.
+      assert Enum.sort(nachher) == Enum.sort(vorher)
+      assert length(nachher) == length(kits)
+    end
+
+    test "kommt bis zum Ende und meldet den Entwurf", %{conn: conn, ranking: r} do
+      {:ok, view, _html} = live(conn, ~p"/rankings/#{r.edit_token}/duell")
+
+      # Immer das neue waehlen – nach genuegend Klicks ist es durch.
+      html =
+        Enum.reduce_while(1..30, nil, fn _, _ ->
+          if Enum.any?(
+               [waehle(view, "new")],
+               &String.contains?(&1, "Dein Entwurf steht")
+             ),
+             do: {:halt, render(view)},
+             else: {:cont, nil}
+        end)
+
+      assert html =~ "Dein Entwurf steht"
+      assert html =~ "Vergleichen"
+      assert html =~ ~s(href="/rankings/#{r.edit_token}/edit")
+    end
+
+    test "immer das neue wählen dreht die Reihenfolge um", %{conn: conn, ranking: r, kits: kits} do
+      {:ok, view, _html} = live(conn, ~p"/rankings/#{r.edit_token}/duell")
+
+      Enum.each(1..30, fn _ ->
+        unless render(view) =~ "Dein Entwurf steht", do: waehle(view, "new")
+      end)
+
+      # Wer jedes neue Trikot vorzieht, landet bei der umgekehrten Ausgangsfolge.
+      assert Rankings.list_entries(r) |> Enum.map(& &1.kit_id) ==
+               kits |> Enum.map(& &1.id) |> Enum.reverse()
+    end
+
+    test "Pfeiltasten wählen auch", %{conn: conn, ranking: r} do
+      {:ok, view, _html} = live(conn, ~p"/rankings/#{r.edit_token}/duell")
+
+      html = view |> element("#duell") |> render_keydown(%{"key" => "ArrowLeft"})
+      assert html =~ "Vergleiche"
+
+      html = view |> element("#duell") |> render_keydown(%{"key" => "ArrowRight"})
+      assert html =~ "Vergleiche"
+    end
+
+    test "nochmal durchgehen fängt neu an", %{conn: conn, ranking: r} do
+      {:ok, view, _html} = live(conn, ~p"/rankings/#{r.edit_token}/duell")
+      waehle(view, "new")
+      waehle(view, "new")
+
+      html = view |> element(~s{button[phx-click="duel_restart"]}) |> render_click()
+
+      assert html =~ "0 Vergleiche"
+      assert html =~ "Trikot 2 von 4"
+    end
+
+    test "mit weniger als zwei Trikots gibt es nichts zu vergleichen", %{conn: conn} do
+      %{kits: [kit]} = league(team_count: 1, kit_types: ["home"])
+      r = ranking_with([kit])
+
+      {:ok, _view, html} = live(conn, ~p"/rankings/#{r.edit_token}/duell")
+
+      assert html =~ "Dafür braucht es zwei"
+      refute html =~ ~s{phx-click="duel_pick"}
+    end
+
+    test "steht als eigener Schritt in der Navigation", %{conn: conn, ranking: r} do
+      {:ok, _view, html} = live(conn, ~p"/rankings/#{r.edit_token}/auswahl")
+
+      assert html =~ ~s(href="/rankings/#{r.edit_token}/duell")
+      assert html =~ "Vergleichen lassen"
+      # Der Weg von Hand bleibt daneben stehen.
+      assert html =~ "Selbst sortieren"
+    end
+  end
+
   describe "Teilen" do
     setup do
       %{kits: kits} = league(team_count: 2, kit_types: ["home"])
