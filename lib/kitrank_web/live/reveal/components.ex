@@ -306,6 +306,172 @@ defmodule KitrankWeb.Reveal.Components do
     """
   end
 
+  attr :result, :map, required: true
+  attr :room, :map, required: true
+
+  @doc """
+  Die Auswertung nach dem Aufdecken.
+
+  Kein Durchschnitt als Hauptdarsteller: der größte Streitfall steht oben, weil
+  er die Zeile ist, die man weiterschickt.
+  """
+  def result_panel(assigns) do
+    ~H"""
+    <div class="mt-10 border-t border-line pt-8">
+      <p class="kr-eyebrow">Auswertung</p>
+      <h2 class="kr-display mt-1.5 text-3xl">Wie einig wart ihr?</h2>
+      <p class="mt-2 text-sm text-soft">
+        Verglichen werden die {@result.shared_count} Trikots, die <span class="text-ink">alle</span>
+        bewertet haben.
+      </p>
+
+      <div
+        :if={@result.shared_count == 0}
+        class="mt-6 rounded-lg border border-dashed border-line p-8 text-center text-sm text-soft"
+      >
+        Ihr hattet kein einziges Trikot gemeinsam in der Liste — da gibt es nichts zu vergleichen.
+      </div>
+
+      <div :if={@result.shared_count > 0} class="mt-6 space-y-8">
+        <.split_card :if={@result.biggest_split} split={@result.biggest_split} />
+
+        <div class="grid gap-6 sm:grid-cols-2">
+          <.consensus_list
+            title="Darauf konntet ihr euch einigen"
+            kits={@result.consensus_top}
+            hint="niedrigster Schnitt"
+          />
+          <.consensus_list
+            title="Das mochte niemand"
+            kits={@result.consensus_bottom}
+            hint="höchster Schnitt"
+          />
+        </div>
+
+        <div :if={@result.pairs != []}>
+          <h3 class="kr-eyebrow">Wer liegt beieinander</h3>
+          <ul class="mt-3 space-y-1.5">
+            <li :for={paar <- @result.pairs} class="flex items-baseline gap-3 text-sm">
+              <span class="min-w-0 flex-1 truncate">
+                {paar.a} <span class="text-soft">und</span> {paar.b}
+              </span>
+              <span class="shrink-0 font-mono tabular-nums text-soft">
+                {:erlang.float_to_binary(paar.distance, decimals: 1)} Plätze auseinander
+              </span>
+            </li>
+          </ul>
+          <p class="mt-2 text-xs text-soft">
+            Mittlerer Abstand der Platzierungen. 0 heißt: identische Ranglisten.
+          </p>
+        </div>
+
+        <div :if={@result.notes != []}>
+          <h3 class="kr-eyebrow">Was gesagt wurde</h3>
+          <ul class="mt-3 space-y-3">
+            <li :for={notiz <- @result.notes} class="border-l-2 border-line pl-3">
+              <p class="text-sm leading-relaxed">{notiz.note}</p>
+              <p class="mt-0.5 text-[11px] text-soft">
+                {notiz.participant_name} · Platz {notiz.position} · {notiz.kit.team.short_code} {Kit.display_label(
+                  notiz.kit
+                )}
+              </p>
+            </li>
+          </ul>
+        </div>
+
+        <p class="border-t border-line pt-4 text-xs text-soft">
+          Dieser Raum bleibt unter dem Code <span class="font-mono text-ink">{@room.room_code}</span>
+          erreichbar, bis er abläuft — der Link zeigt weiterhin diese Auswertung.
+        </p>
+      </div>
+    </div>
+    """
+  end
+
+  attr :split, :map, required: true
+
+  defp split_card(assigns) do
+    assigns = assign(assigns, :color, Color.team_color(assigns.split.kit.team))
+
+    ~H"""
+    <div :if={@split.spread > 0} class="rounded-xl border border-line bg-panel p-5">
+      <h3 class="kr-eyebrow">Größter Streitfall</h3>
+
+      <div class="mt-3 flex flex-wrap items-center gap-4">
+        <span
+          class="flex h-20 w-20 shrink-0 items-center justify-center rounded-lg"
+          style={"background-color: color-mix(in oklab, #{@color} 14%, #FFFFFF)"}
+        >
+          <.kit_figure kit={@split.kit} team={@split.kit.team} class="h-16 w-16" size={:thumb} />
+        </span>
+
+        <div class="min-w-0">
+          <p class="flex flex-wrap items-baseline gap-x-2">
+            <span class="font-mono text-xs font-semibold" style={"color: #{@color}"}>
+              {@split.kit.team.short_code}
+            </span>
+            <span class="text-sm font-medium">{@split.kit.team.name}</span>
+            <span class="text-xs text-soft">{Kit.display_label(@split.kit)}</span>
+          </p>
+          <p class="mt-1.5 text-sm">
+            <span :for={{eintrag, i} <- Enum.with_index(@split.positions)}>
+              <span :if={i > 0} class="text-soft"> · </span>
+              {eintrag.participant_name}
+              <span class="font-mono tabular-nums text-soft">Platz {eintrag.position}</span>
+            </span>
+          </p>
+          <p class="mt-1 font-mono text-[11px] text-soft">
+            {@split.spread} Plätze Unterschied
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div :if={@split.spread == 0} class="rounded-xl border border-line bg-panel p-5">
+      <h3 class="kr-eyebrow">Kein Streit</h3>
+      <p class="mt-2 text-sm text-soft">
+        Ihr habt jedes gemeinsame Trikot auf denselben Platz gesetzt. Das ist entweder
+        beeindruckend oder verdächtig.
+      </p>
+    </div>
+    """
+  end
+
+  attr :title, :string, required: true
+  attr :kits, :list, required: true
+  attr :hint, :string, required: true
+
+  defp consensus_list(assigns) do
+    ~H"""
+    <div>
+      <h3 class="kr-eyebrow">{@title}</h3>
+      <ul class="mt-3 space-y-2">
+        <li :for={eintrag <- @kits} class="flex items-center gap-3">
+          <span
+            class="flex h-11 w-11 shrink-0 items-center justify-center rounded-md"
+            style={"background-color: color-mix(in oklab, #{Color.team_color(eintrag.kit.team)} 14%, #FFFFFF)"}
+          >
+            <.kit_figure
+              kit={eintrag.kit}
+              team={eintrag.kit.team}
+              class="h-8 w-8"
+              size={:thumb}
+            />
+          </span>
+          <span class="min-w-0 flex-1">
+            <span class="block truncate text-sm">{eintrag.kit.team.name}</span>
+            <span class="block text-[11px] text-soft">{Kit.display_label(eintrag.kit)}</span>
+          </span>
+          <span class="shrink-0 font-mono text-xs tabular-nums text-soft">
+            {:erlang.float_to_binary(eintrag.average, decimals: 1)}
+          </span>
+        </li>
+      </ul>
+      <p class="mt-2 text-[11px] text-soft">{@hint}</p>
+    </div>
+    """
+  end
+
   @doc "Hinweis für alle, die zuschauen, ohne mitzumachen."
   def spectator_hint(assigns) do
     ~H"""

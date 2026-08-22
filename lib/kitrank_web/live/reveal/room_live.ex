@@ -175,7 +175,9 @@ defmodule KitrankWeb.Reveal.RoomLive do
             revealed_count: Enum.count(entries, & &1.revealed?),
             all_revealed?: entries != [] and Enum.all?(entries, & &1.revealed?),
             fit: room.status == "waiting" && Reveal.ranking_fit(room),
-            board: room.status != "waiting" && Reveal.revealed_board(room)
+            board: room.status != "waiting" && Reveal.revealed_board(room),
+            # Erst am Ende – vorher waere sie ein Spoiler.
+            result: room.status == "done" && Reveal.result(room)
           )
         end)
         |> assign_host()
@@ -279,6 +281,8 @@ defmodule KitrankWeb.Reveal.RoomLive do
         />
 
         <.spectator_hint :if={!@me && @room.status != "waiting"} />
+
+        <.result_panel :if={@room.status == "done" && @result} result={@result} room={@room} />
 
         <.board :if={@board && @board.rows != []} board={@board} open?={@board_open?} me={@me} />
       </div>

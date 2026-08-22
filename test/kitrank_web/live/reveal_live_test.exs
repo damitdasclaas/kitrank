@@ -386,6 +386,92 @@ defmodule KitrankWeb.RevealLiveTest do
     end
   end
 
+  describe "Auswertung am Ende" do
+    setup do
+      %{kits: kits} =
+        league_fixture(season: Kits.current_season(), team_count: 3, kit_types: ["home"])
+
+      [a, b, c] = kits
+
+      tom_liste = ranking_with_kits_fixture([a, b, c])
+      anna_liste = ranking_with_kits_fixture([c, b, a])
+
+      room = room_fixture()
+      {:ok, tom} = Reveal.join(room, tom_liste.share_slug, "Tom")
+      {:ok, anna} = Reveal.join(room, anna_liste.share_slug, "Anna")
+      {:ok, room} = Reveal.start(room)
+
+      %{room: room, tom: tom, anna: anna, kits: kits, tom_liste: tom_liste}
+    end
+
+    defp durchlaufen(room) do
+      Enum.reduce_while(1..20, room, fn _, acc ->
+        {:ok, acc} = Reveal.reveal_next(acc)
+        if acc.status == "done", do: {:halt, acc}, else: {:cont, acc}
+      end)
+    end
+
+    test "erscheint erst am Ende, nicht vorher", %{conn: conn, room: room} do
+      {:ok, _view, html} = live(conn, ~p"/reveal/#{room.room_code}")
+      refute html =~ "Wie einig wart ihr?"
+
+      durchlaufen(room)
+
+      {:ok, _view, html} = live(conn, ~p"/reveal/#{room.room_code}")
+      assert html =~ "Wie einig wart ihr?"
+    end
+
+    test "zeigt den größten Streitfall mit Namen und Plätzen", %{conn: conn, room: room} do
+      durchlaufen(room)
+      {:ok, _view, html} = live(conn, ~p"/reveal/#{room.room_code}")
+
+      assert html =~ "Größter Streitfall"
+      assert html =~ "2 Plätze Unterschied"
+      assert html =~ "Tom"
+      assert html =~ "Anna"
+    end
+
+    test "zeigt den Abstand zwischen den Personen", %{conn: conn, room: room} do
+      durchlaufen(room)
+      {:ok, _view, html} = live(conn, ~p"/reveal/#{room.room_code}")
+
+      assert html =~ "Wer liegt beieinander"
+      # Genau umgekehrte Listen bei drei Trikots: (2+0+2)/3 ≈ 1,3
+      assert html =~ "1.3 Plätze auseinander"
+    end
+
+    test "sammelt die Notizen mit Person und Platz", %{conn: conn, room: room, tom_liste: liste} do
+      {:ok, _} = Rankings.update_note(Rankings.get_entry_at(liste.id, 1), "mein Favorit")
+      durchlaufen(room)
+
+      {:ok, _view, html} = live(conn, ~p"/reveal/#{room.room_code}")
+
+      assert html =~ "Was gesagt wurde"
+      assert html =~ "mein Favorit"
+      assert html =~ "Platz 1"
+    end
+
+    test "bleibt über den Raumcode erreichbar", %{conn: conn, room: room} do
+      durchlaufen(room)
+      {:ok, _view, html} = live(conn, ~p"/reveal/#{room.room_code}")
+
+      assert html =~ room.room_code
+      assert html =~ "zeigt weiterhin diese Auswertung"
+    end
+
+    test "sagt es, wenn es keine Überschneidung gab", %{conn: conn} do
+      room = room_fixture()
+      {:ok, _} = Reveal.join(room, ranking_with(2).share_slug, "Tom")
+      {:ok, _} = Reveal.join(room, ranking_with(2).share_slug, "Anna")
+      {:ok, room} = Reveal.start(room)
+      durchlaufen(room)
+
+      {:ok, _view, html} = live(conn, ~p"/reveal/#{room.room_code}")
+
+      assert html =~ "kein einziges Trikot gemeinsam"
+    end
+  end
+
   describe "Gesamtübersicht" do
     setup do
       room = room_fixture()

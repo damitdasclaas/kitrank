@@ -17,7 +17,7 @@ defmodule Kitrank.Reveal do
   alias Kitrank.Repo
   alias Kitrank.Rankings
   alias Kitrank.Rankings.Ranking
-  alias Kitrank.Reveal.{Participant, Room}
+  alias Kitrank.Reveal.{Participant, Result, Room}
 
   @pubsub Kitrank.PubSub
   @max_code_attempts 5
@@ -425,6 +425,22 @@ defmodule Kitrank.Reveal do
     |> Map.values()
     |> Enum.map(&map_size/1)
     |> Enum.max(fn -> 0 end)
+  end
+
+  @doc """
+  Die Auswertung nach dem Aufdecken – siehe `Kitrank.Reveal.Result`.
+
+  Verglichen werden nur Trikots aus dem Ausschnitt des Raums, in der Position,
+  die sie dort haben.
+  """
+  def result(%Room{} = room) do
+    participants = list_participants(room)
+    scope = scope_kit_ids(room)
+
+    entries =
+      Map.new(participants, fn p -> {p.id, entries_in_scope(scope, p.ranking_id)} end)
+
+    Result.build(participants, entries)
   end
 
   @doc """
