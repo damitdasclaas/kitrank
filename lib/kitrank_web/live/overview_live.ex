@@ -286,7 +286,7 @@ defmodule KitrankWeb.OverviewLive do
           <div
             :if={@open_league == competition.id}
             id={"liga-#{competition.id}"}
-            class="kr-rise mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
+            class="kr-rise mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6"
           >
             <.team_tile
               :for={{team, kits} <- teams}
