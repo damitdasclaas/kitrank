@@ -90,9 +90,20 @@ defmodule KitrankWeb.Layouts do
     </main>
 
     <footer class="border-t border-line">
-      <div class="mx-auto max-w-[1500px] px-4 py-8 text-xs text-soft sm:px-6 lg:px-8">
-        Trikotbilder werden verlinkt, nicht gehostet. Fehlt ein Bild, zeichnet KitRank
-        das Trikot in den Vereinsfarben.
+      <%!-- Der Hinweis schafft kein Recht, wirkt aber gegen das Kriterium, auf
+            das es markenrechtlich ankommt: den Eindruck einer offiziellen
+            Verbindung. Vereinsnamen werden hier beschreibend verwendet, um das
+            echte Produkt zu benennen – Wappen und Ligalogos bewusst nicht. --%>
+      <div class="mx-auto max-w-[1500px] space-y-2 px-4 py-8 text-xs leading-relaxed text-soft sm:px-6 lg:px-8">
+        <p>
+          <span class="text-ink">KitRank ist ein privates Projekt</span> und steht in keiner
+          Verbindung zur DFL oder zu den genannten Vereinen. Vereins- und Liganamen dienen
+          allein dazu, die Trikots zu benennen; die Marken gehören ihren Inhabern.
+        </p>
+        <p>
+          Trikotbilder werden von den Vereinsshops verlinkt, nicht kopiert. Fehlt ein Bild,
+          zeichnet KitRank das Trikot in den Vereinsfarben.
+        </p>
       </div>
     </footer>
 

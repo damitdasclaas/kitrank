@@ -68,6 +68,16 @@ defmodule KitrankWeb.OverviewLiveTest do
       assert html =~ "https://example.com/trikot.png"
     end
 
+    test "weist im Footer darauf hin, dass die App nicht offiziell ist", %{conn: conn} do
+      # Kein Rechtsschutz, aber es wirkt gegen den Eindruck einer offiziellen
+      # Verbindung – und genau darauf kommt es markenrechtlich an.
+      {:ok, _view, html} = live(conn, ~p"/")
+
+      assert html =~ "privates Projekt"
+      assert html =~ "Verbindung zur DFL"
+      assert html =~ "Marken gehören ihren Inhabern"
+    end
+
     test "sagt es, wenn für die Saison noch nichts hinterlegt ist", %{conn: conn} do
       {:ok, _view, html} = live(conn, ~p"/")
 
