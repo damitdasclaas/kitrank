@@ -19,4 +19,7 @@ defmodule KitrankWeb.Presence do
 
   @doc "Alle gerade verbundenen Teilnehmer eines Raums."
   def list_room(room_code), do: list(Room.topic(room_code))
+
+  @doc "Das Topic, auf dem Presence seine Änderungen meldet – dasselbe wie im Reveal."
+  def topic(room_code), do: Room.topic(room_code)
 end

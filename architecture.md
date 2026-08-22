@@ -273,6 +273,8 @@ existiert weiterhin für Tests und für den Fall, dass eine Liga klein genug ist
   niemand periodisch auf.
 - Mailversand in Produktion: welcher Adapter (Resend, Postmark, SMTP)? Lokal
   läuft alles über `/dev/mailbox`, für Fly fehlt die Entscheidung.
+- Rate-Limiting auf den Token-Routen (Abschnitt 7) ist nicht gebaut.
+- Noch nie deployt: `fly.toml` und Dockerfile stehen, ausprobiert wurde es nicht.
 
 ## 11. Erweiterbarkeit: Mehrsaison, weitere Ligen, andere Sportarten
 

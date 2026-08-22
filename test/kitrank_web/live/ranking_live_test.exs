@@ -116,6 +116,72 @@ defmodule KitrankWeb.RankingLiveTest do
     end
   end
 
+  describe "Gemerkte Ranglisten" do
+    test "die Bearbeiten-Seite gibt dem Browser mit, was er sich merken soll", %{conn: conn} do
+      %{kits: kits} = league(team_count: 1, kit_types: ["home"])
+      r = ranking_with(kits)
+
+      {:ok, _view, html} = live(conn, ~p"/rankings/#{r.edit_token}/edit")
+
+      assert html =~ ~s(phx-hook="RememberRanking")
+      assert html =~ ~s(data-token="#{r.edit_token}")
+      assert html =~ ~s(data-slug="#{r.share_slug}")
+    end
+
+    test "schlägt gemerkte Tokens nach und zeigt sie an", %{conn: conn} do
+      %{kits: kits} = league(team_count: 2, kit_types: ["home"])
+      a = ranking_with(kits)
+      {:ok, b} = Rankings.create_ranking(%{display_name: "Zweite Liste"})
+
+      {:ok, view, _html} = live(conn, ~p"/rankings/new")
+
+      html =
+        render_hook(view, "remembered_rankings", %{"tokens" => [a.edit_token, b.edit_token]})
+
+      assert html =~ "In diesem Browser gemerkt"
+      assert html =~ "Testliste"
+      assert html =~ "Zweite Liste"
+      assert html =~ "2 Trikots"
+      assert html =~ ~s(href="/rankings/#{a.edit_token}/edit")
+    end
+
+    test "wirft verschwundene Ranglisten aus dem Browser", %{conn: conn} do
+      {:ok, weg} = Rankings.create_ranking(%{})
+      {:ok, da} = Rankings.create_ranking(%{display_name: "Bleibt"})
+      {:ok, _} = Rankings.delete_ranking(weg)
+
+      {:ok, view, _html} = live(conn, ~p"/rankings/new")
+      render_hook(view, "remembered_rankings", %{"tokens" => [weg.edit_token, da.edit_token]})
+
+      assert_push_event(view, "prune_rankings", %{keep: keep})
+      assert keep == [da.edit_token]
+      assert render(view) =~ "Bleibt"
+    end
+
+    test "'Vergessen' nimmt sie aus der Liste und aus dem Browser", %{conn: conn} do
+      {:ok, r} = Rankings.create_ranking(%{display_name: "Weg damit"})
+
+      {:ok, view, _html} = live(conn, ~p"/rankings/new")
+      render_hook(view, "remembered_rankings", %{"tokens" => [r.edit_token]})
+
+      html = view |> element(~s{button[phx-value-token="#{r.edit_token}"]}) |> render_click()
+
+      assert_push_event(view, "forget_ranking", %{token: token})
+      assert token == r.edit_token
+      refute html =~ "Weg damit"
+      # Vergessen heisst nur vergessen – die Rangliste selbst bleibt.
+      assert Rankings.get_ranking_by_edit_token(r.edit_token)
+    end
+
+    test "ignoriert erfundene Tokens", %{conn: conn} do
+      {:ok, view, _html} = live(conn, ~p"/rankings/new")
+
+      html = render_hook(view, "remembered_rankings", %{"tokens" => ["quatsch", "auch-quatsch"]})
+
+      refute html =~ "In diesem Browser gemerkt"
+    end
+  end
+
   describe "Liga-Vorauswahl" do
     setup do
       erste = competition_fixture(name: "Erste Liga", tier: 1)

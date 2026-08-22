@@ -20,6 +20,19 @@ defmodule KitrankWeb.Ranking.Components do
   def ranking_header(assigns) do
     ~H"""
     <div class="border-b border-line pb-6">
+      <%!-- Merkt die Rangliste im Browser, damit man beim Wiederkommen nicht
+            den Bearbeiten-Link braucht. Der Link bleibt der eigentliche
+            Zugriffsweg – etwa beim Geraetewechsel. --%>
+      <div
+        id="remember-ranking"
+        phx-hook="RememberRanking"
+        data-token={@ranking.edit_token}
+        data-slug={@ranking.share_slug}
+        data-name={@ranking.display_name}
+        hidden
+      >
+      </div>
+
       <p class="kr-eyebrow">Saison {@season} · {@count} Trikots</p>
 
       <.form for={@name_form} id="ranking-name" phx-change="save_name" class="mt-2">

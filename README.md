@@ -12,8 +12,9 @@ Die vollständige Architektur steht in [`architecture.md`](architecture.md).
 
 ## Stand
 
-Fertig: Datenmodell und Contexts, die **Übersicht** (Team-Raster, Team-Detail, Direktvergleich, große Ansicht), **Login** mit Admin-UI zur Datenpflege und das **Ranking** (auswählen, sortieren, teilen).
-Noch offen: Reveal.
+Alle drei Bereiche stehen: **Übersicht** (Team-Raster, Team-Detail, Direktvergleich, große Ansicht), **Ranking** (auswählen, sortieren, teilen) und **Reveal** (Raum, Beitritt, Platz-für-Platz aufdecken), dazu **Login** mit Admin-UI zur Datenpflege.
+
+Noch offen: Aufräum-Job für abgelaufene Räume, Rate-Limiting, Mail-Adapter für Produktion — und einmal wirklich auf Fly deployen.
 
 ## Anmelden
 
@@ -151,12 +152,41 @@ ergibt sie sich aus dem, was schon drin ist.
 Jede Zeile beim Sortieren hat eine **Detailansicht** — großes Bild mit Galerie,
 großes Notizfeld, Shop-Link und die Schiebe-Knöpfe.
 
+Der Browser **merkt sich deine Ranglisten** (localStorage, kein Cookie — der
+Token soll nicht bei jedem Request mitgehen). `/rankings/new` zeigt sie oben an;
+gelöschte fliegen dabei automatisch raus. Der Bearbeiten-Link bleibt trotzdem
+der eigentliche Zugriffsweg, etwa beim Gerätewechsel.
+
 Sortieren geht per Drag (Sortable.js, `assets/js/hooks/sortable.js`) **und** über
 Pfeil-Knöpfe — Drag ist auf dem Handy fummelig und mit der Tastatur gar nicht zu
 bedienen. Der Hook schickt nach dem Loslassen die komplette neue Reihenfolge,
 nicht "Element X von 3 nach 1": so kann der Server sie gegen seinen Stand prüfen
 und ablehnen, statt eine Verschiebung auf einen Stand anzuwenden, den der
 Browser vielleicht nicht mehr hat.
+
+## Reveal
+
+`/reveal/new` öffnet einen Raum, `/reveal/:room_code` ist der Raum. Beigetreten
+wird mit dem **Teilen-Link** der eigenen Rangliste, nicht mit dem Bearbeiten-Link
+— das Reveal braucht Leserechte, nicht mehr.
+
+Der Ablauf hängt an zwei getrennten Dingen: der **Raumcode** ist kurz, zum
+Vorlesen gedacht und wird geteilt; die **Steuerung** hängt an einem eigenen
+langen Token. Das liegt nur im localStorage des Erstellers und steht bewusst
+nicht in der Adresse — wer eine URL mit Host-Token weitergäbe, würde ungewollt
+die Steuerung mitgeben. Für den Gerätewechsel gibt es stattdessen die Übergabe
+im Raum (`Reveal.transfer_host/2`); das Ersteller-Token bleibt daneben gültig,
+damit kein Raum unsteuerbar wird, wenn der neue Host offline geht.
+
+Jeder Schritt wird erst in Postgres geschrieben und dann als fertig geladener
+Schritt gesendet — auch an den Host selbst. Eine Extra-Runde, die dafür
+garantiert, dass alle exakt denselben Stand rendern statt zwei Codepfade zu
+haben. Kein Client lädt nach, kein Polling, und ein Reconnect ist unspektakulär:
+beim Neuaufbau steht der Stand einfach in der Datenbank.
+
+Auf schmalen Bildschirmen bleiben die Karten **nebeneinander und werden
+gewischt** statt gestapelt (Scroll-Snap pro Karte). Bei jedem Schritt geht es um
+den Vergleich; gestapelt sieht man nie zwei gleichzeitig.
 
 ## Zur Oberfläche
 

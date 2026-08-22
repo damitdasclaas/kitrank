@@ -35,6 +35,11 @@ defmodule KitrankWeb.Router do
       live "/rankings/:edit_token/auswahl", Ranking.EditLive, :select
       live "/rankings/:edit_token/edit", Ranking.EditLive, :sort
       live "/r/:share_slug", Ranking.ShowLive, :show
+
+      # Reveal. Geteilt wird der Raumcode; die Steuerung haengt an einem
+      # eigenen Token, das nur im Browser des Hosts liegt.
+      live "/reveal/new", Reveal.NewLive, :new
+      live "/reveal/:room_code", Reveal.RoomLive, :show
     end
   end
 

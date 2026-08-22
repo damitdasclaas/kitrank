@@ -46,9 +46,15 @@ defmodule KitrankWeb.Layouts do
         <div class="ml-auto flex items-center gap-3">
           <.link
             navigate={~p"/rankings/new"}
+            class="text-xs text-soft transition hover:text-ink"
+          >
+            Ranglisten
+          </.link>
+          <.link
+            navigate={~p"/reveal/new"}
             class="rounded-md bg-ink px-3 py-1.5 text-xs font-semibold text-chalk transition hover:opacity-90"
           >
-            Rangliste bauen
+            Reveal
           </.link>
           <%!-- Kein Anmelde-Link: Konten sind noch nicht offen, der Weg hinein
                 ist /users/log-in. Wer angemeldet ist, sieht seine Wege. --%>
