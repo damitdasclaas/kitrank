@@ -194,6 +194,112 @@ defmodule KitrankWeb.Admin.CrudTest do
     end
   end
 
+  describe "Trikot-Liste filtern" do
+    setup do
+      erste = competition_fixture(name: "Erste Liga", tier: 1)
+      zweite = competition_fixture(name: "Zweite Liga", tier: 2)
+      season = Kits.current_season()
+
+      %{teams: [a]} =
+        league_fixture(competition: erste, season: season, team_count: 1, kit_types: ["home"])
+
+      %{teams: [b]} =
+        league_fixture(competition: zweite, season: season, team_count: 1, kit_types: ["home"])
+
+      %{erste: erste, zweite: zweite, a: a, b: b}
+    end
+
+    test "zeigt ohne Filter alle Ligen", %{conn: conn, a: a, b: b} do
+      {:ok, _view, html} = live(conn, ~p"/admin/trikots")
+
+      assert html =~ a.name
+      assert html =~ b.name
+      assert html =~ "Erste Liga"
+      assert html =~ "Zweite Liga"
+      assert html =~ "2 Trikots"
+    end
+
+    test "grenzt auf eine Liga ein", %{conn: conn, erste: erste, a: a, b: b} do
+      {:ok, view, _html} = live(conn, ~p"/admin/trikots")
+
+      html =
+        view
+        |> element(~s{button[phx-click="toggle_league"][phx-value-id="#{erste.id}"]})
+        |> render_click()
+
+      assert html =~ a.name
+      refute html =~ b.name
+      assert html =~ "1 Trikots"
+    end
+
+    test "'Alle' hebt den Filter auf", %{conn: conn, erste: erste, b: b} do
+      {:ok, view, _html} = live(conn, ~p"/admin/trikots")
+
+      view
+      |> element(~s{button[phx-click="toggle_league"][phx-value-id="#{erste.id}"]})
+      |> render_click()
+
+      html = view |> element(~s{button[phx-click="all_leagues"]}) |> render_click()
+
+      assert html =~ b.name
+    end
+
+    test "sucht nach Vereinsnamen", %{conn: conn, a: a, b: b} do
+      {:ok, view, _html} = live(conn, ~p"/admin/trikots")
+
+      html = view |> form("form[phx-change=\"search\"]", %{"q" => a.name}) |> render_change()
+
+      assert html =~ a.name
+      refute html =~ b.name
+    end
+
+    test "sucht auch nach dem Kürzel", %{conn: conn, a: a} do
+      {:ok, view, _html} = live(conn, ~p"/admin/trikots")
+
+      html =
+        view
+        |> form("form[phx-change=\"search\"]", %{"q" => String.downcase(a.short_code)})
+        |> render_change()
+
+      assert html =~ a.name
+    end
+
+    test "kombiniert Suche und Liga-Filter", %{conn: conn, erste: erste, a: a, b: b} do
+      {:ok, view, _html} = live(conn, ~p"/admin/trikots")
+
+      view
+      |> element(~s{button[phx-click="toggle_league"][phx-value-id="#{erste.id}"]})
+      |> render_click()
+
+      html = view |> form("form[phx-change=\"search\"]", %{"q" => b.name}) |> render_change()
+
+      # b liegt in der anderen Liga – der Filter gewinnt, die Tabelle bleibt
+      # leer. (b.name steht trotzdem im HTML: im Suchfeld.)
+      assert html =~ "kein Trikot in dieser Auswahl"
+      refute html =~ a.name
+    end
+
+    test "behandelt Prozentzeichen als Text, nicht als Muster", %{conn: conn, a: a} do
+      {:ok, view, _html} = live(conn, ~p"/admin/trikots")
+
+      html = view |> form("form[phx-change=\"search\"]", %{"q" => "%"}) |> render_change()
+
+      refute html =~ a.name
+    end
+
+    test "zeigt Trikots ohne Liga-Zuordnung, statt sie zu verstecken", %{conn: conn} do
+      # Ein Verein ohne Saison-Zuordnung – in der Übersicht unsichtbar, im
+      # Admin muss er auffallen.
+      waise = team_fixture(name: "Verein ohne Liga")
+      kit_fixture(team_id: waise.id, season: Kits.current_season(), kit_type: "home")
+
+      {:ok, _view, html} = live(conn, ~p"/admin/trikots")
+
+      assert html =~ "Verein ohne Liga"
+      assert html =~ "keine Liga"
+    end
+  end
+
   describe "Dashboard" do
     test "zählt, was gepflegt ist, und was noch fehlt", %{conn: conn} do
       %{teams: [team], season: season} = league_fixture(team_count: 1, kit_types: [])

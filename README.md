@@ -96,8 +96,16 @@ Der Abruf läuft in einem eigenen Prozess (`start_async`) — ein Shop, der zwö
 Sekunden nicht antwortet, würde die Oberfläche sonst so lange einfrieren, und
 ein eingefrorenes Fenster sieht aus wie ein Fehler.
 
-`/admin` hat CRUD für alles. Das Dashboard zeigt, was noch fehlt — Trikots ohne
-Bild, ohne Shop-Link, und ob für die Saison überhaupt Zuordnungen existieren.
+`/admin` hat CRUD für alles. Die Trikot-Liste lässt sich nach **Saison und Liga**
+filtern und nach **Verein durchsuchen** (Name oder Kürzel) — bei über hundert
+Trikots pro Saison ist Scrollen sonst keine Option.
+
+Sie zeigt ausdrücklich auch Trikots **ohne Liga-Zuordnung**, rot markiert. Die
+tauchen in der Übersicht nämlich nicht auf, und das soll im Admin auffallen
+statt unsichtbar zu bleiben.
+
+Das Dashboard zeigt, was noch fehlt — Trikots ohne Bild, ohne Shop-Link, und ob
+für die Saison überhaupt Zuordnungen existieren.
 
 **Ohne Saison-Zuordnung bleibt die Übersicht leer** — die Gruppierung kommt aus
 `team_seasons`, nicht aus einem Feld am Verein.

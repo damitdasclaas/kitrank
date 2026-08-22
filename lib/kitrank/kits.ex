@@ -113,6 +113,45 @@ defmodule Kitrank.Kits do
   defp scope_by(query, :team_id, values), do: from([k] in query, where: k.team_id in ^values)
 
   @doc """
+  Trikots für die Admin-Liste, mit Liga und optional darauf gefiltert.
+
+  Bewusst ein `left_join`: ein Trikot, dessen Verein für diese Saison keiner
+  Liga zugeordnet ist, taucht trotzdem auf – mit `competition: nil`. Sonst
+  würden genau die Datensätze unsichtbar, die man im Admin finden muss, weil
+  etwas fehlt.
+  """
+  def list_kits_for_admin(season, opts \\ []) do
+    from(k in Kit,
+      join: t in assoc(k, :team),
+      left_join: ts in TeamSeason,
+      on: ts.team_id == k.team_id and ts.season == k.season,
+      left_join: c in assoc(ts, :competition),
+      where: k.season == ^season,
+      order_by: [asc: t.name, asc: kit_type_order(k)],
+      preload: [team: t],
+      select: %{kit: k, competition: c}
+    )
+    |> admin_league_filter(Keyword.get(opts, :competition_ids, []))
+    |> admin_search(Keyword.get(opts, :query))
+    |> Repo.all()
+  end
+
+  defp admin_league_filter(query, []), do: query
+
+  defp admin_league_filter(query, ids),
+    do: from([k, _t, ts] in query, where: ts.competition_id in ^ids)
+
+  defp admin_search(query, text) when text in [nil, ""], do: query
+
+  defp admin_search(query, text) do
+    # % und _ im Suchtext maskieren, sonst wird aus einer Eingabe versehentlich
+    # ein Muster.
+    muster = "%" <> String.replace(text, ~r/([%_\\])/, "\\\\\\1") <> "%"
+
+    from([k, t] in query, where: ilike(t.name, ^muster) or ilike(t.short_code, ^muster))
+  end
+
+  @doc """
   Die Vereine, die in mindestens einer Saison einer Liga zugeordnet sind –
   also alles, worüber sich eine Rangliste bauen lässt.
   """

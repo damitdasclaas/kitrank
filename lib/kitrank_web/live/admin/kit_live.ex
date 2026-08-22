@@ -32,7 +32,9 @@ defmodule KitrankWeb.Admin.KitLive do
        season: season,
        candidates: [],
        fetching?: false,
-       fetch_error: nil
+       fetch_error: nil,
+       league_filter: MapSet.new(),
+       search: ""
      )
      |> load_rows()}
   end
@@ -87,6 +89,24 @@ defmodule KitrankWeb.Admin.KitLive do
 
   def handle_event("clear_images", _params, socket) do
     {:noreply, apply_picked(socket, [])}
+  end
+
+  def handle_event("search", %{"q" => q}, socket) do
+    {:noreply, socket |> assign(:search, q) |> load_rows()}
+  end
+
+  def handle_event("toggle_league", %{"id" => id}, socket) do
+    id = String.to_integer(id)
+    filter = socket.assigns.league_filter
+
+    filter =
+      if MapSet.member?(filter, id), do: MapSet.delete(filter, id), else: MapSet.put(filter, id)
+
+    {:noreply, socket |> assign(:league_filter, filter) |> load_rows()}
+  end
+
+  def handle_event("all_leagues", _params, socket) do
+    {:noreply, socket |> assign(:league_filter, MapSet.new()) |> load_rows()}
   end
 
   def handle_event("select_season", %{"season" => season}, socket) do
@@ -219,7 +239,12 @@ defmodule KitrankWeb.Admin.KitLive do
     teams = Kits.list_teams()
 
     assign(socket,
-      rows: Kits.list_kits(socket.assigns.season),
+      rows:
+        Kits.list_kits_for_admin(socket.assigns.season,
+          competition_ids: MapSet.to_list(socket.assigns.league_filter),
+          query: socket.assigns.search
+        ),
+      competitions: Kits.list_competitions(),
       seasons: Enum.uniq([socket.assigns.season, Kits.current_season()] ++ Kits.list_seasons()),
       teams: teams,
       team_options: Enum.map(teams, &{"#{&1.name} (#{&1.short_code})", &1.id}),
@@ -257,8 +282,55 @@ defmodule KitrankWeb.Admin.KitLive do
           </div>
         </div>
 
-        <.admin_table rows={@rows} empty_text={"Für #{@season} ist noch kein Trikot angelegt."}>
-          <:col :let={kit} label="" class="w-16">
+        <div :if={@competitions != []} class="mb-5 flex flex-wrap items-center gap-2">
+          <span class="kr-eyebrow">Liga</span>
+          <button
+            type="button"
+            phx-click="all_leagues"
+            aria-pressed={to_string(MapSet.size(@league_filter) == 0)}
+            class={[
+              "rounded-full border px-3 py-1 text-xs transition",
+              MapSet.size(@league_filter) == 0 && "border-transparent bg-ink text-chalk",
+              MapSet.size(@league_filter) > 0 &&
+                "border-line text-soft hover:border-ink hover:text-ink"
+            ]}
+          >
+            Alle
+          </button>
+          <button
+            :for={competition <- @competitions}
+            type="button"
+            phx-click="toggle_league"
+            phx-value-id={competition.id}
+            aria-pressed={to_string(MapSet.member?(@league_filter, competition.id))}
+            class={[
+              "rounded-full border px-3 py-1 text-xs transition",
+              MapSet.member?(@league_filter, competition.id) && "border-transparent bg-ink text-chalk",
+              !MapSet.member?(@league_filter, competition.id) &&
+                "border-line text-soft hover:border-ink hover:text-ink"
+            ]}
+          >
+            {competition.name}
+          </button>
+          <form phx-change="search" class="ml-auto flex items-center gap-2">
+            <label for="q" class="sr-only">Nach Verein suchen</label>
+            <input
+              type="search"
+              id="q"
+              name="q"
+              value={@search}
+              phx-debounce="250"
+              placeholder="Verein suchen …"
+              class="w-48 rounded-md border border-line bg-panel px-3 py-1.5 text-xs"
+            />
+            <span class="shrink-0 whitespace-nowrap font-mono text-xs text-soft">
+              {length(@rows)} Trikots
+            </span>
+          </form>
+        </div>
+
+        <.admin_table rows={@rows} empty_text={"Für #{@season} ist kein Trikot in dieser Auswahl."}>
+          <:col :let={%{kit: kit}} label="" class="w-16">
             <span
               class="flex h-12 w-12 items-center justify-center rounded-md"
               style={"background-color: color-mix(in oklab, #{Color.team_color(kit.team)} 15%, #FFFFFF)"}
@@ -266,23 +338,29 @@ defmodule KitrankWeb.Admin.KitLive do
               <.kit_figure kit={kit} team={kit.team} class="h-9 w-9" />
             </span>
           </:col>
-          <:col :let={kit} label="Verein">{kit.team.name}</:col>
-          <:col :let={kit} label="Typ">
+          <:col :let={%{kit: kit}} label="Verein">{kit.team.name}</:col>
+          <:col :let={%{competition: competition}} label="Liga" class="text-soft">
+            <span :if={competition} class="text-xs">{competition.name}</span>
+            <%!-- Ohne Zuordnung taucht das Trikot in der Uebersicht nicht auf –
+                  das soll hier auffallen, nicht verschwinden. --%>
+            <span :if={!competition} class="font-mono text-xs text-red-600">keine Liga</span>
+          </:col>
+          <:col :let={%{kit: kit}} label="Typ">
             <span class="inline-flex items-center gap-2">
               <.kit_badge kit_type={kit.kit_type} class="bg-sunk text-soft" />
               {Kit.label(kit.kit_type)}
             </span>
           </:col>
-          <:col :let={kit} label="Bilder" class="text-soft">
+          <:col :let={%{kit: kit}} label="Bilder" class="text-soft">
             <span class="font-mono text-xs">
               {if kit.cutout_url, do: "Cutout", else: "—"}
               {if kit.model_image_urls != [], do: "+#{length(kit.model_image_urls)}"}
             </span>
           </:col>
-          <:col :let={kit} label="Shop" class="text-soft">
+          <:col :let={%{kit: kit}} label="Shop" class="text-soft">
             <span class="font-mono text-xs">{if kit.source_shop_url, do: "ja", else: "—"}</span>
           </:col>
-          <:actions :let={kit}>
+          <:actions :let={%{kit: kit}}>
             <.edit_link navigate={~p"/admin/trikots/#{kit.id}"} />
             <.delete_button
               id={kit.id}
@@ -373,7 +451,7 @@ defmodule KitrankWeb.Admin.KitLive do
   # Model-Bilder.
   defp image_picker(assigns) do
     ~H"""
-    <div class="mt-5 rounded-lg border border-line bg-sunk p-4">
+    <div class="mb-6 rounded-lg border border-line bg-sunk p-4">
       <h3 class="kr-eyebrow">Bilder aus dem Shop holen</h3>
       <p class="mt-1 text-xs text-soft">
         Produktlink einfügen — danach anklicken, welche Bilder du willst.
