@@ -25,7 +25,21 @@ defmodule KitrankWeb.OverviewLiveTest do
       assert html =~ "Zweite Liga"
       # Erstliga-Ueberschrift steht vor der Zweitliga-Ueberschrift.
       assert :binary.match(html, "Erste Liga") < :binary.match(html, "Zweite Liga")
-      assert view |> element("h1") |> render() =~ "Jedes Trikot"
+      assert view |> element("h1") |> render() =~ "Welches Trikot"
+    end
+
+    test "nennt im Kopf keine feste Liga", %{conn: conn} do
+      # Die App soll weitere Ligen und Sportarten aufnehmen koennen – ein
+      # fester Ligenname in Kopfzeile oder Ueberschrift waere dann als erstes
+      # falsch. Die Ligen selbst stehen weiter an ihren Abschnitten.
+      league(competition: competition_fixture(name: "Bundesliga", tier: 1), team_count: 1)
+
+      {:ok, view, html} = live(conn, ~p"/")
+
+      assert html =~ "Ranken, teilen, streiten"
+      refute view |> element("h1") |> render() =~ "Bundesliga"
+      # In der Abschnitts-Ueberschrift steht sie natuerlich weiterhin.
+      assert html =~ "Bundesliga"
     end
 
     test "die oberste Liga ist offen, die anderen zu", %{conn: conn} do

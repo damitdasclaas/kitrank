@@ -42,7 +42,10 @@ defmodule KitrankWeb.Layouts do
         <a href={~p"/"} class="kr-display text-lg leading-none">
           Kit<span class="font-normal">Rank</span>
         </a>
-        <p class="kr-eyebrow hidden sm:block">Trikots der 1. und 2. Bundesliga</p>
+        <%!-- Bewusst ohne Liga: die App ist darauf angelegt, weitere Ligen und
+              Sportarten aufzunehmen (Architektur Abschnitt 11). Ein fester
+              Ligenname im Kopf waere dann als erstes falsch. --%>
+        <p class="kr-eyebrow hidden sm:block">Ranken, teilen, streiten</p>
         <div class="ml-auto flex items-center gap-3">
           <.link
             navigate={~p"/rankings/new"}

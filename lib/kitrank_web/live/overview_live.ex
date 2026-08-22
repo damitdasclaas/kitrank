@@ -350,11 +350,13 @@ defmodule KitrankWeb.OverviewLive do
     <div class="flex flex-col gap-6 border-b border-line pb-8 md:flex-row md:items-end md:justify-between">
       <div>
         <p class="kr-eyebrow">Saison {@season}</p>
+        <%!-- Die Frage, um die es geht – und nicht der Name der Ligen, die
+              gerade in der Datenbank stehen. --%>
         <h1 class="kr-display mt-2 text-4xl leading-[0.95] sm:text-5xl">
-          Jedes Trikot<br />der beiden Ligen
+          Welches Trikot<br />ist das schönste?
         </h1>
         <p class="mt-4 max-w-md text-sm leading-relaxed text-soft">
-          {@kit_count} Trikots von {@team_count} Vereinen. Team antippen für alle Varianten,
+          {@kit_count} Trikots von {@team_count} Vereinen. Verein antippen für alle Varianten,
           zwei bis drei nebeneinanderlegen — oder gleich <.link
             navigate={~p"/rankings/new"}
             class="text-ink underline underline-offset-4"
