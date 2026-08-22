@@ -28,6 +28,69 @@ defmodule KitrankWeb.OverviewLiveTest do
       assert view |> element("h1") |> render() =~ "Jedes Trikot"
     end
 
+    test "die oberste Liga ist offen, die anderen zu", %{conn: conn} do
+      erste = competition_fixture(name: "Erste Liga", tier: 1)
+      zweite = competition_fixture(name: "Zweite Liga", tier: 2)
+      %{teams: [a]} = league(competition: erste, team_count: 1)
+      %{teams: [b]} = league(competition: zweite, team_count: 1)
+
+      {:ok, view, html} = live(conn, ~p"/")
+
+      # Beide Ueberschriften da, aber nur die erste Liga zeigt ihre Vereine.
+      # Geprueft wird ueber die Kachel-Links: Namen aus Fixtures koennen
+      # Praefixe voneinander sein, dann trifft ein refute versehentlich zu.
+      assert html =~ "Erste Liga"
+      assert html =~ "Zweite Liga"
+      assert has_element?(view, ~s{a[href="/teams/#{a.id}"]})
+      refute has_element?(view, ~s{a[href="/teams/#{b.id}"]})
+    end
+
+    test "eine andere Liga aufklappen klappt die vorige zu", %{conn: conn} do
+      erste = competition_fixture(name: "Erste Liga", tier: 1)
+      zweite = competition_fixture(name: "Zweite Liga", tier: 2)
+      %{teams: [a]} = league(competition: erste, team_count: 1)
+      %{teams: [b]} = league(competition: zweite, team_count: 1)
+
+      {:ok, view, _html} = live(conn, ~p"/")
+
+      view
+      |> element(~s{button[phx-click="toggle_league"][phx-value-id="#{zweite.id}"]})
+      |> render_click()
+
+      assert has_element?(view, ~s{a[href="/teams/#{b.id}"]})
+      refute has_element?(view, ~s{a[href="/teams/#{a.id}"]})
+    end
+
+    test "nochmal auf die offene Liga klappt sie zu", %{conn: conn} do
+      erste = competition_fixture(name: "Erste Liga", tier: 1)
+      %{teams: [a]} = league(competition: erste, team_count: 1)
+
+      {:ok, view, _html} = live(conn, ~p"/")
+      assert has_element?(view, ~s{a[href="/teams/#{a.id}"]})
+
+      html =
+        view
+        |> element(~s{button[phx-click="toggle_league"][phx-value-id="#{erste.id}"]})
+        |> render_click()
+
+      refute has_element?(view, ~s{a[href="/teams/#{a.id}"]})
+      # Die Ueberschrift bleibt – die Seite wirkt nicht leer.
+      assert html =~ "Erste Liga"
+    end
+
+    test "meldet den Zustand für Screenreader", %{conn: conn} do
+      erste = competition_fixture(name: "Erste Liga", tier: 1)
+      zweite = competition_fixture(name: "Zweite Liga", tier: 2)
+      league(competition: erste, team_count: 1)
+      league(competition: zweite, team_count: 1)
+
+      {:ok, _view, html} = live(conn, ~p"/")
+
+      assert html =~ ~s(aria-expanded="true")
+      assert html =~ ~s(aria-expanded="false")
+      assert html =~ ~s(aria-controls="liga-#{erste.id}")
+    end
+
     test "zeigt Kürzel und Name jedes Teams", %{conn: conn} do
       %{teams: [team | _]} = league(team_count: 1)
 

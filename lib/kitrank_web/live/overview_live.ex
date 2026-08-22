@@ -50,6 +50,16 @@ defmodule KitrankWeb.OverviewLive do
     {:noreply, socket |> load_season(season) |> push_patch(to: ~p"/")}
   end
 
+  def handle_event("toggle_league", %{"id" => id}, socket) do
+    id = String.to_integer(id)
+
+    # Nochmal auf die offene Liga klappt sie zu – das erwartet man von einer
+    # Ueberschrift, die sich wie ein Schalter verhaelt.
+    offen = if socket.assigns.open_league == id, do: nil, else: id
+
+    {:noreply, assign(socket, :open_league, offen)}
+  end
+
   def handle_event("toggle_compare", %{"id" => id}, socket) do
     id = String.to_integer(id)
     selected = socket.assigns.compare_ids
@@ -166,6 +176,20 @@ defmodule KitrankWeb.OverviewLive do
     |> assign_new(:zoom, fn -> nil end)
     |> assign_new(:compare_ids, fn -> [] end)
     |> assign_new(:open_team, fn -> nil end)
+    |> open_first_league()
+  end
+
+  # Beim Laden und nach einem Saisonwechsel die oberste Liga aufklappen – bei
+  # zwei deutschen Ligen also die Bundesliga. Offen ist immer hoechstens eine;
+  # ein Klick auf eine andere klappt die vorige zu.
+  defp open_first_league(socket) do
+    erste =
+      case socket.assigns.overview do
+        [{competition, _teams} | _] -> competition.id
+        [] -> nil
+      end
+
+    assign(socket, :open_league, erste)
   end
 
   # Nimmt nur IDs an, die es in dieser Saison wirklich gibt – ein geteilter Link
@@ -252,10 +276,18 @@ defmodule KitrankWeb.OverviewLive do
           </p>
         </div>
 
-        <section :for={{competition, teams} <- @overview} class="mt-14 first:mt-10">
-          <.league_header competition={competition} team_count={length(teams)} />
+        <section :for={{competition, teams} <- @overview} class="mt-10 first:mt-8">
+          <.league_header
+            competition={competition}
+            team_count={length(teams)}
+            open?={@open_league == competition.id}
+          />
 
-          <div class="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+          <div
+            :if={@open_league == competition.id}
+            id={"liga-#{competition.id}"}
+            class="kr-rise mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
+          >
             <.team_tile
               :for={{team, kits} <- teams}
               team={team}
@@ -356,16 +388,31 @@ defmodule KitrankWeb.OverviewLive do
 
   attr :competition, :map, required: true
   attr :team_count, :integer, required: true
+  attr :open?, :boolean, required: true
 
+  # Die Ueberschrift ist der Schalter. Offen ist hoechstens eine Liga; ein Klick
+  # auf die offene klappt sie zu – das erwartet man von einem Schalter, und die
+  # Kopfzeile bleibt sichtbar, die Seite wirkt also nicht leer.
   defp league_header(assigns) do
     ~H"""
-    <div class="flex items-baseline gap-4 border-b border-line pb-2">
-      <h2 class="kr-display text-xl">{@competition.name}</h2>
-      <span class="kr-eyebrow">
-        {@competition.country} · Liga {@competition.tier}
-      </span>
-      <span class="ml-auto font-mono text-xs text-soft">{@team_count} Vereine</span>
-    </div>
+    <h2 class="border-b border-line">
+      <button
+        type="button"
+        phx-click="toggle_league"
+        phx-value-id={@competition.id}
+        aria-expanded={to_string(@open?)}
+        aria-controls={"liga-#{@competition.id}"}
+        class="flex w-full items-center gap-3 pb-2 text-left transition hover:opacity-80"
+      >
+        <.icon
+          name={if @open?, do: "hero-chevron-down-mini", else: "hero-chevron-right-mini"}
+          class="size-5 shrink-0 text-soft"
+        />
+        <span class="kr-display text-xl leading-none">{@competition.name}</span>
+        <span class="kr-eyebrow">{@competition.country} · Liga {@competition.tier}</span>
+        <span class="ml-auto shrink-0 font-mono text-xs text-soft">{@team_count} Vereine</span>
+      </button>
+    </h2>
     """
   end
 
