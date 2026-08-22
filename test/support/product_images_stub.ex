@@ -23,6 +23,10 @@ defmodule Kitrank.Kits.ProductImagesStub do
   def fetch("https://stub/blockiert"), do: {:error, :blocked}
   def fetch("kein-link"), do: {:error, :invalid_url}
 
+  # Eine direkte Bildadresse ist ein einzelner Kandidat, keine Seite.
+  def fetch("https://stub/bild.png" = url),
+    do: {:ok, %{title: nil, images: [url], labels: %{}, source_url: url}}
+
   def fetch(url) when is_binary(url) do
     {:ok,
      %{

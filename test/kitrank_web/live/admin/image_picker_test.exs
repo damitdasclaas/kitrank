@@ -158,6 +158,13 @@ defmodule KitrankWeb.Admin.ImagePickerTest do
       assert hole_bilder(view, "kein-link") =~ "http://"
     end
 
+    test "nimmt eine direkt eingefügte Bildadresse als einzigen Kandidaten", %{view: view} do
+      html = hole_bilder(view, "https://stub/bild.png")
+
+      assert html =~ "1 Bilder gefunden, 0 gewählt"
+      assert html =~ "https://stub/bild.png"
+    end
+
     test "meldet eine Seite ohne Bilder", %{view: view} do
       assert hole_bilder(view, "https://stub/leer") =~ "keine Bilder zu finden"
     end

@@ -42,8 +42,14 @@ defmodule Kitrank.Kits.ProductImages do
   """
   def fetch(url) when is_binary(url) do
     with {:ok, url} <- normalize(url),
-         {:ok, body} <- get(url) do
-      parse(body, url)
+         {:ok, body, content_type} <- get(url) do
+      # Wer direkt eine Bildadresse einfuegt, meint dieses Bild – nicht eine
+      # Seite, auf der es vielleicht vorkommt.
+      if String.starts_with?(content_type, "image/") do
+        {:ok, %{title: nil, images: [url], labels: %{}, source_url: url}}
+      else
+        parse(body, url)
+      end
     end
   end
 
@@ -114,13 +120,17 @@ defmodule Kitrank.Kits.ProductImages do
            max_redirects: 5,
            retry: false
          ) do
-      {:ok, %{status: status, body: body}}
+      {:ok, %{status: status, body: body} = resp}
       when status in 200..299 and is_binary(body) and byte_size(body) <= @max_bytes ->
-        {:ok, body}
+        {:ok, body, content_type(resp)}
 
       # Riesige Seiten schneiden wir ab, statt sie ganz zu verarbeiten.
-      {:ok, %{status: status, body: body}} when status in 200..299 and is_binary(body) ->
-        {:ok, binary_part(body, 0, @max_bytes)}
+      {:ok, %{status: status, body: body} = resp} when status in 200..299 and is_binary(body) ->
+        {:ok, binary_part(body, 0, @max_bytes), content_type(resp)}
+
+      # Ein Bild kommt als Binary an, nicht als String.
+      {:ok, %{status: status} = resp} when status in 200..299 ->
+        {:ok, "", content_type(resp)}
 
       {:ok, %{status: status}} when status in [401, 403, 429] ->
         {:error, :blocked}
@@ -145,6 +155,17 @@ defmodule Kitrank.Kits.ProductImages do
         {:error, :unreachable}
     end
   end
+
+  defp content_type(%{headers: headers}) do
+    headers
+    |> Map.get("content-type", [])
+    |> List.wrap()
+    |> List.first()
+    |> to_string()
+    |> String.downcase()
+  end
+
+  defp content_type(_), do: ""
 
   ## Quellen
 

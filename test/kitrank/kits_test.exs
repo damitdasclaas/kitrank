@@ -24,6 +24,15 @@ defmodule Kitrank.KitsTest do
       assert changeset.errors[:primary_color]
     end
 
+    test "nimmt auch einen sehr langen Shop-Link" do
+      lang = "https://example.com/shop?context=" <> String.duplicate("y", 400)
+
+      assert {:ok, team} =
+               Kits.create_team(%{name: "Langlink", short_code: "LNG", shop_url: lang})
+
+      assert String.length(team.shop_url) > 255
+    end
+
     test "lehnt Shop-URLs ab, die kein http(s) sind" do
       assert {:error, changeset} =
                Kits.create_team(%{
@@ -192,6 +201,28 @@ defmodule Kitrank.KitsTest do
                })
 
       assert changeset.errors[:kit_type]
+    end
+
+    test "nimmt auch sehr lange URLs" do
+      # Die TSG haengt einen base64-kodierten Kontext an ihre Bildadressen –
+      # 352 Zeichen. Als varchar(255) gab das einen rohen Postgres-Fehler, der
+      # die LiveView mitgenommen hat.
+      lang = "https://example.com/bild.png?context=" <> String.duplicate("x", 400)
+      team = team_fixture()
+
+      assert {:ok, kit} =
+               Kits.create_kit(%{
+                 team_id: team.id,
+                 season: Kits.current_season(),
+                 kit_type: "home",
+                 cutout_url: lang,
+                 model_image_urls: [lang],
+                 source_shop_url: lang
+               })
+
+      assert String.length(kit.cutout_url) > 255
+      assert [gespeichert] = kit.model_image_urls
+      assert String.length(gespeichert) > 255
     end
 
     test "prüft jede einzelne Bild-URL" do
