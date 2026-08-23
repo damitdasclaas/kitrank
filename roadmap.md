@@ -112,6 +112,124 @@ Realistischer Gewinn: Stammdaten vollständig automatisch, Bild-URLs
 vorgesammelt, Auswahl bleibt manuell. Das ist der Unterschied zwischen einer
 Woche und einem Abend.
 
+### 3.1b Welche Quellen es tatsächlich gibt (geprüft am 23.08.2026)
+
+Nicht geschätzt, sondern abgefragt: alle 27 verschiedenen Shop-Hosts der 36
+Vereine, dazu `robots.txt`, Sitemaps und die naheliegenden Fremdquellen.
+
+#### Stammdaten: gelöst
+
+**[OpenLigaDB](https://api.openligadb.de/)** liefert beide Ligen frei und ohne
+Schlüssel:
+
+```
+GET https://api.openligadb.de/getavailableteams/bl1/2026   → 18 Vereine
+GET https://api.openligadb.de/getavailableteams/bl2/2026   → 18 Vereine
+```
+
+Damit ist der jährliche Auf-/Abstiegs-Abgleich automatisierbar. Das Feld
+`teamIconUrl` (Wappen) bleibt ungenutzt — Wappen verwenden wir nicht.
+
+#### Trikot-Links: bei 18 von 36 Vereinen automatisierbar
+
+Die Sitemap ist der Weg, nicht das Durchsuchen der Seite. Nachzuziehen mit
+`mix run priv/scripts/quellen_pruefen.exs` — 18 Hosts liefern, 9 nicht.
+
+**A — Produktlinks direkt in der Sitemap (10 Vereine)**
+KOE, HSV, SCF, FCA, SGE, BSC, FCU, KSV, FCE, VFB
+
+Ein Abruf, fertige Produktseiten. Beispiel: `fc.de/sitemap.xml` enthält
+`/adidas-heimtrikot-2026-27`, `/adidas-auswaertstrikot-2026-27`,
+`/adidas-ausweichtrikot-2026-27` — alle drei Trikots der Saison in einer Zeile.
+
+**B — Kategorie in der Sitemap, Produkte auf der Kategorieseite (3 Vereine)**
+M05, S04, WOB
+
+Ein Abruf mehr. Geprüft, dass es aufgeht: `shop.mainz05.de/Trikots/Heim/`
+liefert `Heimtrikot-26-27-Herren`, `-Damen`, `-Kinder`; Schalke und Wolfsburg
+genauso mit den 26/27-Namen.
+
+**C — liefert etwas, aber nicht direkt brauchbar (5 Vereine)**
+
+| Verein | Was in der Sitemap steht |
+|---|---|
+| SGD, D98 | Kategorien von Kategorien — zwei Ebenen bis zum Produkt |
+| RBL | dreistufige Sitemap (Sprache → Bereich → Seiten), Treffer sind `/c/`-Kategorien |
+| B04 | 38.761 URLs, die Trikot-Treffer sind Inhaltsseiten („Trikothistorie"), keine Produkte |
+| FCK | 150 Kategorie-URLs, die Kategorieseite liefert aber nur 1,2 kB — vermutlich erst im Browser gefüllt |
+
+Machbar bei SGD, D98 und RBL; bei B04 und FCK nähert sich der Aufwand dem
+manuellen Weg.
+
+**D — nicht automatisierbar (18 Vereine)**
+
+| Grund | Vereine |
+|---|---|
+| Host nimmt die Verbindung an und antwortet nie (Akamai) | SVE, SCP, DSC, BOC, EBS, H96, FCH, FCM, FCN, VFL — alle 10 auf `merchandising-onlineshop.com` |
+| 403 auf jeden Abruf | FCB, BMG |
+| Sitemap 404 | SVW, SGF, KSC |
+| Sitemap da, aber leer | BVB, TSG, STP |
+
+Die Hälfte also — und bei den ersten zwölf ist es die ausdrückliche
+Entscheidung des Shops. Die respektieren wir; dort bleibt der Weg „Link
+einfügen, Bilder anklicken".
+
+#### Die Kette funktioniert von Ende zu Ende
+
+Stichprobe mit dem vorhandenen `ProductImages` auf Links aus den Sitemaps:
+
+```
+KOE  25 Bilder | Adidas Heimtrikot 2026/27 | 1. FC Köln
+HSV  25 Bilder | adidas Heimtrikot 26/27
+BSC  38 Bilder | Hertha Heimtrikot 25/26
+FCU  40 Bilder | Teddy Trikot XL
+FCA  19 Bilder | FCA-Sondertrikot Fuggerstadt Creme
+KSV  13 Bilder | Trikothose 23/24 weiß
+SGE   7 Bilder | Alle Infos zum Auswärtstrikot 2025/26
+VFB   Fehler: keine Bilder gefunden
+```
+
+Sieben von acht. Der **Titel** kommt mit — daraus lässt sich Trikot-Typ und
+Saison ableiten, statt sie zu tippen.
+
+#### Fremdquellen: die naheliegende ist rechtlich zu
+
+**[footballkitarchive.com](https://www.footballkitarchive.com/)** (495.000
+Trikots, 30.000 Teams) wäre die perfekte Quelle — gerade für das Archiv über
+mehrere Jahre. Ihre `robots.txt` schließt **ClaudeBot namentlich aus**, dazu
+GPTBot, CCBot, Google-Extended, Bytespider und andere, setzt
+`Content-Signal: ai-train=no, use=reference` und formuliert das ausdrücklich als
+**Rechtevorbehalt nach Artikel 4 der EU-Richtlinie 2019/790** — genau der
+Vorbehalt aus §44b UrhG. Damit ist ein automatischer Abgleich nicht nur
+unhöflich, sondern der Vorbehalt, gegen den §44b nicht mehr schützt.
+Nicht verwenden.
+
+**[thekitarchive.com](https://thekitarchive.com/football/)** steht hinter einer
+Cloudflare-Prüfung. Die umgehen wir nicht.
+
+**[bundesliga.com](https://www.bundesliga.com/de/bundesliga/news/neue-trikots-saison-2026-27-clubs-heim-auswarts-event-fanshop-37607)**
+pflegt pro Saison einen Sammelartikel aller neuen Trikots und aktualisiert ihn
+laufend. Als **Melder** brauchbar („bei Mainz ist was Neues"), nicht als
+Datenquelle: keine Shop-Links, und die Bilder gehören der DFL.
+
+**Händler wie 11teamsports** haben alle 36 Vereine an einem Ort — fallen aber
+aus, weil Shop-Verweise zum Vereinsshop gehen und nicht zu einem Händler mit
+Provision. Als Melder wäre es dasselbe wie bundesliga.com.
+
+#### Was das für Schritt 4 heißt
+
+Die Rechnung ist unbequem: 36 Vereine × ~4 Trikots = ~144 Datensätze pro
+Saison. Die Automatik erspart das **Finden** des Links bei 18 Vereinen — etwa
+eine Minute pro Trikot. Das **Auswählen der Bilder** bleibt bei allen 144, und
+das ist der teure Teil.
+
+Der Gewinn liegt deshalb nicht im Erstbefüllen, sondern im **Melden**:
+Sitemap wöchentlich abrufen, mit dem letzten Stand vergleichen, und bei einer
+neuen Trikot-URL eine Nachricht. Dann sitzt man nicht einmal im Juli sechs
+Stunden, sondern erfährt im Oktober, dass Mainz ein Sondertrikot
+herausgebracht hat. Genau dafür ist make.com gebaut, und dafür reichen die 18
+Vereine — es muss nicht vollständig sein, um nützlich zu sein.
+
 ### 3.2 NFL, NBA, andere Sportarten?
 
 **Das Datenmodell hält, vier konkrete Stellen brechen.**
