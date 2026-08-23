@@ -38,15 +38,18 @@ defmodule KitrankWeb.Layouts do
   def app(assigns) do
     ~H"""
     <header class="sticky top-0 z-30 border-b border-line bg-chalk/90 backdrop-blur">
-      <div class="mx-auto flex h-14 max-w-[1500px] items-center gap-4 px-4 sm:px-6 lg:px-8">
-        <a href={~p"/"} class="kr-display text-lg leading-none">
+      <%!-- min-w-0 an den Kindern statt flex-wrap: eine umbrechende Kopfzeile
+            waere hoeher als h-14 und wuerde unter der Sticky-Leiste haengen.
+            Was nicht passt, soll schrumpfen, nicht hinauslaufen. --%>
+      <div class="mx-auto flex h-14 max-w-[1500px] items-center gap-3 px-4 sm:gap-4 sm:px-6 lg:px-8">
+        <a href={~p"/"} class="kr-display shrink-0 text-lg leading-none">
           Kit<span class="font-normal">Rank</span>
         </a>
         <%!-- Bewusst ohne Liga: die App ist darauf angelegt, weitere Ligen und
               Sportarten aufzunehmen (Architektur Abschnitt 11). Ein fester
               Ligenname im Kopf waere dann als erstes falsch. --%>
         <p class="kr-eyebrow hidden sm:block">{gettext("Ranken, teilen, streiten")}</p>
-        <div class="ml-auto flex items-center gap-3">
+        <div class="ml-auto flex min-w-0 items-center gap-2 sm:gap-3">
           <.link
             navigate={~p"/rankings/new"}
             class="text-xs text-soft transition hover:text-ink"
@@ -212,7 +215,13 @@ defmodule KitrankWeb.Layouts do
   """
   def theme_toggle(assigns) do
     ~H"""
-    <div class="card relative flex flex-row items-center border-2 border-base-300 bg-base-300 rounded-full">
+    <%!-- Erst ab sm. Auf einem 390er Display war die Kopfzeile sonst rund
+          457 px breit — Logo, zwei Verweise, Sprachumschalter und drei
+          Theme-Knoepfe, ohne flex-wrap. Damit war die *Seite* breiter als der
+          Bildschirm und scrollte seitlich; es sah aus, als liefe der Inhalt
+          ueber den Rand. Der Theme-Umschalter ist die entbehrlichste der fuenf
+          Gruppen: ohne ihn folgt die Darstellung der Systemeinstellung. --%>
+    <div class="card relative hidden flex-row items-center rounded-full border-2 border-base-300 bg-base-300 sm:flex">
       <div class="absolute w-1/3 h-full rounded-full border-1 border-base-200 bg-base-100 brightness-200 left-0 [[data-theme=light]_&]:left-1/3 [[data-theme=dark]_&]:left-2/3 [[data-theme-source=system]_&]:!left-0 transition-[left]" />
 
       <button

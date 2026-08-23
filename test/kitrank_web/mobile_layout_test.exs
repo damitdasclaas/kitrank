@@ -94,6 +94,39 @@ defmodule KitrankWeb.MobileLayoutTest do
     end
   end
 
+  describe "Kopfzeile" do
+    test "der Theme-Umschalter erscheint erst ab sm", %{conn: conn} do
+      # Die Rechnung, um die es geht: Logo 85 + Ranglisten 72 + Reveal 68 +
+      # Sprachen 52 + Theme 96 + Abstände 52 + Rand 32 ≈ 457 px. Auf einem
+      # 390er Display war damit die *Seite* breiter als der Bildschirm und
+      # scrollte seitlich — es sah aus, als liefe der Inhalt über den Rand.
+      #
+      # Der Theme-Umschalter ist die entbehrlichste der fünf Gruppen: ohne ihn
+      # folgt die Darstellung der Systemeinstellung.
+      {:ok, _view, html} = live(conn, ~p"/")
+
+      assert html =~ ~r/class="card relative hidden[^"]*\bsm:flex\b/
+    end
+
+    test "sie bricht nicht um, sondern lässt schrumpfen", %{conn: conn} do
+      # Eine umbrechende Kopfzeile wäre höher als h-14 und würde unter der
+      # Sticky-Leiste hängen.
+      {:ok, _view, html} = live(conn, ~p"/")
+
+      kopf = Regex.run(~r/<header.*?<\/header>/s, html) |> hd()
+
+      refute kopf =~ "flex-wrap"
+      assert kopf =~ "shrink-0"
+      assert kopf =~ "min-w-0"
+    end
+
+    test "auf dem Handy engere Abstände als am Rechner", %{conn: conn} do
+      {:ok, _view, html} = live(conn, ~p"/")
+
+      assert html =~ "gap-3 px-4 sm:gap-4"
+    end
+  end
+
   test "die Lupe bleibt der Ort für das Original", %{team: team, season: season} do
     # Gegenprobe: irgendwo muss das grosse Bild ja hin, sonst hätte ich die
     # Qualität abgeschafft statt die Bytes.
