@@ -8,6 +8,21 @@ defmodule Kitrank.Kits.ImageVariant do
   breit. Dort dasselbe Bild zu laden heißt, das Fünfzehnfache der nötigen Bytes
   zu holen.
 
+  ## Zwei Wege, und nur einer kennt Shops
+
+  **Der erste Weg braucht kein Host-Wissen.** Ein `srcset`-Attribut zaehlt per
+  Definition die Varianten *eines* Bildes auf. `Kitrank.Kits.ProductImages`
+  liest das beim Einlesen mit und merkt sich die kleinste brauchbare Adresse in
+  `cutout_thumb_url`. Das funktioniert bei jedem Shop, der sich an den Standard
+  haelt — gemessen bei 8 von 11 erreichbaren Vereinsshops, und es kann keine
+  Adresse erfinden, weil ausschliesslich benutzt wird, was der Shop selbst
+  ausgeliefert hat. `for_kit/3` bevorzugt diesen Weg.
+
+  **Der zweite Weg sind die Regeln unten.** Sie greifen dort, wo eine Seite
+  kein `srcset` veroeffentlicht (HSV, Eintracht, Augsburg). Diese Liste soll
+  nicht mehr wachsen: ein neuer Verein oder eine neue Sportart wird ueber den
+  ersten Weg abgedeckt, ohne dass jemand etwas vermisst.
+
   ## Warum eine Positivliste und keine Heuristik
 
   Die Größenangabe sieht bei vielen Shop-CDNs gleich aus (`?width=400`), aber
@@ -53,6 +68,26 @@ defmodule Kitrank.Kits.ImageVariant do
 
   @doc "Die erlaubten Größen, von klein nach groß."
   def sizes, do: @sizes
+
+  @doc """
+  Wie `url/2`, bevorzugt aber die im Trikot gespeicherte kleine Adresse.
+
+  Drei Stufen, jede mit Rückfall: die Variante, die der Shop selbst
+  ausgeliefert hat — sonst eine Regel, wenn der Host bekannt ist — sonst das
+  Original. Die erste Stufe braucht es dort, wo die Größe nicht in der Adresse
+  steht, sondern in einem signierten Token (TSG: 304 kB gegen 18 kB, und aus
+  der großen Adresse ist die kleine nicht errechenbar).
+
+  Gilt nur für den Freisteller: nur der landet im Raster.
+  """
+  def for_kit(kit, url, size)
+
+  def for_kit(%{cutout_thumb_url: thumb, cutout_url: cutout}, url, size)
+      when is_binary(thumb) and thumb != "" and size in [:thumb, :medium] and url == cutout do
+    thumb
+  end
+
+  def for_kit(_kit, url, size), do: url(url, size)
 
   @doc """
   Passt die URL an die gewünschte Größe an, wenn der Host bekannt ist.

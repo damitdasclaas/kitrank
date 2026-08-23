@@ -44,7 +44,7 @@ defmodule KitrankWeb.KitComponents do
 
     assigns =
       assigns
-      |> assign_new(:src, fn -> ImageVariant.url(original, assigns.size) end)
+      |> assign_new(:src, fn -> ImageVariant.for_kit(assigns.kit, original, assigns.size) end)
       |> assign(:original, original)
       |> assign(:color, Color.team_color(assigns.team))
 

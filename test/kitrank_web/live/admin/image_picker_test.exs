@@ -123,6 +123,37 @@ defmodule KitrankWeb.Admin.ImagePickerTest do
     assert html =~ "3 Bilder gefunden, 0 gewählt"
   end
 
+  test "nimmt die kleine Variante des Shops automatisch mit", %{view: view, kit: kit} do
+    # Das ist der allgemeine Teil: der Picker kennt keinen Shop, er nimmt die
+    # Variante, die im srcset stand. „Welches Motiv" bleibt eine Entscheidung,
+    # „welche Auflösung fürs Raster" ist keine.
+    klick(view, @a)
+    view |> form("#kit-form") |> render_submit()
+
+    gespeichert = Kits.get_kit!(kit.id)
+
+    assert gespeichert.cutout_url == @a
+    assert gespeichert.cutout_thumb_url == "https://example.com/a.jpg?width=400"
+  end
+
+  test "findet die Variante auch über das Motiv", %{view: view, kit: kit} do
+    # `upgrade_variants/1` schreibt den Kandidaten vorher auf die größte Stufe
+    # um — die Adresse stand dann nie im srcset. Ohne die Suche über das Motiv
+    # kennt die Karte 300 Varianten und keine passt.
+    klick(view, @b)
+    view |> form("#kit-form") |> render_submit()
+
+    assert Kits.get_kit!(kit.id).cutout_thumb_url == "https://example.com/b.jpg?width=400"
+  end
+
+  test "ohne Variante bleibt das Feld leer", %{view: view, kit: kit} do
+    # Lieber ein zu großes Bild als ein geratenes.
+    klick(view, @c)
+    view |> form("#kit-form") |> render_submit()
+
+    assert Kits.get_kit!(kit.id).cutout_thumb_url == nil
+  end
+
   test "übernimmt den Produktlink gleich als Shop-Deep-Link", %{view: view, kit: kit} do
     klick(view, @a)
     view |> form("#kit-form") |> render_submit()

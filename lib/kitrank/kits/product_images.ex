@@ -46,7 +46,7 @@ defmodule Kitrank.Kits.ProductImages do
       # Wer direkt eine Bildadresse einfuegt, meint dieses Bild – nicht eine
       # Seite, auf der es vielleicht vorkommt.
       if String.starts_with?(content_type, "image/") do
-        {:ok, %{title: nil, images: [url], labels: %{}, source_url: url}}
+        {:ok, %{title: nil, images: [url], labels: %{}, variants: %{}, source_url: url}}
       else
         parse(body, url)
       end
@@ -74,6 +74,7 @@ defmodule Kitrank.Kits.ProductImages do
         |> Enum.take(@max_images)
 
       images = Enum.map(kandidaten, &elem(&1, 0))
+      varianten = variant_map(body, url)
 
       # Nur Beschreibungen behalten, die es wirklich gibt – ein leeres Label
       # waere in der Auswahl schlimmer als keines.
@@ -86,7 +87,14 @@ defmodule Kitrank.Kits.ProductImages do
 
       cond do
         images != [] ->
-          {:ok, %{title: title(body), images: images, labels: labels, source_url: url}}
+          {:ok,
+           %{
+             title: title(body),
+             images: images,
+             labels: labels,
+             variants: varianten,
+             source_url: url
+           }}
 
         # Eine winzige Seite ohne Bilder ist fast immer eine JS-Huelle, die
         # ihren Inhalt erst im Browser nachlaedt.
@@ -233,6 +241,134 @@ defmodule Kitrank.Kits.ProductImages do
       |> Enum.map(&{unescape(&1), nil})
 
     acc ++ aus_src ++ aus_srcset
+  end
+
+  # Zielbreite fuer das Raster – dieselbe wie in Kitrank.Kits.ImageVariant.
+  @thumb_min 400
+
+  @doc false
+  # Ordnet jeder gefundenen Bildadresse die kleinste brauchbare Variante
+  # desselben Bildes zu.
+  #
+  # Der Trick ist, dass ein `srcset`-Attribut per Definition die Varianten
+  # *eines* Bildes aufzaehlt. Damit braucht die Zuordnung kein Raten ueber
+  # Dateinamen — und funktioniert bei jedem Shop, der sich an den Standard
+  # haelt, nicht nur bei denen, deren Adressen wir kennen.
+  #
+  # Gebraucht wird das dort, wo sich die Groesse *nicht* aus der Adresse
+  # ableiten laesst: bei TSG steckt der Pfad in einem signierten
+  # `?context=`-Token, die 515er-Variante ist aus der 1200er nicht errechenbar
+  # — der Shop liefert sie aber aus, und im srcset steht sie.
+  defp variant_map(body, seite) do
+    ~r{srcset="([^"]+)"}i
+    |> Regex.scan(body, capture: :all_but_first)
+    |> Enum.reduce(%{}, fn [set], karte ->
+      gruppe = parse_srcset(set, seite)
+
+      case thumb_of(gruppe) do
+        nil ->
+          karte
+
+        thumb ->
+          Enum.reduce(gruppe, karte, fn {u, _}, k ->
+            # Zwei Schluessel je Variante: die genaue Adresse und das Motiv.
+            #
+            # Der Motiv-Schluessel ist noetig, weil `upgrade_variants/1` den
+            # Kandidaten vorher auf die groesste Stufe umschreibt — aus
+            # `?width=1024` wird `?width=2048`, und diese Adresse stand nie im
+            # srcset. Ohne die zweite Spur kennt die Karte 300 Varianten und
+            # keine davon passt zu einem waehlbaren Bild.
+            k
+            |> Map.put_new(u, thumb)
+            |> Map.put_new({:motiv, motiv(u)}, thumb)
+          end)
+      end
+    end)
+  end
+
+  @doc false
+  # Dieselbe Datei ohne ihre Groessenangabe. Nur zum Wiedererkennen gedacht,
+  # nicht zum Abrufen — deshalb darf hier grob gekuerzt werden.
+  def motiv(url) do
+    pfad = url |> URI.parse() |> Map.get(:path) |> to_string()
+
+    pfad
+    |> String.replace(~r/\d{2,4}Wx\d{2,4}H[-_]?/, "")
+    |> String.replace(~r"/thumbnail/", "/media/")
+    |> String.replace(~r/_\d{2,4}x\d{2,4}(\.|$)/, "\\1")
+    |> String.replace(~r"(/res/[a-z]+)_\d+/", "\\1/")
+    |> String.replace(~r/_[SML](\.[a-z]{3,4})$/, "\\1")
+  end
+
+  defp parse_srcset(set, seite) do
+    set
+    |> String.split(",")
+    |> Enum.map(&String.trim/1)
+    |> Enum.reject(&(&1 == ""))
+    |> Enum.map(fn eintrag ->
+      case String.split(eintrag, ~r/\s+/, parts: 2) do
+        [u | rest] ->
+          adresse = u |> unescape() |> absolute(seite)
+          adresse && {adresse, srcset_breite(adresse, rest)}
+
+        _ ->
+          nil
+      end
+    end)
+    |> Enum.reject(&(is_nil(&1) or is_nil(elem(&1, 1))))
+    |> Enum.uniq_by(&elem(&1, 0))
+  end
+
+  # Die Breite aus der Adresse schlaegt die Angabe im srcset. Bei TSG sind die
+  # Angaben durcheinander — 515Wx515H steht dort als "65w", 1200Wx1200H als
+  # "515w". Was der CDN wirklich ausliefert, steht im Pfad.
+  defp srcset_breite(url, rest) do
+    aus_pfad(url) || aus_deskriptor(rest)
+  end
+
+  defp aus_pfad(url) do
+    muster = [
+      ~r/(\d{2,4})Wx\d{2,4}H/,
+      ~r/[?&]width=(\d{2,4})/,
+      ~r/_(\d{2,4})x\d{2,4}\./,
+      ~r"/(\d{2,4})w/"
+    ]
+
+    Enum.find_value(muster, fn m ->
+      case Regex.run(m, url) do
+        [_, n] -> String.to_integer(n)
+        _ -> nil
+      end
+    end)
+  end
+
+  defp aus_deskriptor(rest) do
+    rest
+    |> Enum.join(" ")
+    |> then(&Regex.run(~r/(\d{2,4})w/, &1))
+    |> case do
+      [_, n] -> String.to_integer(n)
+      _ -> nil
+    end
+  end
+
+  # Die kleinste Variante, die fuer eine Kachel noch reicht. Gibt es keine ueber
+  # der Schwelle, lieber keine Zuordnung als ein unscharfes Bild — Leverkusens
+  # 75-px-Stufe war die Lehre.
+  defp thumb_of([]), do: nil
+
+  defp thumb_of(gruppe) do
+    if length(gruppe) < 2 do
+      nil
+    else
+      gruppe
+      |> Enum.filter(fn {_, b} -> b >= @thumb_min end)
+      |> Enum.min_by(fn {_, b} -> b end, fn -> nil end)
+      |> case do
+        {url, _} -> url
+        nil -> nil
+      end
+    end
   end
 
   defp title(body) do

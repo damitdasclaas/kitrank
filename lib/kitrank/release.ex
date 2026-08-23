@@ -44,6 +44,16 @@ defmodule Kitrank.Release do
   end
 
   @doc """
+  Holt die kleinen Bildvarianten für bestehende Trikots nach.
+
+      /app/bin/kitrank eval "Kitrank.Release.thumbs(write: true)"
+  """
+  def thumbs(opts \\ []) do
+    start_app()
+    Kitrank.Kits.Thumbs.run(opts)
+  end
+
+  @doc """
   Legt ein Admin-Konto an oder befördert ein bestehendes und gibt einen
   fertigen Anmelde-Link aus.
 

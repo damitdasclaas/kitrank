@@ -16,6 +16,9 @@ defmodule Kitrank.Kits.Kit do
     field :kit_type, :string
     field :name, :string
     field :cutout_url, :string
+    # Die kleine Variante aus dem Shop, wo sie sich nicht aus der Adresse
+    # ableiten laesst – siehe Kitrank.Kits.ImageVariant.
+    field :cutout_thumb_url, :string
     field :model_image_urls, {:array, :string}, default: []
     field :source_shop_url, :string
 
@@ -32,6 +35,7 @@ defmodule Kitrank.Kits.Kit do
       :kit_type,
       :name,
       :cutout_url,
+      :cutout_thumb_url,
       :model_image_urls,
       :source_shop_url
     ])

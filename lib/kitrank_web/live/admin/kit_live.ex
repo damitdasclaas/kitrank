@@ -32,6 +32,7 @@ defmodule KitrankWeb.Admin.KitLive do
        page_title: "Trikots",
        season: season,
        candidates: [],
+       candidate_variants: %{},
        candidate_labels: %{},
        fetching?: false,
        fetch_error: nil,
@@ -57,7 +58,13 @@ defmodule KitrankWeb.Admin.KitLive do
   end
 
   defp apply_action(socket, :index, _params) do
-    assign(socket, form: nil, kit: nil, candidates: [], fetch_error: nil)
+    assign(socket,
+      form: nil,
+      kit: nil,
+      candidates: [],
+      candidate_variants: %{},
+      fetch_error: nil
+    )
   end
 
   ## Bilder aus dem Shop holen
@@ -69,7 +76,7 @@ defmodule KitrankWeb.Admin.KitLive do
     # Fenster sieht aus wie ein Fehler, obwohl nur gewartet wird.
     {:noreply,
      socket
-     |> assign(fetching?: true, fetch_error: nil, candidates: [])
+     |> assign(fetching?: true, fetch_error: nil, candidates: [], candidate_variants: %{})
      |> start_async(:fetch_images, fn -> @images.fetch(url) end)}
   end
 
@@ -163,7 +170,8 @@ defmodule KitrankWeb.Admin.KitLive do
          |> assign(
            fetching?: false,
            candidates: ergebnis.images,
-           candidate_labels: Map.get(ergebnis, :labels, %{})
+           candidate_labels: Map.get(ergebnis, :labels, %{}),
+           candidate_variants: Map.get(ergebnis, :variants, %{})
          )
          |> assign_form(socket.assigns.kit, Kits.change_kit(socket.assigns.kit, attrs))}
 
@@ -193,13 +201,30 @@ defmodule KitrankWeb.Admin.KitLive do
   end
 
   defp apply_picked(socket, urls) do
+    freisteller = List.first(urls)
+
     attrs =
       socket
       |> current_attrs()
-      |> Map.put("cutout_url", List.first(urls))
+      |> Map.put("cutout_url", freisteller)
       |> Map.put("model_image_urls", Enum.drop(urls, 1))
+      # Die kleine Variante desselben Bildes, sofern der Shop eine anbietet.
+      # Automatisch, weil "welches Motiv" eine Entscheidung ist und "welche
+      # Auflösung fürs Raster" keine.
+      |> Map.put("cutout_thumb_url", thumb_fuer(socket, freisteller))
 
     assign_form(socket, socket.assigns.kit, Kits.change_kit(socket.assigns.kit, attrs))
+  end
+
+  defp thumb_fuer(_socket, nil), do: nil
+
+  defp thumb_fuer(socket, url) do
+    karte = socket.assigns.candidate_variants
+
+    treffer =
+      Map.get(karte, url) || Map.get(karte, {:motiv, ProductImages.motiv(url)})
+
+    if treffer == url, do: nil, else: treffer
   end
 
   defp current_attrs(socket) do
@@ -210,6 +235,7 @@ defmodule KitrankWeb.Admin.KitLive do
       "season" => p.season,
       "kit_type" => p.kit_type,
       "cutout_url" => p.cutout_url,
+      "cutout_thumb_url" => p.cutout_thumb_url,
       "model_image_urls" => p.model_image_urls || [],
       "source_shop_url" => p.source_shop_url
     }
@@ -449,6 +475,17 @@ defmodule KitrankWeb.Admin.KitLive do
             </div>
 
             <.input field={@form[:source_shop_url]} label="Shop-Link" placeholder="https://…" />
+
+            <%!-- Versteckt, weil es keine Entscheidung ist: der Picker traegt
+                  hier die kleine Variante ein, die der Shop selbst
+                  veroeffentlicht hat. Sichtbar waere es nur eine Zeile, die
+                  niemand anfassen soll — aber es muss im Formular stehen, sonst
+                  ist es beim Absenden weg. --%>
+            <input
+              type="hidden"
+              name="kit[cutout_thumb_url]"
+              value={Phoenix.HTML.Form.input_value(@form, :cutout_thumb_url)}
+            />
           </div>
 
           <.form_actions close_path={~p"/admin/trikots"} />

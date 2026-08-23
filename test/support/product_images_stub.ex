@@ -25,7 +25,7 @@ defmodule Kitrank.Kits.ProductImagesStub do
 
   # Eine direkte Bildadresse ist ein einzelner Kandidat, keine Seite.
   def fetch("https://stub/bild.png" = url),
-    do: {:ok, %{title: nil, images: [url], labels: %{}, source_url: url}}
+    do: {:ok, %{title: nil, images: [url], labels: %{}, variants: %{}, source_url: url}}
 
   def fetch(url) when is_binary(url) do
     {:ok,
@@ -34,6 +34,13 @@ defmodule Kitrank.Kits.ProductImagesStub do
        images: @images,
        # Manche Shops beschreiben ihre Bilder selbst.
        labels: %{hd(@images) => "Vorderansicht"},
+       # Der Shop veroeffentlicht seine kleinen Varianten selbst – so wie es
+       # jeder tut, der srcset benutzt. Der Picker nimmt sie mit, ohne dass
+       # jemand den Shop kennen muss.
+       variants: %{
+         hd(@images) => "https://example.com/a.jpg?width=400",
+         {:motiv, "/b.jpg"} => "https://example.com/b.jpg?width=400"
+       },
        source_url: url
      }}
   end
