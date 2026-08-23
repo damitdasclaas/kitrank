@@ -85,6 +85,10 @@ if config_env() == :prod do
 
   config :kitrank, KitrankWeb.Endpoint,
     url: [host: host, port: 443, scheme: "https"],
+    # Ohne dies prueft der Endpunkt nur gegen PHX_HOST — und ein fehlendes
+    # "www." wird zu 403 auf jeden Socket, Longpoll-Rueckfall und einer
+    # Wiederholungsschleife. Siehe KitrankWeb.Origins.
+    check_origin: KitrankWeb.Origins.configured(host, System.get_env("PHX_CHECK_ORIGIN")),
     http: [
       # Enable IPv6 and bind on all interfaces.
       # Set it to  {0, 0, 0, 0, 0, 0, 0, 1} for local network only access.
