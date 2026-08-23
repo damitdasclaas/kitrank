@@ -89,7 +89,10 @@ defmodule KitrankWeb.Layouts do
       </div>
     </header>
 
-    <main>
+    <%!-- Der Rückfall für Bilder hängt hier und nicht an jedem <img>: ein
+          phx-hook braucht eine ID, und eine ID pro Bild war der Grund, warum
+          jede Eingabe teuer wurde. Siehe assets/js/hooks/image_fallback.js. --%>
+    <main id="inhalt" phx-hook="ImageFallback">
       {render_slot(@inner_block)}
     </main>
 

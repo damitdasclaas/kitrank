@@ -64,8 +64,6 @@ defmodule KitrankWeb.KitComponents do
         width="400"
         height="400"
         data-original={@original != @src && @original}
-        phx-hook="ImageFallback"
-        id={"kit-bild-#{@kit.id}-#{System.unique_integer([:positive])}"}
         class="h-full w-full object-contain"
       />
       <.kit_silhouette :if={!@src} kit={@kit} color={@color} />
@@ -90,7 +88,12 @@ defmodule KitrankWeb.KitComponents do
         right: @right_sleeve,
         collar: @collar
       })
-      |> assign(:uid, "kit-#{assigns.kit.id}-#{System.unique_integer([:positive])}")
+      # Stabil ueber Renderdurchgaenge hinweg. Mit System.unique_integer aendert
+      # sich die ID bei jedem Diff, LiveView tauscht das ganze SVG aus, und
+      # jede Eingabe wird teuer. Erscheint dasselbe Trikot zweimal auf einer
+      # Seite, zeigen beide SVGs auf denselben Gradienten — derselbe Verein,
+      # dieselbe Farbe, also derselbe Gradient.
+      |> assign(:uid, "kit-#{assigns.kit.id}")
 
     ~H"""
     <svg

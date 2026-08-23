@@ -200,6 +200,41 @@ defmodule Kitrank.Kits do
     |> Repo.all()
   end
 
+  @doc """
+  Die Ligen, in denen eine Saison überhaupt Vereine hat.
+
+  Gibt es dafür `overview/1`? Ja — aber das lädt jede Liga mit allen Vereinen
+  und allen Trikots. Wer nur wissen will, welche Ligen zur Auswahl stehen,
+  bezahlt dafür den ganzen Datenbestand: auf `/reveal/new` waren das zwei
+  Sekunden pro Seitenaufruf, und weil `mount` bei LiveView zweimal läuft
+  (statisch und verbunden), doppelt.
+  """
+  def list_competitions_for_season(season) do
+    from(c in Competition,
+      join: ts in TeamSeason,
+      on: ts.competition_id == c.id and ts.season == ^season,
+      distinct: true,
+      order_by: [asc: c.tier, asc: c.name],
+      preload: :sport
+    )
+    |> Repo.all()
+  end
+
+  @doc """
+  Welche Trikot-Typen es in einer Saison gibt — als Liste der Bezeichner.
+
+  Dieselbe Sache: `list_kits/1` lädt alle Trikots samt Vereinen, um am Ende
+  vier Zeichenketten zu unterscheiden.
+  """
+  def list_kit_types(season \\ current_season()) do
+    vorhanden =
+      from(k in Kit, where: k.season == ^season, distinct: true, select: k.kit_type)
+      |> Repo.all()
+      |> MapSet.new()
+
+    Enum.filter(Kit.kit_types(), &MapSet.member?(vorhanden, &1))
+  end
+
   def get_competition!(id), do: Repo.get!(Competition, id) |> Repo.preload(:sport)
 
   def create_competition(attrs) do

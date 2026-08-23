@@ -13,14 +13,16 @@ defmodule KitrankWeb.Reveal.NewLive do
   use KitrankWeb, :live_view
 
   alias Kitrank.Kits
-  alias Kitrank.Kits.Kit
   alias Kitrank.Reveal
   alias KitrankWeb.KitLabel
 
   @impl true
   def mount(_params, _session, socket) do
     season = Kits.current_season()
-    competitions = Enum.filter(Kits.list_competitions(), &(&1.id in seasons_competitions(season)))
+    competitions = Kits.list_competitions_for_season(season)
+    # Einmal fragen, zweimal verwenden – der Aufruf ging vorher zweimal an die
+    # Datenbank, und beim Rendern eines LiveView passiert das zweimal.
+    types = Kits.list_kit_types(season)
 
     {:ok,
      assign(socket,
@@ -33,8 +35,8 @@ defmodule KitrankWeb.Reveal.NewLive do
        # Standard: alles, was es in dieser Saison gibt. Einschraenken kann man
        # danach – aufmachen muss man nichts.
        chosen_leagues: MapSet.new(competitions, & &1.id),
-       chosen_types: MapSet.new(available_types(season)),
-       types: available_types(season),
+       chosen_types: MapSet.new(types),
+       types: types,
        scope_error: nil
      )}
   end
@@ -97,15 +99,6 @@ defmodule KitrankWeb.Reveal.NewLive do
 
   defp toggle(set, value) do
     if MapSet.member?(set, value), do: MapSet.delete(set, value), else: MapSet.put(set, value)
-  end
-
-  defp seasons_competitions(season) do
-    season |> Kits.overview() |> Enum.map(fn {competition, _teams} -> competition.id end)
-  end
-
-  defp available_types(season) do
-    vorhanden = season |> Kits.list_kits() |> MapSet.new(& &1.kit_type)
-    Enum.filter(Kit.kit_types(), &MapSet.member?(vorhanden, &1))
   end
 
   @impl true

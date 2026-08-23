@@ -1,32 +1,41 @@
-// Ein abgeleitetes Vorschaubild kann fehlen: Shopware legt nicht für jedes
-// Produkt jede Größenstufe an, und ein Shop kann seine Adressen umbauen. Dann
-// einmal auf die Original-Adresse zurückfallen — und wenn die auch nicht kommt,
-// das Bild ausblenden, damit die gezeichnete Silhouette dahinter sichtbar wird.
-// Ein kaputtes Bildsymbol ist das schlechteste der drei Ergebnisse.
+// Rückfall für Bilder, die nicht kommen.
 //
-// Das ist der Grund, warum Kitrank.Kits.ImageVariant kein srcset benutzt: dort
-// wählt der Browser eine Adresse und scheitert still, ohne Rückfall.
+// Ein abgeleitetes Vorschaubild kann fehlen: Shops legen nicht für jedes
+// Produkt jede Größenstufe an, und Adressen ändern sich. Dann einmal auf das
+// Original zurückfallen — und wenn das auch nicht kommt, das Bild ausblenden,
+// damit die gezeichnete Silhouette dahinter sichtbar wird. Ein kaputtes
+// Bildsymbol ist das schlechteste der drei Ergebnisse.
+//
+// Ein Hook für die ganze Seite, nicht einer pro Bild. Der erste Versuch hatte
+// ein phx-hook am <img> und brauchte dafür eine ID — die war mit
+// System.unique_integer bei jedem Rendern anders, also schickte LiveView bei
+// jeder Eingabe achtzehn geänderte IDs, ersetzte jedes Bild im DOM und
+// montierte jeden Hook neu. Das Diffing war damit ausgeschaltet und jede
+// Eingabe teuer.
+//
+// error-Ereignisse von Bildern steigen nicht auf, laufen aber durch die
+// Capture-Phase. Ein Zuhörer am Container erreicht sie deshalb alle, ohne dass
+// ein einzelnes Bild etwas davon wissen muss.
 export default {
   mounted() {
-    this.onError = () => {
-      const original = this.el.dataset.original
+    this.onError = (ereignis) => {
+      const el = ereignis.target
 
-      if (original && this.el.getAttribute("src") !== original) {
-        this.el.setAttribute("src", original)
+      if (!el || el.tagName !== "IMG") return
+
+      const original = el.dataset.original
+
+      if (original && el.getAttribute("src") !== original) {
+        el.setAttribute("src", original)
       } else {
-        this.el.style.display = "none"
+        el.style.display = "none"
       }
     }
 
-    this.el.addEventListener("error", this.onError)
-
-    // Schon fehlgeschlagen, bevor der Hook lief — passiert bei Bildern aus dem
-    // Cache und beim ersten Rendern nach dem Verbinden. Ohne diese Zeile
-    // bleibt so ein Bild kaputt, weil das error-Ereignis längst durch ist.
-    if (this.el.complete && this.el.naturalWidth === 0) this.onError()
+    this.el.addEventListener("error", this.onError, true)
   },
 
   destroyed() {
-    this.el.removeEventListener("error", this.onError)
+    this.el.removeEventListener("error", this.onError, true)
   },
 }
