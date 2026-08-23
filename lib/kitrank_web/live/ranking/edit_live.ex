@@ -1028,9 +1028,16 @@ defmodule KitrankWeb.Ranking.EditLive do
         class="flex aspect-square items-center justify-center p-8"
         style={"background-color: color-mix(in oklab, #{@color} 14%, #FFFFFF)"}
       >
+        <%!-- Die ID haengt am Trikot, nicht am Platz: wechselt das Paar, soll
+              LiveView das Element austauschen und nicht nur das src aendern.
+              Sonst zeigt der Browser das alte Bild weiter, bis das neue da ist
+              — und man sieht zweimal dasselbe Trikot. --%>
         <.kit_figure
+          id={"duell-bild-#{@side}-#{@kit.id}"}
           kit={@kit}
           team={@kit.team}
+          size={:thumb}
+          eager
           class="h-full w-full transition-transform duration-300 group-hover:scale-105"
         />
       </div>

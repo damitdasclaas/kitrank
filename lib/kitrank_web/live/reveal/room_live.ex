@@ -48,6 +48,12 @@ defmodule KitrankWeb.Reveal.RoomLive do
            online: %{},
            board_open?: true,
            my_ranking: nil,
+           # Nur eine hier angelegte Rangliste darf der Browser sich merken.
+           # Wer mit dem Teilen-Link einer fremden Rangliste beitritt, wuerde
+           # sonst deren *Bearbeiten*-Token speichern — aus einem oeffentlichen
+           # Link wuerde Schreibrecht.
+           my_ranking_mine?: false,
+           my_entries: [],
            own_duel: nil,
            scope_label: scope_label(room)
          )
@@ -111,8 +117,14 @@ defmodule KitrankWeb.Reveal.RoomLive do
 
         {:noreply,
          socket
-         |> assign(me: participant.id, my_ranking: ranking, join_error: nil)
+         |> assign(
+           me: participant.id,
+           my_ranking: ranking,
+           my_ranking_mine?: true,
+           join_error: nil
+         )
          |> start_own_duel()
+         |> load_own_entries()
          |> load_room()}
 
       {:error, :empty_scope} ->
@@ -140,7 +152,7 @@ defmodule KitrankWeb.Reveal.RoomLive do
     # wenn der Host loslegt, zaehlt was bis dahin steht.
     Rankings.reorder(socket.assigns.my_ranking, Duel.order(duel))
 
-    {:noreply, assign(socket, :own_duel, duel)}
+    {:noreply, socket |> assign(:own_duel, duel) |> load_own_entries()}
   end
 
   def handle_event("own_duel_key", %{"key" => key}, socket) do
@@ -149,6 +161,18 @@ defmodule KitrankWeb.Reveal.RoomLive do
       "ArrowRight" -> handle_event("own_duel_pick", %{"side" => "existing"}, socket)
       _ -> {:noreply, socket}
     end
+  end
+
+  # Nach dem Duell von Hand nachjustieren. Pfeile statt Ziehen: ein Raum wird
+  # meist am Handy benutzt, und dort ist Ziehen in einer Liste unzuverlaessig.
+  def handle_event("own_move", %{"kit" => kit_id, "delta" => delta}, socket) do
+    Rankings.move_entry(
+      socket.assigns.my_ranking,
+      String.to_integer(kit_id),
+      String.to_integer(delta)
+    )
+
+    {:noreply, load_own_entries(socket)}
   end
 
   def handle_event("own_duel_restart", _params, socket) do
@@ -274,6 +298,13 @@ defmodule KitrankWeb.Reveal.RoomLive do
     assign(socket, :own_duel, Duel.start(ids))
   end
 
+  defp load_own_entries(%{assigns: %{my_ranking: nil}} = socket),
+    do: assign(socket, :my_entries, [])
+
+  defp load_own_entries(socket) do
+    assign(socket, :my_entries, Rankings.list_entries(socket.assigns.my_ranking))
+  end
+
   defp assign_online(socket) do
     assign(socket, :online, Presence.list_room(socket.assigns.room.room_code))
   end
@@ -342,6 +373,9 @@ defmodule KitrankWeb.Reveal.RoomLive do
           :if={@own_duel && @room.status == "waiting"}
           duel={@own_duel}
           kits={own_kits(@my_ranking)}
+          ranking={@my_ranking}
+          mine?={@my_ranking_mine?}
+          entries={@my_entries}
         />
 
         <.lobby

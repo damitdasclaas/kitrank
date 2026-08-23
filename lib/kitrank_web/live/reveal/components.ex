@@ -331,6 +331,10 @@ defmodule KitrankWeb.Reveal.Components do
   attr :duel, :map, required: true
   attr :kits, :map, required: true
 
+  attr :ranking, :map, required: true
+  attr :mine?, :boolean, default: false
+  attr :entries, :list, default: []
+
   @doc """
   Die eigene Rangliste im Raum sortieren, per Duell.
 
@@ -346,6 +350,23 @@ defmodule KitrankWeb.Reveal.Components do
 
     ~H"""
     <div class="mt-8 rounded-xl border border-line bg-panel p-5">
+      <%!-- Ohne das ist die Rangliste beim Schliessen des Tabs weg: sie
+            entsteht hier im Raum, und ihr Bearbeiten-Token stand bisher
+            nirgends ausser in diesem Socket.
+
+            Nur bei `mine?` — wer mit dem Teilen-Link einer fremden Rangliste
+            beitritt, darf deren Bearbeiten-Token nicht gemerkt bekommen. --%>
+      <div
+        :if={@mine? && @ranking}
+        id="remember-room-ranking"
+        phx-hook="RememberRanking"
+        data-token={@ranking.edit_token}
+        data-slug={@ranking.share_slug}
+        data-name={@ranking.display_name}
+        hidden
+      >
+      </div>
+
       <div class="flex flex-wrap items-baseline gap-3">
         <h2 class="kr-display text-lg">{gettext("Deine Rangliste")}</h2>
         <p :if={@frage != :done} class="text-sm text-soft">
@@ -378,14 +399,76 @@ defmodule KitrankWeb.Reveal.Components do
         </p>
       </div>
 
-      <p :if={@frage == :done} class="mt-4 text-xs text-soft">
-        {gettext("Wenn der Host startet, zählt diese Reihenfolge.")}
-        <button
-          type="button"
-          phx-click="own_duel_restart"
-          class="underline underline-offset-4 hover:text-ink"
-        >{gettext("Nochmal durchgehen")}</button>
+      <p :if={@mine? && @ranking} class="mt-4 rounded-md bg-sunk px-3 py-2 text-[11px] text-soft">
+        {gettext("Dieser Browser merkt sich die Rangliste.")}
+        <.link
+          navigate={~p"/rankings/#{@ranking.edit_token}/edit"}
+          class="text-ink underline underline-offset-4"
+        >{gettext("Bearbeiten-Link")}</.link>
+        {gettext("— den brauchst du auf einem anderen Gerät. Geheim halten.")}
       </p>
+
+      <%!-- Nach dem Duell die Reihenfolge zeigen und antippbar machen. Vorher
+            stand hier nur ein Satz: man sah nicht einmal, was herausgekommen
+            ist, geschweige denn konnte man es korrigieren. Das Duell liefert
+            einen Entwurf, den letzten Griff macht man von Hand — genauso wie
+            im Ablauf ausserhalb des Raums. --%>
+      <div :if={@frage == :done} class="mt-5">
+        <ol class="divide-y divide-line overflow-hidden rounded-lg border border-line">
+          <li
+            :for={{eintrag, i} <- Enum.with_index(@entries)}
+            class="flex items-center gap-3 bg-panel px-3 py-2"
+          >
+            <span class="w-6 shrink-0 font-mono text-xs text-soft">{i + 1}</span>
+
+            <div
+              class="flex h-10 w-10 shrink-0 items-center justify-center rounded"
+              style={"background-color: color-mix(in oklab, #{Color.team_color(eintrag.kit.team)} 14%, #FFFFFF)"}
+            >
+              <.kit_figure kit={eintrag.kit} team={eintrag.kit.team} size={:thumb} class="h-8 w-8" />
+            </div>
+
+            <span class="min-w-0 flex-1 truncate text-sm">
+              {eintrag.kit.team.name}
+              <span class="text-soft">{KitLabel.display(eintrag.kit)}</span>
+            </span>
+
+            <div class="flex shrink-0 gap-1">
+              <button
+                type="button"
+                phx-click="own_move"
+                phx-value-kit={eintrag.kit_id}
+                phx-value-delta="-1"
+                disabled={i == 0}
+                class="flex h-7 w-7 items-center justify-center rounded border border-line text-soft transition hover:border-ink hover:text-ink disabled:opacity-30"
+                aria-label={gettext("Einen Platz nach oben")}
+              >
+                <.icon name="hero-chevron-up-mini" class="size-4" />
+              </button>
+              <button
+                type="button"
+                phx-click="own_move"
+                phx-value-kit={eintrag.kit_id}
+                phx-value-delta="1"
+                disabled={i == length(@entries) - 1}
+                class="flex h-7 w-7 items-center justify-center rounded border border-line text-soft transition hover:border-ink hover:text-ink disabled:opacity-30"
+                aria-label={gettext("Einen Platz nach unten")}
+              >
+                <.icon name="hero-chevron-down-mini" class="size-4" />
+              </button>
+            </div>
+          </li>
+        </ol>
+
+        <p class="mt-3 text-xs text-soft">
+          {gettext("Wenn der Host startet, zählt diese Reihenfolge.")}
+          <button
+            type="button"
+            phx-click="own_duel_restart"
+            class="underline underline-offset-4 hover:text-ink"
+          >{gettext("Nochmal vergleichen")}</button>
+        </p>
+      </div>
     </div>
     """
   end
@@ -407,9 +490,16 @@ defmodule KitrankWeb.Reveal.Components do
         class="flex aspect-[4/3] items-center justify-center p-5"
         style={"background-color: color-mix(in oklab, #{@color} 14%, #FFFFFF)"}
       >
+        <%!-- Die ID haengt am Trikot, nicht am Platz: wechselt das Paar, soll
+              LiveView das Element austauschen und nicht nur das src aendern.
+              Sonst zeigt der Browser das alte Bild weiter, bis das neue da ist
+              — und man sieht zweimal dasselbe Trikot. --%>
         <.kit_figure
+          id={"raumduell-bild-#{@side}-#{@kit.id}"}
           kit={@kit}
           team={@kit.team}
+          size={:thumb}
+          eager
           class="h-full w-full transition-transform duration-300 group-hover:scale-105"
         />
       </div>

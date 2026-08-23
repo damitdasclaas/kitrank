@@ -253,6 +253,119 @@ defmodule KitrankWeb.RevealLiveTest do
       assert html =~ ~s{phx-submit="join"}
     end
 
+    test "der Browser merkt sich die neue Rangliste", %{conn: conn, room: room} do
+      # Vorher stand ihr Bearbeiten-Token nur in den Socket-Assigns: Tab zu und
+      # die Rangliste war unerreichbar — sie lag in der Datenbank, aber niemand
+      # kam mehr hin.
+      {:ok, view, _html} = live(conn, ~p"/reveal/#{room.room_code}")
+
+      html =
+        view
+        |> form(~s{form[phx-submit="join_new"]}, %{"display_name" => "Spontan"})
+        |> render_submit()
+
+      assert html =~ ~s{id="remember-room-ranking"}
+      assert html =~ ~s{phx-hook="RememberRanking"}
+
+      [teilnehmer] = Reveal.list_participants(room)
+      ranking = Kitrank.Repo.get!(Kitrank.Rankings.Ranking, teilnehmer.ranking_id)
+
+      assert html =~ ranking.edit_token
+      assert html =~ "/rankings/#{ranking.edit_token}/edit"
+      assert html =~ "Geheim halten"
+    end
+
+    test "merkt sich den Token einer fremden Rangliste nicht", %{conn: conn, room: room} do
+      # Der Fall, der still gefährlich wäre: wer mit dem Teilen-Link einer
+      # fremden Rangliste beitritt, dürfte deren *Bearbeiten*-Token nicht
+      # gemerkt bekommen — aus einem öffentlichen Link würde Schreibrecht.
+      fremd = ranking_with(2)
+
+      {:ok, view, _html} = live(conn, ~p"/reveal/#{room.room_code}")
+
+      html =
+        view
+        |> form(~s{form[phx-submit="join"]}, %{
+          "share_slug" => fremd.share_slug,
+          "display_name" => "Anna"
+        })
+        |> render_submit()
+
+      refute html =~ fremd.edit_token
+      refute html =~ ~s{id="remember-room-ranking"}
+    end
+
+    test "nach dem Duell sieht man die Reihenfolge und kann sie ändern", %{
+      conn: conn,
+      room: room
+    } do
+      # Vorher stand dort nur ein Satz. Man sah nicht einmal, was
+      # herausgekommen ist.
+      {:ok, view, _html} = live(conn, ~p"/reveal/#{room.room_code}")
+
+      view
+      |> form(~s{form[phx-submit="join_new"]}, %{"display_name" => "Spontan"})
+      |> render_submit()
+
+      html = duell_durchklicken(view)
+
+      assert html =~ ~s{phx-click="own_move"}
+      assert html =~ "Nochmal vergleichen"
+      assert html =~ "Wenn der Host startet"
+    end
+
+    test "ein Pfeilklick verschiebt wirklich", %{conn: conn, room: room} do
+      {:ok, view, _html} = live(conn, ~p"/reveal/#{room.room_code}")
+
+      view
+      |> form(~s{form[phx-submit="join_new"]}, %{"display_name" => "Spontan"})
+      |> render_submit()
+
+      duell_durchklicken(view)
+
+      [teilnehmer] = Reveal.list_participants(room)
+      vorher = Rankings.list_entries(teilnehmer.ranking_id) |> Enum.map(& &1.kit_id)
+
+      render_click(view, "own_move", %{"kit" => to_string(Enum.at(vorher, 1)), "delta" => "-1"})
+
+      nachher = Rankings.list_entries(teilnehmer.ranking_id) |> Enum.map(& &1.kit_id)
+
+      assert Enum.take(nachher, 2) == [Enum.at(vorher, 1), Enum.at(vorher, 0)]
+    end
+
+    test "die Duell-Bilder tragen eine Kennung, die am Trikot hängt", %{conn: conn, room: room} do
+      # Ohne sie ändert LiveView nur das src am vorhandenen Element, und der
+      # Browser zeigt das alte Bild weiter, bis das neue geladen ist — dann
+      # sieht man zweimal dasselbe Trikot.
+      #
+      # Trikots mit Bild: ohne Bild zeichnet kit_figure die Silhouette, und dann
+      # gibt es kein <img>, an dem eine Kennung hängen könnte.
+      for kit <- Kits.list_kits(Kits.current_season()) do
+        {:ok, _} =
+          Kits.update_kit(kit, %{
+            "cutout_url" => "https://cdn.shopify.com/s/#{kit.id}.jpg"
+          })
+      end
+
+      {:ok, view, _html} = live(conn, ~p"/reveal/#{room.room_code}")
+
+      html =
+        view
+        |> form(~s{form[phx-submit="join_new"]}, %{"display_name" => "Spontan"})
+        |> render_submit()
+
+      treffer = Regex.scan(~r/id="raumduell-bild-(new|existing)-(\d+)"/, html)
+
+      assert length(treffer) == 2, "beide Duell-Bilder brauchen eine eigene Kennung"
+
+      [[_, _, links], [_, _, rechts]] = treffer
+      assert links != rechts
+
+      # Und sie laden sofort – im Duell sind sie der Grund der Seite.
+      assert html =~ ~s{loading="eager"}
+      assert html =~ ~s{fetchpriority="high"}
+    end
+
     test "Pfeiltasten sortieren auch", %{conn: conn, room: room} do
       {:ok, view, _html} = live(conn, ~p"/reveal/#{room.room_code}")
 
@@ -713,6 +826,18 @@ defmodule KitrankWeb.RevealLiveTest do
 
       {:ok, room} = Reveal.fetch_room(room.room_code)
       assert room.host_participant_id == nil
+    end
+  end
+
+  # Solange das Duell fragt, immer die linke Seite waehlen.
+  defp duell_durchklicken(view, runden \\ 40) do
+    html = render(view)
+
+    if runden > 0 and html =~ ~s{phx-click="own_duel_pick"} do
+      render_click(view, "own_duel_pick", %{"side" => "new"})
+      duell_durchklicken(view, runden - 1)
+    else
+      html
     end
   end
 end

@@ -36,6 +36,22 @@ defmodule KitrankWeb.KitComponents do
     values: [:thumb, :medium, :full],
     doc: "wie gross das Bild geladen wird – siehe Kitrank.Kits.ImageVariant"
 
+  attr :id, :string,
+    default: nil,
+    doc: """
+    Feste Kennung fuer das Bild. Noetig, wo *dasselbe* Element nacheinander
+    verschiedene Trikots zeigt — im Duell. Ohne sie aendert LiveView nur das
+    src am vorhandenen Element, und der Browser zeigt das alte Bild weiter, bis
+    das neue geladen ist. Im Duell heisst das: zweimal dasselbe Trikot.
+
+    Muss aus der Trikot-Kennung abgeleitet sein, damit sie sich mit dem Trikot
+    aendert — aber nicht bei jedem Rendern, sonst faellt das Diffing aus.
+    """
+
+  attr :eager, :boolean,
+    default: false,
+    doc: "sofort laden statt beim Scrollen – fuer Bilder, die der Grund der Seite sind"
+
   @doc """
   Ein Trikot als Bild, falls hinterlegt – sonst als gezeichnete Silhouette.
   """
@@ -59,7 +75,9 @@ defmodule KitrankWeb.KitComponents do
             trikot: KitLabel.display(@kit)
           )
         }
-        loading="lazy"
+        id={@id}
+        loading={if @eager, do: "eager", else: "lazy"}
+        fetchpriority={if @eager, do: "high"}
         decoding="async"
         width="400"
         height="400"
