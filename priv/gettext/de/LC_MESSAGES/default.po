@@ -290,7 +290,7 @@ msgstr ""
 msgid "Für diese Kombination gibt es keine Trikots. Nimm eine Einschränkung heraus."
 msgstr ""
 
-#: lib/kitrank_web/components/kit_components.ex:461
+#: lib/kitrank_web/components/kit_components.ex:481
 #, elixir-autogen, elixir-format
 msgid "Für dieses Trikot ist noch kein Foto hinterlegt."
 msgstr ""
@@ -698,7 +698,7 @@ msgstr ""
 msgid "Vorderseite"
 msgstr ""
 
-#: lib/kitrank_web/components/kit_components.ex:417
+#: lib/kitrank_web/components/kit_components.ex:437
 #, elixir-autogen, elixir-format
 msgid "Vorheriges Bild"
 msgstr ""
@@ -1063,17 +1063,17 @@ msgstr ""
 msgid "und leg eines an."
 msgstr ""
 
-#: lib/kitrank_web/components/kit_components.ex:404
+#: lib/kitrank_web/components/kit_components.ex:424
 #, elixir-autogen, elixir-format
 msgid "Große Ansicht schließen"
 msgstr ""
 
-#: lib/kitrank_web/components/kit_components.ex:454
+#: lib/kitrank_web/components/kit_components.ex:474
 #, elixir-autogen, elixir-format
 msgid "Nächstes Bild"
 msgstr ""
 
-#: lib/kitrank_web/components/kit_components.ex:337
+#: lib/kitrank_web/components/kit_components.ex:357
 #, elixir-autogen, elixir-format
 msgid "Schließen"
 msgstr ""
@@ -1089,7 +1089,7 @@ msgstr ""
 msgid "%{name} abwählen"
 msgstr ""
 
-#: lib/kitrank_web/components/kit_components.ex:122
+#: lib/kitrank_web/components/kit_components.ex:142
 #, elixir-autogen, elixir-format
 msgid "%{trikot} (Platzhalter, kein Foto hinterlegt)"
 msgstr ""
@@ -1122,7 +1122,7 @@ msgstr ""
 msgid "%{verein} %{trikot} vergleichen"
 msgstr ""
 
-#: lib/kitrank_web/components/kit_components.ex:73
+#: lib/kitrank_web/components/kit_components.ex:95
 #: lib/kitrank_web/live/ranking/edit_live.ex:786
 #, elixir-autogen, elixir-format
 msgid "%{verein} – %{trikot}"
@@ -1441,3 +1441,10 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "— den brauchst du auf einem anderen Gerät. Geheim halten."
 msgstr ""
+
+#: lib/kitrank_web/live/reveal/components.ex:264
+#, elixir-autogen, elixir-format
+msgid "%{count} Platz offen"
+msgid_plural "%{count} Plätze offen"
+msgstr[0] ""
+msgstr[1] ""

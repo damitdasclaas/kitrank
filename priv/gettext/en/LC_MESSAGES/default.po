@@ -290,7 +290,7 @@ msgstr "Done"
 msgid "Für diese Kombination gibt es keine Trikots. Nimm eine Einschränkung heraus."
 msgstr "There are no kits for this combination. Drop one of the filters."
 
-#: lib/kitrank_web/components/kit_components.ex:461
+#: lib/kitrank_web/components/kit_components.ex:481
 #, elixir-autogen, elixir-format
 msgid "Für dieses Trikot ist noch kein Foto hinterlegt."
 msgstr "There's no photo for this kit yet."
@@ -698,7 +698,7 @@ msgstr "Start over"
 msgid "Vorderseite"
 msgstr "Front"
 
-#: lib/kitrank_web/components/kit_components.ex:417
+#: lib/kitrank_web/components/kit_components.ex:437
 #, elixir-autogen, elixir-format
 msgid "Vorheriges Bild"
 msgstr "Previous image"
@@ -1063,17 +1063,17 @@ msgstr "close"
 msgid "und leg eines an."
 msgstr "and create one."
 
-#: lib/kitrank_web/components/kit_components.ex:404
+#: lib/kitrank_web/components/kit_components.ex:424
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Große Ansicht schließen"
 msgstr "Close the large view"
 
-#: lib/kitrank_web/components/kit_components.ex:454
+#: lib/kitrank_web/components/kit_components.ex:474
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Nächstes Bild"
 msgstr "Next image"
 
-#: lib/kitrank_web/components/kit_components.ex:337
+#: lib/kitrank_web/components/kit_components.ex:357
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Schließen"
 msgstr "Close"
@@ -1089,7 +1089,7 @@ msgstr "%{anzahl} clubs"
 msgid "%{name} abwählen"
 msgstr "Deselect %{name}"
 
-#: lib/kitrank_web/components/kit_components.ex:122
+#: lib/kitrank_web/components/kit_components.ex:142
 #, elixir-autogen, elixir-format
 msgid "%{trikot} (Platzhalter, kein Foto hinterlegt)"
 msgstr "%{trikot} (placeholder, no photo on file)"
@@ -1122,7 +1122,7 @@ msgstr "%{verein} %{trikot} in detail"
 msgid "%{verein} %{trikot} vergleichen"
 msgstr "Compare %{verein} %{trikot}"
 
-#: lib/kitrank_web/components/kit_components.ex:73
+#: lib/kitrank_web/components/kit_components.ex:95
 #: lib/kitrank_web/live/ranking/edit_live.ex:786
 #, elixir-autogen, elixir-format
 msgid "%{verein} – %{trikot}"
@@ -1441,3 +1441,10 @@ msgstr "Compare again"
 #, elixir-autogen, elixir-format
 msgid "— den brauchst du auf einem anderen Gerät. Geheim halten."
 msgstr "— you'll need that on another device. Keep it secret."
+
+#: lib/kitrank_web/live/reveal/components.ex:264
+#, elixir-autogen, elixir-format
+msgid "%{count} Platz offen"
+msgid_plural "%{count} Plätze offen"
+msgstr[0] "%{count} place open"
+msgstr[1] "%{count} places open"

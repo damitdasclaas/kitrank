@@ -54,6 +54,28 @@ defmodule KitrankWeb.KitComponents do
 
   @doc """
   Ein Trikot als Bild, falls hinterlegt – sonst als gezeichnete Silhouette.
+
+  ## Warum das Bild absolut liegt
+
+  Die Kachel gibt ihre Höhe über `aspect-[4/3]` beziehungsweise `aspect-square`
+  vor, das Bild soll sie ausfüllen. Der naheliegende Weg — `h-full w-full` im
+  Fluss — bricht auf iOS Safari: in einem Flex-Container mit `aspect-ratio`
+  löst Safari die Prozenthöhe nicht immer auf, die Höhe wird `auto`, und das
+  Bild nimmt seine Eigengröße. In einer 170 Pixel breiten Kachel auf dem Handy
+  läuft es damit über den Rand.
+
+  `absolute inset-0` misst dagegen gegen den umgebenden Kasten und nicht über
+  eine Kette von Prozentangaben. `object-contain` zentriert dann von selbst,
+  also braucht es die Flex-Ausrichtung dafür nicht mehr.
+
+  **Der Kasten muss eine Größe haben.** Jeder Aufrufer gibt eine mit (`h-8 w-8`,
+  `h-full w-full`, …); ohne fällt er auf null zusammen, weil das Bild nicht
+  mehr im Fluss steht.
+
+  Bewusst *keine* `width`/`height`-Attribute am Bild: sie sollten den Sprung im
+  Layout verhindern, aber den verhindert schon das feste Seitenverhältnis der
+  Kachel. Als Zahlenpaar wären sie sogar falsch — das TSG-Trikot ist 378×515,
+  nicht quadratisch, und der Browser rechnet daraus ein Seitenverhältnis.
   """
   def kit_figure(assigns) do
     original = assigns.image_url || assigns.kit.cutout_url
@@ -79,10 +101,8 @@ defmodule KitrankWeb.KitComponents do
         loading={if @eager, do: "eager", else: "lazy"}
         fetchpriority={if @eager, do: "high"}
         decoding="async"
-        width="400"
-        height="400"
         data-original={@original != @src && @original}
-        class="h-full w-full object-contain"
+        class="absolute inset-0 h-full w-full object-contain"
       />
       <.kit_silhouette :if={!@src} kit={@kit} color={@color} />
     </div>

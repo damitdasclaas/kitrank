@@ -261,7 +261,7 @@ defmodule KitrankWeb.Reveal.Components do
       >
         <h2 class="kr-display text-lg">{gettext("Gesamtübersicht")}</h2>
         <span class="font-mono text-[11px] text-soft">
-          {length(@board.rows)} {if length(@board.rows) == 1, do: "Platz", else: "Plätze"} offen
+          {ngettext("%{count} Platz offen", "%{count} Plätze offen", length(@board.rows))}
         </span>
         <.icon
           name={if @open?, do: "hero-chevron-up-mini", else: "hero-chevron-down-mini"}
