@@ -40,11 +40,12 @@ defmodule KitrankWeb.KitComponents do
   Ein Trikot als Bild, falls hinterlegt – sonst als gezeichnete Silhouette.
   """
   def kit_figure(assigns) do
+    original = assigns.image_url || assigns.kit.cutout_url
+
     assigns =
       assigns
-      |> assign_new(:src, fn ->
-        ImageVariant.url(assigns.image_url || assigns.kit.cutout_url, assigns.size)
-      end)
+      |> assign_new(:src, fn -> ImageVariant.url(original, assigns.size) end)
+      |> assign(:original, original)
       |> assign(:color, Color.team_color(assigns.team))
 
     ~H"""
@@ -60,6 +61,11 @@ defmodule KitrankWeb.KitComponents do
         }
         loading="lazy"
         decoding="async"
+        width="400"
+        height="400"
+        data-original={@original != @src && @original}
+        phx-hook="ImageFallback"
+        id={"kit-bild-#{@kit.id}-#{System.unique_integer([:positive])}"}
         class="h-full w-full object-contain"
       />
       <.kit_silhouette :if={!@src} kit={@kit} color={@color} />
