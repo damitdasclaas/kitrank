@@ -794,15 +794,21 @@ defmodule KitrankWeb.Ranking.EditLive do
             das Detail ueberhaupt aufmacht. --%>
       <div class="grid gap-0 sm:grid-cols-5">
         <div class="sm:col-span-3">
+          <%!-- Auf dem Handy flacher als quadratisch: eine Spalte plus
+                aspect-square heisst ein Bildschirm pro Bild, und die Notiz
+                darunter sieht man erst nach dem Scrollen. --%>
           <div
-            class="flex aspect-square items-center justify-center rounded-tl-xl p-4 sm:p-8"
+            class="flex aspect-[4/3] items-center justify-center rounded-tl-xl p-4 sm:aspect-square sm:p-8"
             style={"background-color: color-mix(in oklab, #{@color} 13%, #FFFFFF)"}
           >
+            <%!-- :medium, nicht :full — das Original gehoert in die Lupe, nicht
+                  in eine Kachel von 300 px. Bei TSG waren das 1200x1200 und
+                  304 kB fuer eine Flaeche, die keine 400 px breit ist. --%>
             <.kit_figure
               kit={@entry.kit}
               team={@entry.kit.team}
               image_url={@src}
-              size={:full}
+              size={:medium}
               class="h-full w-full"
             />
           </div>

@@ -669,7 +669,11 @@ defmodule KitrankWeb.OverviewLive do
         </p>
       </div>
 
-      <div class="grid gap-px bg-line sm:grid-cols-2 lg:grid-cols-3">
+      <%!-- Zwei Spalten schon auf dem Handy, wie im Raster der Startseite.
+            Mit einer Spalte war die Bildflaeche auf einem 390er Display 302 px
+            gross — mehr als die 192 px am Rechner. Das Detail war damit auf dem
+            kleinen Geraet groesser als auf dem grossen. --%>
+      <div class="grid grid-cols-2 gap-px bg-line lg:grid-cols-3">
         <.kit_panel
           :for={kit <- @entry.kits}
           kit={kit}
@@ -703,7 +707,7 @@ defmodule KitrankWeb.OverviewLive do
         type="button"
         phx-click="zoom"
         phx-value-id={@kit.id}
-        class="group relative flex aspect-square cursor-zoom-in items-center justify-center p-8"
+        class="group relative flex aspect-square cursor-zoom-in items-center justify-center p-4 sm:p-8"
         style={"background-color: color-mix(in oklab, #{@color} 13%, #FFFFFF)"}
         aria-label={
           gettext("%{verein} %{trikot} groß ansehen",
@@ -732,7 +736,7 @@ defmodule KitrankWeb.OverviewLive do
         />
       </div>
 
-      <div class="flex items-center gap-2 border-t border-line px-4 py-3">
+      <div class="flex flex-col items-start gap-2 border-t border-line px-4 py-3 sm:flex-row sm:items-center">
         <div class="min-w-0">
           <p class="text-sm font-medium">{KitLabel.display(@kit)}</p>
           <a
@@ -755,7 +759,7 @@ defmodule KitrankWeb.OverviewLive do
           phx-click="toggle_compare"
           phx-value-id={@kit.id}
           class={[
-            "ml-auto shrink-0 rounded-md border px-3 py-1.5 font-mono text-[11px] transition",
+            "shrink-0 rounded-md border px-3 py-1.5 font-mono text-[11px] transition sm:ml-auto",
             @selected && "border-transparent",
             !@selected && "border-line text-soft hover:border-ink hover:text-ink"
           ]}
