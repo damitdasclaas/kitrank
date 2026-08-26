@@ -13,9 +13,11 @@ defmodule Mix.Tasks.Kitrank.Import do
 
   Idempotent — mehrfaches Ausführen ändert nichts doppelt.
 
-  Auf dem Server:
+  Auf dem Server — der Pfad wird gegen das priv-Verzeichnis des Releases
+  aufgelöst, `data/…` genügt also:
 
       /app/bin/kitrank eval 'Kitrank.Release.import_teams()'
+      /app/bin/kitrank eval 'Kitrank.Release.import_teams("data/nfl_2026_27.json")'
   """
   use Mix.Task
 

@@ -26,8 +26,12 @@ defmodule Kitrank.Release do
   @doc """
   Spielt die Stammdaten einer Saison ein – Vereine, Ligen, Zuordnungen.
 
-  Die Datei liegt im Release unter `priv/data/`. Trikots gehören nicht dazu,
-  die pflegst du über `/admin`.
+  Die Datei liegt im Release unter `priv/data/` — der Pfad wird relativ dazu
+  aufgelöst, `"data/nfl_2026_27.json"` genügt also:
+
+      /app/bin/kitrank eval 'Kitrank.Release.import_teams("data/nfl_2026_27.json")'
+
+  Trikots gehören nicht dazu, die pflegst du über `/admin`.
   """
   def import_teams(path \\ nil) do
     start_app()

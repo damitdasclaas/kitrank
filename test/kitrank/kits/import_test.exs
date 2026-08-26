@@ -224,6 +224,46 @@ defmodule Kitrank.Kits.ImportTest do
     end
   end
 
+  describe "Pfad zur Datei" do
+    # Im Release liegt priv/ nicht unter dem Arbeitsverzeichnis. Ein
+    # "priv/data/x.json" relativ zu /app ging dort ins Leere — genau der
+    # Aufruf, der in der Dokumentation stand.
+    test "findet die mitgelieferten Dateien ueber den priv-Pfad" do
+      assert {:ok, pfad} = Import.resolve("data/nfl_2026_27.json")
+      assert File.regular?(pfad)
+    end
+
+    test "und verzeiht ein vorangestelltes priv/" do
+      assert {:ok, pfad} = Import.resolve("priv/data/nfl_2026_27.json")
+      assert File.regular?(pfad)
+    end
+
+    test "ohne Angabe nimmt es die Standarddatei" do
+      assert {:ok, pfad} = Import.resolve(nil)
+      assert Path.basename(pfad) == "teams_2026_27.json"
+    end
+
+    test "sagt bei einer fehlenden Datei, wo gesucht wurde" do
+      assert {:error, versucht} = Import.resolve("data/gibtsnicht.json")
+      assert length(versucht) >= 2
+
+      assert {:error, text} = Import.run("data/gibtsnicht.json")
+      assert text =~ "Datei nicht gefunden"
+      assert text =~ "gibtsnicht.json"
+    end
+
+    test "die NFL-Datei ist einspielbar, wie sie im Git liegt" do
+      assert {:ok, bericht} = Import.run("data/nfl_2026_27.json")
+
+      assert bericht.ligen == 1
+      assert bericht.teams.neu == 32
+
+      assert [{competition, teams}] = Kits.overview("2026/27")
+      assert competition.name == "NFL"
+      assert length(teams) == 32
+    end
+  end
+
   describe "Zwei Sportarten in derselben Saison" do
     # Eine Datei beschreibt eine Sportart. Raeumte der Import saisonweit auf,
     # wuerde der Fussball-Lauf die NFL leeren und der NFL-Lauf den Fussball —

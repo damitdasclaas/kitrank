@@ -42,14 +42,43 @@ defmodule Kitrank.Kits.Import do
   wollte.
   """
   def run(path \\ nil) do
-    path = path || Path.join(:code.priv_dir(:kitrank), @default_file)
+    case resolve(path) do
+      {:ok, path} ->
+        with {:ok, raw} <- File.read(path),
+             {:ok, data} <- decode(raw) do
+          Repo.transaction(fn -> import_data(data) end)
+        else
+          {:error, reason} -> {:error, reason}
+        end
 
-    with {:ok, raw} <- File.read(path),
-         {:ok, data} <- decode(raw) do
-      Repo.transaction(fn -> import_data(data) end)
-    else
-      {:error, :enoent} -> {:error, "Datei nicht gefunden: #{path}"}
-      {:error, reason} -> {:error, reason}
+      {:error, versucht} ->
+        {:error, "Datei nicht gefunden. Versucht: #{Enum.join(versucht, ", ")}"}
+    end
+  end
+
+  @doc """
+  Der Pfad, unter dem die Datei wirklich liegt.
+
+  Im Release liegt `priv/` nicht unter dem Arbeitsverzeichnis, sondern unter
+  `lib/kitrank-<version>/priv` — `priv/data/x.json` relativ zu `/app` geht dort
+  also ins Leere. Statt das jedem Aufrufer aufzubürden, probiert der Import der
+  Reihe nach: wie angegeben, unterhalb von `priv/`, und ohne ein führendes
+  `priv/`. Der erste Treffer gewinnt.
+  """
+  def resolve(nil), do: resolve(@default_file)
+
+  def resolve(path) do
+    kandidaten =
+      [
+        path,
+        Path.join(:code.priv_dir(:kitrank), path),
+        Path.join(:code.priv_dir(:kitrank), String.replace_prefix(path, "priv/", ""))
+      ]
+      |> Enum.uniq()
+
+    case Enum.find(kandidaten, &File.regular?/1) do
+      nil -> {:error, kandidaten}
+      treffer -> {:ok, treffer}
     end
   end
 
