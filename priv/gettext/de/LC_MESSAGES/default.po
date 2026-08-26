@@ -192,8 +192,8 @@ msgstr ""
 msgid "Der Teilen-Link zeigt immer den aktuellen Stand — du musst nichts erneut verschicken. Die Adresse in deiner Adresszeile ist dagegen geheim: wer sie hat, kann mitändern."
 msgstr ""
 
-#: lib/kitrank_web/live/overview_live.ex:1241
-#: lib/kitrank_web/live/overview_live.ex:1304
+#: lib/kitrank_web/live/overview_live.ex:1232
+#: lib/kitrank_web/live/overview_live.ex:1295
 #: lib/kitrank_web/live/ranking/components.ex:281
 #: lib/kitrank_web/live/ranking/edit_live.ex:1139
 #, elixir-autogen, elixir-format
@@ -220,8 +220,8 @@ msgstr ""
 msgid "Dieser Raum bleibt unter dem Code"
 msgstr ""
 
-#: lib/kitrank_web/live/overview_live.ex:385
-#: lib/kitrank_web/live/overview_live.ex:1149
+#: lib/kitrank_web/live/overview_live.ex:376
+#: lib/kitrank_web/live/overview_live.ex:1140
 #, elixir-autogen, elixir-format
 msgid "Direktvergleich"
 msgstr ""
@@ -318,8 +318,8 @@ msgstr ""
 msgid "Heim"
 msgstr ""
 
-#: lib/kitrank_web/live/overview_live.ex:1247
-#: lib/kitrank_web/live/overview_live.ex:1311
+#: lib/kitrank_web/live/overview_live.ex:1238
+#: lib/kitrank_web/live/overview_live.ex:1302
 #, elixir-autogen, elixir-format
 msgid "Herausnehmen"
 msgstr ""
@@ -364,7 +364,7 @@ msgstr ""
 msgid "Jede Antwort wird gespeichert — abbrechen kostet nichts."
 msgstr ""
 
-#: lib/kitrank_web/live/overview_live.ex:1100
+#: lib/kitrank_web/live/overview_live.ex:1091
 #, elixir-autogen, elixir-format
 msgid "Kein Shop-Link hinterlegt"
 msgstr ""
@@ -389,7 +389,7 @@ msgstr ""
 msgid "Konto"
 msgstr ""
 
-#: lib/kitrank_web/live/overview_live.ex:910
+#: lib/kitrank_web/live/overview_live.ex:901
 #, elixir-autogen, elixir-format
 msgid "Leeren"
 msgstr ""
@@ -451,7 +451,7 @@ msgstr ""
 msgid "Noch nichts ausgewählt"
 msgstr ""
 
-#: lib/kitrank_web/live/overview_live.ex:1160
+#: lib/kitrank_web/live/overview_live.ex:1151
 #, elixir-autogen, elixir-format
 msgid "Noch nichts ausgewählt. Tipp in der Übersicht auf „Vergleich“ bei zwei oder drei Trikots."
 msgstr ""
@@ -553,7 +553,7 @@ msgstr ""
 msgid "Rückseite"
 msgstr ""
 
-#: lib/kitrank_web/live/overview_live.ex:601
+#: lib/kitrank_web/live/overview_live.ex:592
 #, elixir-autogen, elixir-format
 msgid "Saison"
 msgstr ""
@@ -583,7 +583,7 @@ msgstr ""
 msgid "Sonder"
 msgstr ""
 
-#: lib/kitrank_web/live/overview_live.ex:675
+#: lib/kitrank_web/live/overview_live.ex:666
 #: lib/kitrank_web/live/ranking/components.ex:122
 #, elixir-autogen, elixir-format
 msgid "Sortieren"
@@ -642,7 +642,7 @@ msgstr ""
 msgid "Toms Rangliste"
 msgstr ""
 
-#: lib/kitrank_web/live/overview_live.ex:453
+#: lib/kitrank_web/live/overview_live.ex:444
 #, elixir-autogen, elixir-format
 msgid "Trag Ligen, Teams und Trikots im Admin ein — dann füllt sich diese Seite."
 msgstr ""
@@ -665,8 +665,8 @@ msgstr ""
 msgid "Trikots hinzufügen"
 msgstr ""
 
-#: lib/kitrank_web/live/overview_live.ex:1005
-#: lib/kitrank_web/live/overview_live.ex:1228
+#: lib/kitrank_web/live/overview_live.ex:996
+#: lib/kitrank_web/live/overview_live.ex:1219
 #, elixir-autogen, elixir-format
 msgid "Vereinsshop"
 msgstr ""
@@ -676,13 +676,13 @@ msgstr ""
 msgid "Vergessen"
 msgstr ""
 
-#: lib/kitrank_web/live/overview_live.ex:816
-#: lib/kitrank_web/live/overview_live.ex:896
+#: lib/kitrank_web/live/overview_live.ex:807
+#: lib/kitrank_web/live/overview_live.ex:887
 #, elixir-autogen, elixir-format
 msgid "Vergleich"
 msgstr ""
 
-#: lib/kitrank_web/live/overview_live.ex:1116
+#: lib/kitrank_web/live/overview_live.ex:1107
 #: lib/kitrank_web/live/ranking/components.ex:115
 #, elixir-autogen, elixir-format
 msgid "Vergleichen"
@@ -769,7 +769,7 @@ msgstr ""
 msgid "Zum Umsortieren ziehen"
 msgstr ""
 
-#: lib/kitrank_web/live/overview_live.ex:1096
+#: lib/kitrank_web/live/overview_live.ex:1087
 #: lib/kitrank_web/live/ranking/edit_live.ex:907
 #: lib/kitrank_web/live/ranking/show_live.ex:181
 #, elixir-autogen, elixir-format
@@ -822,7 +822,7 @@ msgstr ""
 msgid "du"
 msgstr ""
 
-#: lib/kitrank_web/live/overview_live.ex:569
+#: lib/kitrank_web/live/overview_live.ex:560
 #, elixir-autogen, elixir-format
 msgid "eine eigene Rangliste bauen"
 msgstr ""
@@ -832,12 +832,12 @@ msgstr ""
 msgid "erreichbar, bis er abläuft — der Link zeigt weiterhin diese Auswertung."
 msgstr ""
 
-#: lib/kitrank_web/live/overview_live.ex:773
+#: lib/kitrank_web/live/overview_live.ex:764
 #, elixir-autogen, elixir-format
 msgid "kein Trikot"
 msgstr ""
 
-#: lib/kitrank_web/live/overview_live.ex:923
+#: lib/kitrank_web/live/overview_live.ex:914
 #, elixir-autogen, elixir-format
 msgid "noch eins dazu"
 msgstr ""
@@ -883,7 +883,7 @@ msgstr ""
 msgid "— öffentlich und nur zum Lesen. Er zeigt immer den aktuellen Stand, du musst nichts erneut verschicken."
 msgstr ""
 
-#: lib/kitrank_web/live/overview_live.ex:563
+#: lib/kitrank_web/live/overview_live.ex:554
 #, elixir-autogen, elixir-format
 msgid "%{trikots} Trikots von %{vereine} Vereinen. Verein antippen für alle Varianten, zwei bis drei nebeneinanderlegen — oder gleich"
 msgstr ""
@@ -1010,8 +1010,8 @@ msgstr ""
 msgid "Registrieren"
 msgstr ""
 
-#: lib/kitrank_web/live/overview_live.ex:551
-#: lib/kitrank_web/live/overview_live.ex:1148
+#: lib/kitrank_web/live/overview_live.ex:542
+#: lib/kitrank_web/live/overview_live.ex:1139
 #: lib/kitrank_web/live/ranking/new_live.ex:76
 #, elixir-autogen, elixir-format
 msgid "Saison %{jahr}"
@@ -1033,7 +1033,7 @@ msgstr ""
 msgid "Verschickte Mails liegen im"
 msgstr ""
 
-#: lib/kitrank_web/live/overview_live.ex:560
+#: lib/kitrank_web/live/overview_live.ex:551
 #, elixir-autogen, elixir-format
 msgid "Welches Trikot ist das schönste?"
 msgstr ""
@@ -1078,7 +1078,7 @@ msgstr ""
 msgid "Schließen"
 msgstr ""
 
-#: lib/kitrank_web/live/overview_live.ex:733
+#: lib/kitrank_web/live/overview_live.ex:724
 #: lib/kitrank_web/live/ranking/edit_live.ex:763
 #, elixir-autogen, elixir-format
 msgid "%{anzahl} Vereine"
@@ -1094,8 +1094,8 @@ msgstr ""
 msgid "%{trikot} (Platzhalter, kein Foto hinterlegt)"
 msgstr ""
 
-#: lib/kitrank_web/live/overview_live.ex:801
-#: lib/kitrank_web/live/overview_live.ex:953
+#: lib/kitrank_web/live/overview_live.ex:792
+#: lib/kitrank_web/live/overview_live.ex:944
 #, elixir-autogen, elixir-format
 msgid "%{verein} %{trikot} aus dem Vergleich nehmen"
 msgstr ""
@@ -1105,9 +1105,9 @@ msgstr ""
 msgid "%{verein} %{trikot} aus der Liste nehmen"
 msgstr ""
 
-#: lib/kitrank_web/live/overview_live.ex:1059
-#: lib/kitrank_web/live/overview_live.ex:1183
-#: lib/kitrank_web/live/overview_live.ex:1278
+#: lib/kitrank_web/live/overview_live.ex:1050
+#: lib/kitrank_web/live/overview_live.ex:1174
+#: lib/kitrank_web/live/overview_live.ex:1269
 #: lib/kitrank_web/live/ranking/show_live.ex:146
 #, elixir-autogen, elixir-format
 msgid "%{verein} %{trikot} groß ansehen"
@@ -1119,7 +1119,7 @@ msgstr ""
 msgid "%{verein} %{trikot} im Detail"
 msgstr ""
 
-#: lib/kitrank_web/live/overview_live.ex:806
+#: lib/kitrank_web/live/overview_live.ex:797
 #, elixir-autogen, elixir-format
 msgid "%{verein} %{trikot} vergleichen"
 msgstr ""
@@ -1130,7 +1130,7 @@ msgstr ""
 msgid "%{verein} – %{trikot}"
 msgstr ""
 
-#: lib/kitrank_web/live/overview_live.ex:866
+#: lib/kitrank_web/live/overview_live.ex:857
 #, elixir-autogen, elixir-format
 msgid "%{verein} — alle Trikots"
 msgstr ""
@@ -1208,7 +1208,7 @@ msgstr ""
 msgid "Dieser Raum ist abgelaufen."
 msgstr ""
 
-#: lib/kitrank_web/live/overview_live.ex:816
+#: lib/kitrank_web/live/overview_live.ex:807
 #, elixir-autogen, elixir-format
 msgid "Drin"
 msgstr ""
@@ -1223,12 +1223,12 @@ msgstr ""
 msgid "Für den Ausschnitt dieses Raums gibt es keine Trikots — da lässt sich nichts ranken."
 msgstr ""
 
-#: lib/kitrank_web/live/overview_live.ex:1116
+#: lib/kitrank_web/live/overview_live.ex:1107
 #, elixir-autogen, elixir-format
 msgid "Im Vergleich"
 msgstr ""
 
-#: lib/kitrank_web/live/overview_live.ex:83
+#: lib/kitrank_web/live/overview_live.ex:84
 #, elixir-autogen, elixir-format
 msgid "Im Vergleich haben drei Trikots Platz. Nimm erst eins heraus."
 msgstr ""
@@ -1269,7 +1269,7 @@ msgstr ""
 msgid "Trikots vergleichen"
 msgstr ""
 
-#: lib/kitrank_web/live/overview_live.ex:981
+#: lib/kitrank_web/live/overview_live.ex:972
 #, elixir-autogen, elixir-format
 msgid "Trikots von %{verein}"
 msgstr ""
@@ -1309,7 +1309,7 @@ msgstr ""
 msgid "%{anzahl} Trikots"
 msgstr ""
 
-#: lib/kitrank_web/live/overview_live.ex:1151
+#: lib/kitrank_web/live/overview_live.ex:1142
 #, elixir-autogen, elixir-format
 msgid "%{anzahl} Trikots nebeneinander. Die Zeilen liegen auf einer Höhe, damit sich Verein, Typ und Shop direkt gegenüberstehen."
 msgstr ""
@@ -1326,12 +1326,12 @@ msgid_plural "%{count} Trikots in der Liste"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/kitrank_web/live/overview_live.ex:727
+#: lib/kitrank_web/live/overview_live.ex:718
 #, elixir-autogen, elixir-format
 msgid "%{land} · Liga %{stufe}"
 msgstr ""
 
-#: lib/kitrank_web/live/overview_live.ex:990
+#: lib/kitrank_web/live/overview_live.ex:981
 #, elixir-autogen, elixir-format
 msgid "%{liga} · Saison %{saison}"
 msgstr ""
@@ -1366,12 +1366,12 @@ msgstr ""
 msgid "Alle %{name}"
 msgstr ""
 
-#: lib/kitrank_web/live/overview_live.ex:1011
+#: lib/kitrank_web/live/overview_live.ex:1002
 #, elixir-autogen, elixir-format
 msgid "Für %{verein} sind in %{saison} noch keine Trikots hinterlegt."
 msgstr ""
 
-#: lib/kitrank_web/live/overview_live.ex:450
+#: lib/kitrank_web/live/overview_live.ex:441
 #, elixir-autogen, elixir-format
 msgid "Noch keine Trikots für %{saison}"
 msgstr ""
@@ -1414,12 +1414,12 @@ msgstr ""
 msgid "Trikot %{nr} von %{gesamt}"
 msgstr ""
 
-#: lib/kitrank_web/live/overview_live.ex:903
+#: lib/kitrank_web/live/overview_live.ex:894
 #, elixir-autogen, elixir-format
 msgid "noch %{anzahl} möglich"
 msgstr ""
 
-#: lib/kitrank_web/live/overview_live.ex:386
+#: lib/kitrank_web/live/overview_live.ex:377
 #, elixir-autogen, elixir-format
 msgid "Übersicht"
 msgstr ""
@@ -1461,7 +1461,7 @@ msgstr ""
 msgid "Ziehen am Griff sortiert um, die Pfeile gehen ohne Maus — und die Platzziffer lässt sich überschreiben: Zahl eintippen, Enter. Alles speichert sofort."
 msgstr ""
 
-#: lib/kitrank_web/live/overview_live.ex:839
+#: lib/kitrank_web/live/overview_live.ex:830
 #, elixir-autogen, elixir-format, fuzzy
 msgid "%{verein}: %{trikot} zeigen"
 msgstr ""
@@ -1471,7 +1471,7 @@ msgstr ""
 msgid "Noch im Vergleich"
 msgstr ""
 
-#: lib/kitrank_web/live/overview_live.ex:579
+#: lib/kitrank_web/live/overview_live.ex:570
 #, elixir-autogen, elixir-format
 msgid "Trikot"
 msgstr ""
@@ -1481,50 +1481,50 @@ msgstr ""
 msgid "%{verein} %{trikot} wählen"
 msgstr ""
 
-#: lib/kitrank_web/live/overview_live.ex:671
+#: lib/kitrank_web/live/overview_live.ex:662
 #, elixir-autogen, elixir-format, fuzzy
 msgid "%{anzahl} Verein"
 msgid_plural "%{anzahl} Vereine"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/kitrank_web/live/overview_live.ex:316
+#: lib/kitrank_web/live/overview_live.ex:307
 #, elixir-autogen, elixir-format
 msgid "Kürzel"
 msgstr ""
 
-#: lib/kitrank_web/live/overview_live.ex:315
+#: lib/kitrank_web/live/overview_live.ex:306
 #, elixir-autogen, elixir-format
 msgid "Name"
 msgstr ""
 
-#: lib/kitrank_web/live/overview_live.ex:462
+#: lib/kitrank_web/live/overview_live.ex:453
 #, elixir-autogen, elixir-format
 msgid "Nichts gefunden für „%{suche}“"
 msgstr ""
 
-#: lib/kitrank_web/live/overview_live.ex:465
+#: lib/kitrank_web/live/overview_live.ex:456
 #, elixir-autogen, elixir-format
 msgid "Such nach Verein, Kürzel oder Liga — „BVB“ und „dortmund“ führen zum selben."
 msgstr ""
 
-#: lib/kitrank_web/live/overview_live.ex:471
-#: lib/kitrank_web/live/overview_live.ex:664
+#: lib/kitrank_web/live/overview_live.ex:462
+#: lib/kitrank_web/live/overview_live.ex:655
 #, elixir-autogen, elixir-format
 msgid "Suche zurücksetzen"
 msgstr ""
 
-#: lib/kitrank_web/live/overview_live.ex:317
+#: lib/kitrank_web/live/overview_live.ex:308
 #, elixir-autogen, elixir-format, fuzzy
 msgid "Trikots"
 msgstr ""
 
-#: lib/kitrank_web/live/overview_live.ex:651
+#: lib/kitrank_web/live/overview_live.ex:642
 #, elixir-autogen, elixir-format
 msgid "Verein, Kürzel oder Liga"
 msgstr ""
 
-#: lib/kitrank_web/live/overview_live.ex:652
+#: lib/kitrank_web/live/overview_live.ex:643
 #, elixir-autogen, elixir-format
 msgid "Vereine durchsuchen"
 msgstr ""

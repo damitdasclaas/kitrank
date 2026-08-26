@@ -73,6 +73,142 @@ defmodule KitrankWeb.Admin.Components do
     """
   end
 
+  attr :season, :string, required: true
+  attr :seasons, :list, required: true
+  attr :leagues, :list, default: []
+
+  attr :league_filter, :any,
+    required: true,
+    doc: "MapSet der gewaehlten Liga-IDs; leer heisst alle"
+
+  attr :search, :string, required: true
+  attr :search_placeholder, :string, default: "Suchen …"
+  attr :count_label, :string, required: true
+
+  slot :extra, doc: "weitere Filterreihen, direkt unter der Liga-Zeile"
+
+  @doc """
+  Saison, Ligenfilter und Suche — die Werkzeugleiste über einer Admin-Liste.
+
+  Erwartet vom Bereich die Ereignisse `select_season`, `toggle_league`,
+  `all_leagues`, `search` und `clear_search`. Gemeinsam, weil Vereine und
+  Trikots dieselben Fragen an dieselben Daten stellen und es verwirrend wäre,
+  wenn die Bedienung sich zwischen den Reitern unterscheidet.
+  """
+  def admin_toolbar(assigns) do
+    ~H"""
+    <div class="mb-5 space-y-3">
+      <div class="flex flex-wrap items-center gap-2">
+        <span class="kr-eyebrow">Saison</span>
+        <div class="flex flex-wrap gap-1 rounded-lg border border-line bg-sunk p-1">
+          <button
+            :for={option <- @seasons}
+            type="button"
+            phx-click="select_season"
+            phx-value-season={option}
+            data-role="season"
+            class={[
+              "rounded-md px-3 py-1.5 font-mono text-xs transition",
+              option == @season && "bg-panel text-ink shadow-sm",
+              option != @season && "text-soft hover:text-ink"
+            ]}
+            aria-pressed={to_string(option == @season)}
+          >
+            {option}
+          </button>
+        </div>
+
+        <form phx-change="search" id="admin-suche" class="relative ml-auto">
+          <label for="q" class="sr-only">Suchen</label>
+          <input
+            type="search"
+            id="q"
+            name="q"
+            value={@search}
+            phx-debounce="250"
+            autocomplete="off"
+            placeholder={@search_placeholder}
+            class="w-56 rounded-md border border-line bg-panel py-1.5 pl-3 pr-8 text-xs focus:border-ink focus:outline-none"
+          />
+          <button
+            :if={@search != ""}
+            type="button"
+            phx-click="clear_search"
+            data-role="clear-search"
+            class="absolute right-1.5 top-1/2 flex size-5 -translate-y-1/2 items-center justify-center rounded-full text-soft transition hover:text-ink"
+            aria-label="Suche zurücksetzen"
+          >
+            <.icon name="hero-x-mark-mini" class="size-3.5" />
+          </button>
+        </form>
+
+        <span class="shrink-0 whitespace-nowrap font-mono text-xs text-soft">{@count_label}</span>
+      </div>
+
+      <.filter_row
+        :if={@leagues != []}
+        label="Liga"
+        event="toggle_league"
+        all_event="all_leagues"
+        selected={@league_filter}
+        items={Enum.map(@leagues, &{&1.id, &1.name})}
+        role="league"
+      />
+
+      {render_slot(@extra)}
+    </div>
+    """
+  end
+
+  attr :label, :string, required: true
+  attr :event, :string, required: true
+  attr :all_event, :string, required: true
+  attr :selected, :any, required: true, doc: "MapSet; leer heisst alle"
+  attr :items, :list, required: true, doc: "Liste von {wert, beschriftung}"
+  attr :role, :string, required: true, doc: "data-role der Knoepfe, damit Tests sie treffen"
+
+  @doc """
+  Eine Reihe Filter-Chips mit „Alle" davor.
+
+  „Alle" ist der leere Filter und kein eigener Wert: sonst gäbe es zwei
+  Zustände, die dasselbe zeigen, und einer davon wäre irgendwann falsch.
+  """
+  def filter_row(assigns) do
+    ~H"""
+    <div class="flex flex-wrap items-center gap-2">
+      <span class="kr-eyebrow">{@label}</span>
+      <button
+        type="button"
+        phx-click={@all_event}
+        data-role={"#{@role}-all"}
+        aria-pressed={to_string(MapSet.size(@selected) == 0)}
+        class={[
+          "rounded-full border px-3 py-1 text-xs transition",
+          MapSet.size(@selected) == 0 && "border-transparent bg-ink text-chalk",
+          MapSet.size(@selected) > 0 && "border-line text-soft hover:border-ink hover:text-ink"
+        ]}
+      >
+        Alle
+      </button>
+      <button
+        :for={{wert, beschriftung} <- @items}
+        type="button"
+        phx-click={@event}
+        phx-value-id={wert}
+        data-role={@role}
+        aria-pressed={to_string(MapSet.member?(@selected, wert))}
+        class={[
+          "rounded-full border px-3 py-1 text-xs transition",
+          MapSet.member?(@selected, wert) && "border-transparent bg-ink text-chalk",
+          !MapSet.member?(@selected, wert) && "border-line text-soft hover:border-ink hover:text-ink"
+        ]}
+      >
+        {beschriftung}
+      </button>
+    </div>
+    """
+  end
+
   attr :rows, :list, required: true
   attr :empty_text, :string, default: "Noch nichts angelegt."
 

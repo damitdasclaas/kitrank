@@ -37,6 +37,8 @@ defmodule KitrankWeb.Admin.KitLive do
        fetching?: false,
        fetch_error: nil,
        league_filter: MapSet.new(),
+       type_filter: MapSet.new(),
+       missing_filter: MapSet.new(),
        search: ""
      )
      |> load_rows()}
@@ -116,6 +118,26 @@ defmodule KitrankWeb.Admin.KitLive do
 
   def handle_event("all_leagues", _params, socket) do
     {:noreply, socket |> assign(:league_filter, MapSet.new()) |> load_rows()}
+  end
+
+  def handle_event("clear_search", _params, socket) do
+    {:noreply, socket |> assign(:search, "") |> load_rows()}
+  end
+
+  def handle_event("toggle_type", %{"id" => kit_type}, socket) do
+    {:noreply, socket |> update(:type_filter, &umschalten(&1, kit_type)) |> load_rows()}
+  end
+
+  def handle_event("all_types", _params, socket) do
+    {:noreply, socket |> assign(:type_filter, MapSet.new()) |> load_rows()}
+  end
+
+  def handle_event("toggle_missing", %{"id" => kind}, socket) do
+    {:noreply, socket |> update(:missing_filter, &umschalten(&1, kind)) |> load_rows()}
+  end
+
+  def handle_event("all_missing", _params, socket) do
+    {:noreply, socket |> assign(:missing_filter, MapSet.new()) |> load_rows()}
   end
 
   def handle_event("select_season", %{"season" => season}, socket) do
@@ -274,14 +296,20 @@ defmodule KitrankWeb.Admin.KitLive do
       rows:
         Kits.list_kits_for_admin(socket.assigns.season,
           competition_ids: MapSet.to_list(socket.assigns.league_filter),
+          kit_types: MapSet.to_list(socket.assigns.type_filter),
+          missing: MapSet.to_list(socket.assigns.missing_filter),
           query: socket.assigns.search
         ),
-      competitions: Kits.list_competitions(),
+      competitions: Kits.list_competitions_for_season(socket.assigns.season),
       seasons: Enum.uniq([socket.assigns.season, Kits.current_season()] ++ Kits.list_seasons()),
       teams: teams,
       team_options: Enum.map(teams, &{"#{&1.name} (#{&1.short_code})", &1.id}),
       type_options: Enum.map(Kit.kit_types(), &{KitLabel.label(&1), &1})
     )
+  end
+
+  defp umschalten(menge, wert) do
+    if MapSet.member?(menge, wert), do: MapSet.delete(menge, wert), else: MapSet.put(menge, wert)
   end
 
   @impl true
@@ -295,71 +323,37 @@ defmodule KitrankWeb.Admin.KitLive do
         new_path={~p"/admin/trikots/neu"}
         new_label="Trikot anlegen"
       >
-        <div class="mb-5 flex items-center gap-2">
-          <span class="kr-eyebrow">Saison</span>
-          <div class="flex flex-wrap gap-1 rounded-lg border border-line bg-sunk p-1">
-            <button
-              :for={option <- @seasons}
-              phx-click="select_season"
-              phx-value-season={option}
-              class={[
-                "rounded-md px-3 py-1.5 font-mono text-xs transition",
-                option == @season && "bg-panel text-ink shadow-sm",
-                option != @season && "text-soft hover:text-ink"
-              ]}
-              aria-pressed={to_string(option == @season)}
-            >
-              {option}
-            </button>
-          </div>
-        </div>
-
-        <div :if={@competitions != []} class="mb-5 flex flex-wrap items-center gap-2">
-          <span class="kr-eyebrow">Liga</span>
-          <button
-            type="button"
-            phx-click="all_leagues"
-            aria-pressed={to_string(MapSet.size(@league_filter) == 0)}
-            class={[
-              "rounded-full border px-3 py-1 text-xs transition",
-              MapSet.size(@league_filter) == 0 && "border-transparent bg-ink text-chalk",
-              MapSet.size(@league_filter) > 0 &&
-                "border-line text-soft hover:border-ink hover:text-ink"
-            ]}
-          >
-            Alle
-          </button>
-          <button
-            :for={competition <- @competitions}
-            type="button"
-            phx-click="toggle_league"
-            phx-value-id={competition.id}
-            aria-pressed={to_string(MapSet.member?(@league_filter, competition.id))}
-            class={[
-              "rounded-full border px-3 py-1 text-xs transition",
-              MapSet.member?(@league_filter, competition.id) && "border-transparent bg-ink text-chalk",
-              !MapSet.member?(@league_filter, competition.id) &&
-                "border-line text-soft hover:border-ink hover:text-ink"
-            ]}
-          >
-            {competition.name}
-          </button>
-          <form phx-change="search" class="ml-auto flex items-center gap-2">
-            <label for="q" class="sr-only">Nach Verein suchen</label>
-            <input
-              type="search"
-              id="q"
-              name="q"
-              value={@search}
-              phx-debounce="250"
-              placeholder="Verein suchen …"
-              class="w-48 rounded-md border border-line bg-panel px-3 py-1.5 text-xs"
+        <.admin_toolbar
+          season={@season}
+          seasons={@seasons}
+          leagues={@competitions}
+          league_filter={@league_filter}
+          search={@search}
+          search_placeholder="Verein oder Kürzel …"
+          count_label={"#{length(@rows)} Trikots"}
+        >
+          <:extra>
+            <.filter_row
+              label="Typ"
+              event="toggle_type"
+              all_event="all_types"
+              selected={@type_filter}
+              items={Enum.map(Kit.kit_types(), &{&1, KitLabel.label(&1)})}
+              role="type"
             />
-            <span class="shrink-0 whitespace-nowrap font-mono text-xs text-soft">
-              {length(@rows)} Trikots
-            </span>
-          </form>
-        </div>
+            <%!-- Der Grund, warum man diese Liste ueberhaupt aufmacht: sehen,
+                  wo noch etwas zu tun ist. Mehrere Haken heissen „eins davon
+                  fehlt". --%>
+            <.filter_row
+              label="Fehlt"
+              event="toggle_missing"
+              all_event="all_missing"
+              selected={@missing_filter}
+              items={[{"bild", "Bild"}, {"shop", "Shop-Link"}, {"liga", "Liga"}]}
+              role="missing"
+            />
+          </:extra>
+        </.admin_toolbar>
 
         <.admin_table rows={@rows} empty_text={"Für #{@season} ist kein Trikot in dieser Auswahl."}>
           <:col :let={%{kit: kit}} label="" class="w-16">

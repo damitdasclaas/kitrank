@@ -169,6 +169,8 @@ defmodule Kitrank.Kits do
       select: %{kit: k, competition: c}
     )
     |> admin_league_filter(Keyword.get(opts, :competition_ids, []))
+    |> admin_type_filter(Keyword.get(opts, :kit_types, []))
+    |> admin_missing_filter(Keyword.get(opts, :missing, []))
     |> admin_search(Keyword.get(opts, :query))
     |> Repo.all()
   end
@@ -177,6 +179,33 @@ defmodule Kitrank.Kits do
 
   defp admin_league_filter(query, ids),
     do: from([k, _t, ts] in query, where: ts.competition_id in ^ids)
+
+  defp admin_type_filter(query, []), do: query
+  defp admin_type_filter(query, types), do: from([k] in query, where: k.kit_type in ^types)
+
+  @doc """
+  Was an einem Trikot fehlen kann – die Haken des Admin-Filters.
+
+  Als Liste und nicht als Aufzählung im Template, damit Filter und Prüfung
+  nicht auseinanderlaufen.
+  """
+  def admin_missing_kinds, do: ~w(bild shop liga)
+
+  # Mehrere Haken heissen "eins davon fehlt", nicht "alles davon": man sucht
+  # die Datensaetze, an denen noch etwas zu tun ist, nicht die schlimmsten.
+  defp admin_missing_filter(query, []), do: query
+
+  defp admin_missing_filter(query, kinds) do
+    [erste | weitere] = Enum.map(kinds, &fehlt_bedingung/1)
+    bedingung = Enum.reduce(weitere, erste, fn dyn, acc -> dynamic(^acc or ^dyn) end)
+
+    from(q in query, where: ^bedingung)
+  end
+
+  defp fehlt_bedingung("bild"), do: dynamic([k], is_nil(k.cutout_url))
+  defp fehlt_bedingung("shop"), do: dynamic([k], is_nil(k.source_shop_url))
+  # Ohne Zuordnung taucht das Trikot in der Uebersicht gar nicht auf.
+  defp fehlt_bedingung("liga"), do: dynamic([_k, _t, ts], is_nil(ts.id))
 
   defp admin_search(query, text) when text in [nil, ""], do: query
 
@@ -292,6 +321,37 @@ defmodule Kitrank.Kits do
   ## Teams
 
   def list_teams, do: Repo.all(from t in Team, order_by: t.name)
+
+  @doc """
+  Vereine einer Saison, nach Liga gruppiert — die Form, in der die Admin-Liste
+  sie zeigt.
+
+  Gibt `[{competition_or_nil, [team]}]` in Liga-Reihenfolge zurück, Vereine
+  darin alphabetisch.
+
+  Der `left_join` ist die Absicht: ein Verein ohne Zuordnung in dieser Saison
+  steht unter `nil` am Ende und verschwindet nicht. Er existiert weiter, muss
+  sich bearbeiten lassen — und ist obendrein genau der Datensatz, bei dem
+  jemand nachsehen sollte. In Postgres sortieren NULLs aufsteigend ans Ende,
+  die Gruppe steht damit von selbst hinten.
+  """
+  def list_teams_by_competition(season \\ current_season()) do
+    from(t in Team,
+      left_join: ts in TeamSeason,
+      on: ts.team_id == t.id and ts.season == ^season,
+      left_join: c in assoc(ts, :competition),
+      as: :competition,
+      select: %{team: t, competition: c}
+    )
+    |> nach_liga()
+    |> order_by([t], asc: t.name)
+    |> Repo.all()
+    |> Enum.chunk_by(fn %{competition: competition} -> competition && competition.id end)
+    |> Enum.map(fn [%{competition: competition} | _] = gruppe ->
+      {competition, Enum.map(gruppe, & &1.team)}
+    end)
+  end
+
   def get_team!(id), do: Repo.get!(Team, id)
 
   @doc "Team samt seiner Trikots für eine Saison – für das Detail-Modal der Übersicht."

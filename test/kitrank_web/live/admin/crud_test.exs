@@ -393,6 +393,261 @@ defmodule KitrankWeb.Admin.CrudTest do
     end
   end
 
+  describe "Trikot-Liste: Typ und Fehlendes" do
+    setup do
+      liga = competition_fixture(name: "Erste Liga", tier: 1)
+      season = Kits.current_season()
+
+      %{teams: [team]} =
+        league_fixture(competition: liga, season: season, team_count: 1, kit_types: [])
+
+      # Heim vollstaendig, Auswaerts ohne Bild, Ausweich ohne Shop-Link.
+      heim =
+        kit_fixture(
+          team_id: team.id,
+          season: season,
+          kit_type: "home",
+          cutout_url: "https://example.com/h.png",
+          source_shop_url: "https://example.com/shop"
+        )
+
+      auswaerts =
+        kit_fixture(
+          team_id: team.id,
+          season: season,
+          kit_type: "away",
+          cutout_url: nil,
+          source_shop_url: "https://example.com/shop"
+        )
+
+      ausweich =
+        kit_fixture(
+          team_id: team.id,
+          season: season,
+          kit_type: "third",
+          cutout_url: "https://example.com/3.png",
+          source_shop_url: nil
+        )
+
+      %{team: team, heim: heim, auswaerts: auswaerts, ausweich: ausweich}
+    end
+
+    defp typ(view, kit_type) do
+      view |> element(~s{[data-role="type"][phx-value-id="#{kit_type}"]}) |> render_click()
+    end
+
+    defp fehlt(view, kind) do
+      view |> element(~s{[data-role="missing"][phx-value-id="#{kind}"]}) |> render_click()
+    end
+
+    test "grenzt auf einen Trikot-Typ ein", %{conn: conn} do
+      {:ok, view, html} = live(conn, ~p"/admin/trikots")
+      assert html =~ "3 Trikots"
+
+      assert typ(view, "away") =~ "1 Trikots"
+    end
+
+    test "mehrere Typen heißen 'einer davon'", %{conn: conn} do
+      {:ok, view, _html} = live(conn, ~p"/admin/trikots")
+
+      typ(view, "away")
+
+      assert typ(view, "third") =~ "2 Trikots"
+    end
+
+    test "findet Trikots ohne Bild", %{conn: conn} do
+      {:ok, view, _html} = live(conn, ~p"/admin/trikots")
+
+      html = fehlt(view, "bild")
+
+      assert html =~ "1 Trikots"
+      assert html =~ "Auswärts"
+    end
+
+    test "findet Trikots ohne Shop-Link", %{conn: conn} do
+      {:ok, view, _html} = live(conn, ~p"/admin/trikots")
+
+      html = fehlt(view, "shop")
+
+      assert html =~ "1 Trikots"
+      assert html =~ "Ausweich"
+    end
+
+    test "mehrere Haken heißen 'eins davon fehlt', nicht 'alles'", %{conn: conn} do
+      # Sonst faende man die Datensaetze nicht, an denen genau eine Sache
+      # offen ist – und das sind die meisten.
+      {:ok, view, _html} = live(conn, ~p"/admin/trikots")
+
+      fehlt(view, "bild")
+
+      assert fehlt(view, "shop") =~ "2 Trikots"
+    end
+
+    test "findet Trikots ohne Liga-Zuordnung", %{conn: conn} do
+      # Die tauchen in der Uebersicht gar nicht auf – genau die will man hier
+      # finden koennen.
+      verwaist = team_fixture(name: "Ohne Zuordnung")
+      kit_fixture(team_id: verwaist.id, season: Kits.current_season(), kit_type: "home")
+
+      {:ok, view, _html} = live(conn, ~p"/admin/trikots")
+
+      html = fehlt(view, "liga")
+
+      assert html =~ "1 Trikots"
+      assert html =~ "Ohne Zuordnung"
+    end
+
+    test "'Alle' hebt den Typfilter auf", %{conn: conn} do
+      {:ok, view, _html} = live(conn, ~p"/admin/trikots")
+
+      typ(view, "away")
+      html = view |> element(~s{[data-role="type-all"]}) |> render_click()
+
+      assert html =~ "3 Trikots"
+    end
+
+    test "das Kreuz setzt die Suche zurück", %{conn: conn, team: team} do
+      {:ok, view, _html} = live(conn, ~p"/admin/trikots")
+
+      html = view |> form("#admin-suche", %{"q" => "gibtsnicht"}) |> render_change()
+      refute html =~ team.name
+
+      html = view |> element(~s{[data-role="clear-search"]}) |> render_click()
+      assert html =~ team.name
+    end
+  end
+
+  describe "Vereins-Liste" do
+    setup do
+      season = Kits.current_season()
+      sport = sport_fixture()
+      erste = competition_fixture(sport_id: sport.id, name: "Erste Liga", tier: 1)
+      zweite = competition_fixture(sport_id: sport.id, name: "Zweite Liga", tier: 2)
+
+      # Namen fest, Kuerzel aus dem Fixture: short_code ist eindeutig, und zwei
+      # async-Tests, die beide dasselbe feste Kuerzel anlegen, blockieren sich
+      # gegenseitig, bis Postgres einen Deadlock meldet.
+      koeln = team_fixture(name: "1. FC Köln")
+      hertha = team_fixture(name: "Hertha BSC")
+      # Ohne Zuordnung in dieser Saison.
+      verwaist = team_fixture(name: "Ohne Liga Verein")
+
+      for {team, competition} <- [{koeln, erste}, {hertha, zweite}] do
+        {:ok, _} =
+          Kits.create_team_season(%{
+            team_id: team.id,
+            competition_id: competition.id,
+            season: season
+          })
+      end
+
+      %{erste: erste, zweite: zweite, koeln: koeln, hertha: hertha, verwaist: verwaist}
+    end
+
+    test "zeigt eine Tabelle je Liga statt einer langen", %{conn: conn} do
+      {:ok, _view, html} = live(conn, ~p"/admin/vereine")
+
+      assert html =~ "Erste Liga"
+      assert html =~ "Zweite Liga"
+      # Je Gruppe eine eigene Tabelle.
+      assert length(Regex.scan(~r/<table /, html)) == 3
+    end
+
+    test "Vereine ohne Zuordnung verschwinden nicht, sie fallen auf", %{
+      conn: conn,
+      verwaist: verwaist
+    } do
+      {:ok, _view, html} = live(conn, ~p"/admin/vereine")
+
+      assert html =~ verwaist.name
+      assert html =~ "Ohne Liga"
+      assert html =~ "keiner Liga zugeordnet"
+      # Und zwar zuletzt, hinter den echten Ligen.
+      assert :binary.match(html, "Zweite Liga") < :binary.match(html, verwaist.name)
+    end
+
+    test "sucht über Name, Kürzel und Liga", %{conn: conn, koeln: koeln, hertha: hertha} do
+      {:ok, view, _html} = live(conn, ~p"/admin/vereine")
+
+      html = view |> form("#admin-suche", %{"q" => "hertha"}) |> render_change()
+      assert html =~ hertha.name
+      refute html =~ koeln.name
+
+      html = view |> form("#admin-suche", %{"q" => koeln.short_code}) |> render_change()
+      assert html =~ koeln.name
+      refute html =~ hertha.name
+
+      html = view |> form("#admin-suche", %{"q" => "Zweite"}) |> render_change()
+      assert html =~ hertha.name
+      refute html =~ koeln.name
+    end
+
+    test "achtet bei der Suche nicht auf Umlaute", %{conn: conn, koeln: koeln} do
+      {:ok, view, _html} = live(conn, ~p"/admin/vereine")
+
+      assert view |> form("#admin-suche", %{"q" => "koln"}) |> render_change() =~ koeln.name
+    end
+
+    test "grenzt auf eine Liga ein", %{conn: conn, erste: erste, koeln: koeln, hertha: hertha} do
+      {:ok, view, _html} = live(conn, ~p"/admin/vereine")
+
+      html =
+        view |> element(~s{[data-role="league"][phx-value-id="#{erste.id}"]}) |> render_click()
+
+      assert html =~ koeln.name
+      refute html =~ hertha.name
+      assert html =~ "1 Vereine"
+    end
+
+    test "ein Ligenfilter blendet die Gruppe ohne Liga aus", %{
+      conn: conn,
+      erste: erste,
+      verwaist: verwaist
+    } do
+      # "Erste Liga" ist eine Antwort auf die Frage nach der Liga; "keine" ist
+      # es nicht.
+      {:ok, view, _html} = live(conn, ~p"/admin/vereine")
+
+      html =
+        view |> element(~s{[data-role="league"][phx-value-id="#{erste.id}"]}) |> render_click()
+
+      refute html =~ verwaist.name
+    end
+
+    test "sagt es, wenn die Auswahl leer bleibt", %{conn: conn} do
+      {:ok, view, _html} = live(conn, ~p"/admin/vereine")
+
+      html = view |> form("#admin-suche", %{"q" => "gibtsnicht"}) |> render_change()
+
+      assert html =~ "Kein Verein in dieser Auswahl."
+    end
+
+    test "die Saison entscheidet über die Gruppen", %{conn: conn, koeln: koeln} do
+      # Die Liga haengt an der Saison, nicht am Verein. In einer Saison ohne
+      # Zuordnung steht derselbe Verein unter "Ohne Liga".
+      #
+      # Die Saison muss stehen, bevor die Seite laedt: die Auswahl der Saisons
+      # wird beim Mount ermittelt, nicht bei jedem Klick.
+      andere = "2025/26"
+      sonst = team_fixture(name: "Vorsaison")
+
+      {:ok, _} =
+        Kits.create_team_season(%{
+          team_id: sonst.id,
+          competition_id: competition_fixture().id,
+          season: andere
+        })
+
+      {:ok, view, _html} = live(conn, ~p"/admin/vereine")
+
+      html =
+        view |> element(~s{[data-role="season"][phx-value-season="#{andere}"]}) |> render_click()
+
+      assert html =~ koeln.name
+      assert html =~ "Ohne Liga"
+    end
+  end
+
   describe "Dashboard" do
     test "zählt, was gepflegt ist, und was noch fehlt", %{conn: conn} do
       %{teams: [team], season: season} = league_fixture(team_count: 1, kit_types: [])
