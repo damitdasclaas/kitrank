@@ -177,9 +177,12 @@ defmodule KitrankWeb.OverviewLiveTest do
       liga = competition_fixture(name: "Erste Liga", tier: 1)
       andere = competition_fixture(sport_id: liga.sport_id, name: "Zweite Liga", tier: 2)
 
-      koeln = team_fixture(name: "1. FC Köln", short_code: "KOE")
-      dortmund = team_fixture(name: "Borussia Dortmund", short_code: "BVB")
-      hertha = team_fixture(name: "Hertha BSC", short_code: "BSC")
+      # Namen fest, Kuerzel aus dem Fixture: short_code ist eindeutig, und zwei
+      # async-Tests, die beide "KOE" anlegen, blockieren sich gegenseitig bis
+      # Postgres einen Deadlock meldet.
+      koeln = team_fixture(name: "1. FC Köln")
+      dortmund = team_fixture(name: "Borussia Dortmund")
+      hertha = team_fixture(name: "Hertha BSC")
 
       for {team, competition} <- [{koeln, liga}, {dortmund, liga}, {hertha, andere}] do
         {:ok, _} =
@@ -214,7 +217,7 @@ defmodule KitrankWeb.OverviewLiveTest do
     test "findet über das Kürzel", %{conn: conn, dortmund: dortmund, koeln: koeln} do
       {:ok, view, _html} = live(conn, ~p"/")
 
-      html = suche(view, "BVB")
+      html = suche(view, String.downcase(dortmund.short_code))
 
       assert kachel?(html, dortmund)
       refute kachel?(html, koeln)
@@ -289,16 +292,27 @@ defmodule KitrankWeb.OverviewLiveTest do
     setup do
       liga = competition_fixture(name: "Erste Liga", tier: 1)
 
-      # Absichtlich nicht alphabetisch angelegt, und mit unterschiedlich
-      # vielen Trikots.
+      # Kuerzel gleicher Laenge mit gemeinsamem Suffix: der erste Buchstabe
+      # bestimmt die Reihenfolge, das Suffix macht sie ueber Tests hinweg
+      # eindeutig. Feste Kuerzel waeren eine Kollision auf einer eindeutigen
+      # Spalte — zwei async-Tests blockieren sich dann gegenseitig, bis
+      # Postgres einen Deadlock meldet.
+      lauf =
+        System.unique_integer([:positive])
+        |> rem(1_679_616)
+        |> Integer.to_string(36)
+        |> String.pad_leading(4, "0")
+
+      # Absichtlich so gewaehlt, dass die Reihenfolge nach Kuerzel eine andere
+      # ist als die alphabetische — sonst bewiese der Test nichts.
       vorgaben = [
-        {"Zwickau", "FSV", ["home"]},
-        {"Aachen", "TSV", ["home", "away", "third"]},
-        {"Mainz", "M05", ["home", "away"]}
+        {"Zwickau", "A", ["home"]},
+        {"Aachen", "M", ["home", "away", "third"]},
+        {"Mainz", "Z", ["home", "away"]}
       ]
 
-      for {name, code, kit_types} <- vorgaben do
-        team = team_fixture(name: name, short_code: code)
+      for {name, praefix, kit_types} <- vorgaben do
+        team = team_fixture(name: name, short_code: praefix <> lauf)
 
         {:ok, _} =
           Kits.create_team_season(%{
@@ -344,8 +358,8 @@ defmodule KitrankWeb.OverviewLiveTest do
     test "nach Kürzel", %{conn: conn} do
       {:ok, view, _html} = live(conn, ~p"/")
 
-      # FSV Zwickau, M05 Mainz, TSV Aachen
-      assert reihenfolge(sortiere(view, "code")) == ["Zwickau", "Mainz", "Aachen"]
+      # A… Zwickau, M… Aachen, Z… Mainz — nicht die alphabetische Reihenfolge.
+      assert reihenfolge(sortiere(view, "code")) == ["Zwickau", "Aachen", "Mainz"]
     end
 
     test "nach Trikots — die meisten zuerst", %{conn: conn} do
