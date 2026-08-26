@@ -88,6 +88,31 @@ defmodule KitrankWeb.OverviewLive do
     end
   end
 
+  def handle_event("search", %{"q" => query}, socket) do
+    {:noreply, socket |> assign(:query, query) |> assign_visible()}
+  end
+
+  def handle_event("clear_search", _params, socket) do
+    {:noreply, socket |> assign(:query, "") |> assign_visible()}
+  end
+
+  # Nochmal auf die aktive Sortierung dreht sie um – das erwartet man von einer
+  # Spaltenueberschrift, und es spart einen zweiten Satz Knoepfe fuer die
+  # Richtung. Ein Wechsel des Schluessels faengt bei dessen natuerlicher
+  # Richtung an: Namen von A an, Trikots mit den meisten zuerst.
+  def handle_event("sort_teams", %{"by" => by}, socket) do
+    by = sort_key_from(by)
+
+    {sort, dir} =
+      if by == socket.assigns.sort do
+        {by, if(socket.assigns.sort_dir == :asc, do: :desc, else: :asc)}
+      else
+        {by, default_dir(by)}
+      end
+
+    {:noreply, socket |> assign(sort: sort, sort_dir: dir) |> assign_visible()}
+  end
+
   # Eine Kachel umschalten. Die Wahl gilt nur fuer diesen Verein und ueberstimmt
   # die globale – wer bei einem Verein das Auswaertstrikot sehen will, will
   # deshalb nicht ueberall Auswaerts.
@@ -201,9 +226,95 @@ defmodule KitrankWeb.OverviewLive do
     |> assign_new(:back, fn -> nil end)
     |> assign_new(:kit_view, fn -> "home" end)
     |> assign_new(:tile_kit, fn -> %{} end)
+    |> assign_new(:query, fn -> "" end)
+    |> assign_new(:sort, fn -> :name end)
+    |> assign_new(:sort_dir, fn -> :asc end)
+    |> assign_visible()
     |> assign_new(:open_team, fn -> nil end)
     |> open_first_league()
   end
+
+  # Was das Raster tatsaechlich zeigt: die geladene Uebersicht, durch Suche und
+  # Sortierung geschickt. Als Assign und nicht im Render, damit es einmal pro
+  # Aenderung passiert statt einmal pro Durchlauf.
+  defp assign_visible(socket) do
+    sichtbar =
+      socket.assigns.overview
+      |> filter_overview(socket.assigns.query)
+      |> sort_overview(socket.assigns.sort, socket.assigns.sort_dir)
+
+    assign(socket,
+      visible: sichtbar,
+      visible_team_count: Enum.sum(Enum.map(sichtbar, fn {_c, teams} -> length(teams) end))
+    )
+  end
+
+  ## Suche
+
+  defp filter_overview(overview, query) when query in [nil, ""], do: overview
+
+  defp filter_overview(overview, query) do
+    gesucht = suchform(query)
+
+    overview
+    |> Enum.map(fn {competition, teams} ->
+      # Trifft der Ligenname, gehoert die ganze Liga zum Ergebnis – "Bundesliga"
+      # einzutippen und dann keinen einzigen Verein zu sehen waere seltsam.
+      if String.contains?(suchform(competition.name), gesucht) do
+        {competition, teams}
+      else
+        {competition, Enum.filter(teams, fn {team, _kits} -> trifft?(team, gesucht) end)}
+      end
+    end)
+    |> Enum.reject(fn {_competition, teams} -> teams == [] end)
+  end
+
+  defp trifft?(team, gesucht) do
+    String.contains?(suchform(team.name), gesucht) or
+      String.contains?(suchform(team.short_code), gesucht)
+  end
+
+  # Kleinschreibung reicht bei deutschen Vereinsnamen nicht: wer "koln" tippt,
+  # meint Köln, und wer "fussball" tippt, meint Fußball. Akzente werden
+  # abgetrennt (NFD) und weggeworfen, ß wird zu ss.
+  defp suchform(text) do
+    text
+    |> String.downcase()
+    |> String.replace("ß", "ss")
+    |> :unicode.characters_to_nfd_binary()
+    |> String.replace(~r/[\x{0300}-\x{036F}]/u, "")
+    |> String.trim()
+  end
+
+  ## Sortierung der Vereine – innerhalb ihrer Liga, die Ligen bleiben, wie sie sind
+
+  defp sort_overview(overview, sort, dir) do
+    Enum.map(overview, fn {competition, teams} ->
+      # Erst nach Namen, dann nach dem eigentlichen Schluessel: Enum.sort_by ist
+      # stabil, also stehen Vereine mit gleich vielen Trikots alphabetisch.
+      sortiert =
+        teams
+        |> Enum.sort_by(fn {team, _kits} -> suchform(team.name) end)
+        |> Enum.sort_by(&sort_value(&1, sort), dir)
+
+      {competition, sortiert}
+    end)
+  end
+
+  defp sort_value({team, _kits}, :name), do: suchform(team.name)
+  defp sort_value({team, _kits}, :code), do: team.short_code
+  defp sort_value({_team, kits}, :kits), do: length(kits)
+
+  defp sort_key_from("code"), do: :code
+  defp sort_key_from("kits"), do: :kits
+  defp sort_key_from(_), do: :name
+
+  defp default_dir(:kits), do: :desc
+  defp default_dir(_), do: :asc
+
+  defp sort_label(:name), do: gettext("Name")
+  defp sort_label(:code), do: gettext("Kürzel")
+  defp sort_label(:kits), do: gettext("Trikots")
 
   # Nur die Typen, die es in dieser Saison wirklich gibt – ein Schalter fuer
   # „Sonder", wenn kein Verein ein Sondertrikot hat, taete nichts.
@@ -324,6 +435,13 @@ defmodule KitrankWeb.OverviewLive do
           tile_kit={@tile_kit}
         />
 
+        <.browse_controls
+          query={@query}
+          sort={@sort}
+          sort_dir={@sort_dir}
+          result_count={@visible_team_count}
+        />
+
         <div
           :if={@overview == []}
           class="mt-16 rounded-lg border border-dashed border-line p-12 text-center"
@@ -336,15 +454,32 @@ defmodule KitrankWeb.OverviewLive do
           </p>
         </div>
 
-        <section :for={{competition, teams} <- @overview} class="mt-10 first:mt-8">
+        <div
+          :if={@overview != [] && @visible == []}
+          class="mt-16 rounded-lg border border-dashed border-line p-12 text-center"
+        >
+          <p class="kr-display text-xl">
+            {gettext("Nichts gefunden für „%{suche}“", suche: @query)}
+          </p>
+          <p class="mx-auto mt-2 max-w-md text-sm text-soft">
+            {gettext("Such nach Verein, Kürzel oder Liga — „BVB“ und „dortmund“ führen zum selben.")}
+          </p>
+          <button
+            type="button"
+            phx-click="clear_search"
+            class="mt-5 rounded-md border border-line px-4 py-2 text-sm transition hover:border-ink"
+          >{gettext("Suche zurücksetzen")}</button>
+        </div>
+
+        <section :for={{competition, teams} <- @visible} class="mt-10 first:mt-8">
           <.league_header
             competition={competition}
             team_count={length(teams)}
-            open?={@open_league == competition.id}
+            open?={league_open?(@open_league, @query, competition)}
           />
 
           <div
-            :if={@open_league == competition.id}
+            :if={league_open?(@open_league, @query, competition)}
             id={"liga-#{competition.id}"}
             class="kr-rise mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6"
           >
@@ -479,6 +614,86 @@ defmodule KitrankWeb.OverviewLive do
               {option}
             </button>
           </div>
+        </div>
+      </div>
+    </div>
+    """
+  end
+
+  # Waehrend einer Suche sind alle Treffer-Ligen offen. Sonst faende man etwas
+  # und saehe es nicht, weil es in einer zugeklappten Liga steht.
+  defp league_open?(_open_league, query, _competition) when query not in [nil, ""], do: true
+  defp league_open?(open_league, _query, competition), do: open_league == competition.id
+
+  ## Suchen und Sortieren
+
+  attr :query, :string, required: true
+  attr :sort, :atom, required: true
+  attr :sort_dir, :atom, required: true
+  attr :result_count, :integer, required: true
+
+  # Unter der Trennlinie statt darueber: oben steht, worum es geht, hier steht,
+  # was man damit tun kann.
+  defp browse_controls(assigns) do
+    ~H"""
+    <div class="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
+      <form id="verein-suche" phx-change="search" class="relative w-full sm:max-w-xs">
+        <.icon
+          name="hero-magnifying-glass-mini"
+          class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-soft"
+        />
+        <input
+          type="search"
+          name="q"
+          value={@query}
+          phx-debounce="200"
+          autocomplete="off"
+          placeholder={gettext("Verein, Kürzel oder Liga")}
+          aria-label={gettext("Vereine durchsuchen")}
+          class="w-full rounded-lg border border-line bg-panel py-2 pl-9 pr-9 text-sm placeholder:text-soft/70 focus:border-ink focus:outline-none"
+        />
+        <%!-- type="search" bringt in manchen Browsern ein eigenes Kreuz mit, in
+              anderen keins. Ein eigenes ist ueberall da und loest das Ereignis
+              aus, das den Zustand wirklich zuruecksetzt. --%>
+        <button
+          :if={@query != ""}
+          type="button"
+          phx-click="clear_search"
+          data-role="clear-search"
+          class="absolute right-2 top-1/2 flex size-6 -translate-y-1/2 items-center justify-center rounded-full text-soft transition hover:text-ink"
+          aria-label={gettext("Suche zurücksetzen")}
+        >
+          <.icon name="hero-x-mark-mini" class="size-4" />
+        </button>
+      </form>
+
+      <p :if={@query != ""} class="font-mono text-[11px] text-soft" aria-live="polite">
+        {ngettext("%{anzahl} Verein", "%{anzahl} Vereine", @result_count, anzahl: @result_count)}
+      </p>
+
+      <div class="flex items-center gap-2 sm:ml-auto">
+        <span class="kr-eyebrow">{gettext("Sortieren")}</span>
+        <div class="flex gap-1 rounded-lg border border-line bg-sunk p-1">
+          <button
+            :for={key <- [:name, :code, :kits]}
+            type="button"
+            phx-click="sort_teams"
+            phx-value-by={key}
+            data-role="sort-teams"
+            class={[
+              "flex items-center gap-1 rounded-md px-2.5 py-1.5 font-mono text-xs transition",
+              key == @sort && "bg-panel text-ink shadow-sm",
+              key != @sort && "text-soft hover:text-ink"
+            ]}
+            aria-pressed={to_string(key == @sort)}
+          >
+            {sort_label(key)}
+            <.icon
+              :if={key == @sort}
+              name={if @sort_dir == :asc, do: "hero-arrow-up-mini", else: "hero-arrow-down-mini"}
+              class="size-3"
+            />
+          </button>
         </div>
       </div>
     </div>

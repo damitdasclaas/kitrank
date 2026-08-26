@@ -172,6 +172,201 @@ defmodule KitrankWeb.OverviewLiveTest do
     end
   end
 
+  describe "Suche" do
+    setup do
+      liga = competition_fixture(name: "Erste Liga", tier: 1)
+      andere = competition_fixture(sport_id: liga.sport_id, name: "Zweite Liga", tier: 2)
+
+      koeln = team_fixture(name: "1. FC Köln", short_code: "KOE")
+      dortmund = team_fixture(name: "Borussia Dortmund", short_code: "BVB")
+      hertha = team_fixture(name: "Hertha BSC", short_code: "BSC")
+
+      for {team, competition} <- [{koeln, liga}, {dortmund, liga}, {hertha, andere}] do
+        {:ok, _} =
+          Kits.create_team_season(%{
+            team_id: team.id,
+            competition_id: competition.id,
+            season: Kits.current_season()
+          })
+
+        kit_fixture(team_id: team.id, kit_type: "home", season: Kits.current_season())
+      end
+
+      %{koeln: koeln, dortmund: dortmund, hertha: hertha, liga: liga, andere: andere}
+    end
+
+    defp suche(view, text) do
+      view |> form("#verein-suche", %{"q" => text}) |> render_change()
+    end
+
+    # Der Vereinsname steht in der Kachel-Fusszeile als eigener Textknoten.
+    defp kachel?(html, team), do: String.contains?(html, ">#{team.name}<")
+
+    test "findet über den Namen", %{conn: conn, koeln: koeln, dortmund: dortmund} do
+      {:ok, view, _html} = live(conn, ~p"/")
+
+      html = suche(view, "dortmund")
+
+      assert kachel?(html, dortmund)
+      refute kachel?(html, koeln)
+    end
+
+    test "findet über das Kürzel", %{conn: conn, dortmund: dortmund, koeln: koeln} do
+      {:ok, view, _html} = live(conn, ~p"/")
+
+      html = suche(view, "BVB")
+
+      assert kachel?(html, dortmund)
+      refute kachel?(html, koeln)
+    end
+
+    test "achtet nicht auf Umlaute", %{conn: conn, koeln: koeln} do
+      # Wer "koln" tippt, meint Köln — auf einer deutschen Tastatur ist der
+      # Umlaut da, auf einer anderen nicht.
+      {:ok, view, _html} = live(conn, ~p"/")
+
+      assert kachel?(suche(view, "koln"), koeln)
+      assert kachel?(suche(view, "KÖLN"), koeln)
+    end
+
+    test "der Ligenname holt die ganze Liga", %{
+      conn: conn,
+      koeln: koeln,
+      dortmund: dortmund,
+      hertha: hertha
+    } do
+      # "Bundesliga" einzutippen und dann keinen einzigen Verein zu sehen
+      # waere seltsam.
+      {:ok, view, _html} = live(conn, ~p"/")
+
+      html = suche(view, "Erste Liga")
+
+      assert kachel?(html, koeln)
+      assert kachel?(html, dortmund)
+      refute kachel?(html, hertha)
+    end
+
+    test "klappt auch zugeklappte Ligen auf", %{conn: conn, hertha: hertha} do
+      # Hertha steht in der zweiten Liga, und die ist beim Laden zu. Ohne das
+      # Aufklappen faende die Suche etwas, das man nicht sieht.
+      {:ok, view, html} = live(conn, ~p"/")
+      refute kachel?(html, hertha)
+
+      assert kachel?(suche(view, "hertha"), hertha)
+    end
+
+    test "sagt, wie viele es sind", %{conn: conn} do
+      {:ok, view, _html} = live(conn, ~p"/")
+
+      assert suche(view, "borussia") =~ "1 Verein"
+      assert suche(view, "e") =~ "3 Vereine"
+    end
+
+    test "sagt es auch, wenn nichts passt", %{conn: conn} do
+      {:ok, view, _html} = live(conn, ~p"/")
+
+      html = suche(view, "gibtsnicht")
+
+      assert html =~ "Nichts gefunden"
+      assert html =~ "gibtsnicht"
+    end
+
+    test "das Kreuz setzt zurück", %{conn: conn, koeln: koeln} do
+      {:ok, view, _html} = live(conn, ~p"/")
+
+      html = suche(view, "dortmund")
+      refute kachel?(html, koeln)
+
+      html = view |> element(~s{[data-role="clear-search"]}) |> render_click()
+
+      assert kachel?(html, koeln)
+      # Und die Ligen stehen wieder, wie sie standen.
+      refute html =~ ~s(data-role="clear-search")
+    end
+  end
+
+  describe "Vereine sortieren" do
+    setup do
+      liga = competition_fixture(name: "Erste Liga", tier: 1)
+
+      # Absichtlich nicht alphabetisch angelegt, und mit unterschiedlich
+      # vielen Trikots.
+      vorgaben = [
+        {"Zwickau", "FSV", ["home"]},
+        {"Aachen", "TSV", ["home", "away", "third"]},
+        {"Mainz", "M05", ["home", "away"]}
+      ]
+
+      for {name, code, kit_types} <- vorgaben do
+        team = team_fixture(name: name, short_code: code)
+
+        {:ok, _} =
+          Kits.create_team_season(%{
+            team_id: team.id,
+            competition_id: liga.id,
+            season: Kits.current_season()
+          })
+
+        for kit_type <- kit_types do
+          kit_fixture(team_id: team.id, kit_type: kit_type, season: Kits.current_season())
+        end
+      end
+
+      :ok
+    end
+
+    # Die Reihenfolge, in der die Vereinsnamen im HTML stehen.
+    defp reihenfolge(html) do
+      ["Aachen", "Mainz", "Zwickau"]
+      |> Enum.map(fn name -> {:binary.match(html, ">#{name}<"), name} end)
+      |> Enum.reject(fn {treffer, _name} -> treffer == :nomatch end)
+      |> Enum.sort_by(fn {{start, _laenge}, _name} -> start end)
+      |> Enum.map(fn {_treffer, name} -> name end)
+    end
+
+    defp sortiere(view, key) do
+      view |> element(~s{[data-role="sort-teams"][phx-value-by="#{key}"]}) |> render_click()
+    end
+
+    test "steht zunächst alphabetisch", %{conn: conn} do
+      {:ok, _view, html} = live(conn, ~p"/")
+
+      assert reihenfolge(html) == ["Aachen", "Mainz", "Zwickau"]
+    end
+
+    test "nochmal auf dieselbe dreht um", %{conn: conn} do
+      {:ok, view, _html} = live(conn, ~p"/")
+
+      assert reihenfolge(sortiere(view, "name")) == ["Zwickau", "Mainz", "Aachen"]
+      assert reihenfolge(sortiere(view, "name")) == ["Aachen", "Mainz", "Zwickau"]
+    end
+
+    test "nach Kürzel", %{conn: conn} do
+      {:ok, view, _html} = live(conn, ~p"/")
+
+      # FSV Zwickau, M05 Mainz, TSV Aachen
+      assert reihenfolge(sortiere(view, "code")) == ["Zwickau", "Mainz", "Aachen"]
+    end
+
+    test "nach Trikots — die meisten zuerst", %{conn: conn} do
+      # Ein Wechsel des Schlüssels fängt bei dessen natürlicher Richtung an.
+      # Bei „Trikots" ist das absteigend: 3, 2, 1.
+      {:ok, view, _html} = live(conn, ~p"/")
+
+      assert reihenfolge(sortiere(view, "kits")) == ["Aachen", "Mainz", "Zwickau"]
+      assert reihenfolge(sortiere(view, "kits")) == ["Zwickau", "Mainz", "Aachen"]
+    end
+
+    test "die aktive Sortierung zeigt ihre Richtung", %{conn: conn} do
+      {:ok, view, html} = live(conn, ~p"/")
+
+      assert html =~ "hero-arrow-up-mini"
+      refute html =~ "hero-arrow-down-mini"
+
+      assert sortiere(view, "name") =~ "hero-arrow-down-mini"
+    end
+  end
+
   describe "Trikot-Variante umschalten" do
     setup do
       %{teams: [a, b], kits: kits, competition: competition} =
