@@ -26,6 +26,33 @@ defmodule Kitrank.Kits do
   @doc "Die aktuelle Saison im Format \"2026/27\" (Stichtag 1. Juli)."
   defdelegate current_season(), to: Season, as: :current
 
+  @doc """
+  Die Reihenfolge, in der Ligen überall erscheinen: Sportart, dann Land, dann
+  Spielklasse, dann Name.
+
+  Damit stehen 1. und 2. Bundesliga beieinander. Nach `tier` allein sortiert
+  schob sich die NFL als weitere Liga der Stufe 1 dazwischen — sie ist erste
+  Liga, aber einer anderen Sportart und eines anderen Landes.
+
+  Die Sportart nach `sport_id`, also in der Reihenfolge, in der sie angelegt
+  wurden. Alphabetisch stünde "American Football" vor "Fußball", und jede neue
+  Sportart könnte sich vor die bestehenden schieben, ohne dass jemand das
+  entschieden hätte. Wer die Reihenfolge frei bestimmen will, braucht eine
+  Spalte dafür.
+
+  Braucht die Liga-Verknüpfung unter `as: :competition`. Wird gepiped, weil
+  `order_by` sich über mehrere Aufrufe hinweg sammelt — was danach kommt,
+  sortiert innerhalb der Liga.
+  """
+  def nach_liga(query) do
+    order_by(query, [competition: c],
+      asc: c.sport_id,
+      asc: c.country,
+      asc: c.tier,
+      asc: c.name
+    )
+  end
+
   ## Übersicht
 
   @doc """
@@ -41,10 +68,13 @@ defmodule Kitrank.Kits do
       from(ts in TeamSeason,
         where: ts.season == ^season,
         join: t in assoc(ts, :team),
+        as: :team,
         join: c in assoc(ts, :competition),
-        order_by: [asc: c.tier, asc: c.name, asc: t.name],
+        as: :competition,
         preload: [team: t, competition: c]
       )
+      |> nach_liga()
+      |> order_by([team: t], asc: t.name)
       |> Repo.all()
 
     kits_by_team = kits_by_team(Enum.map(team_seasons, & &1.team_id), season)
@@ -64,13 +94,16 @@ defmodule Kitrank.Kits do
   def list_rankable_kits(season \\ current_season()) do
     from(k in Kit,
       join: t in assoc(k, :team),
+      as: :team,
       join: ts in TeamSeason,
       on: ts.team_id == k.team_id and ts.season == k.season,
       join: c in assoc(ts, :competition),
+      as: :competition,
       where: k.season == ^season,
-      order_by: [asc: c.tier, asc: c.name, asc: t.name, asc: kit_type_order(k)],
       preload: [team: t]
     )
+    |> nach_liga()
+    |> order_by([k, team: t], asc: t.name, asc: kit_type_order(k))
     |> Repo.all()
   end
 
@@ -91,13 +124,17 @@ defmodule Kitrank.Kits do
   def list_kits_for_scope(scope \\ %{}) do
     from(k in Kit,
       join: t in assoc(k, :team),
+      as: :team,
       join: ts in TeamSeason,
       on: ts.team_id == k.team_id and ts.season == k.season,
       join: c in assoc(ts, :competition),
-      order_by: [desc: k.season, asc: c.tier, asc: c.name, asc: t.name, asc: kit_type_order(k)],
+      as: :competition,
       preload: [team: t],
       select: %{kit: k, competition: c}
     )
+    |> order_by([k], desc: k.season)
+    |> nach_liga()
+    |> order_by([k, team: t], asc: t.name, asc: kit_type_order(k))
     |> scope_by(:season, Map.get(scope, :seasons, []))
     |> scope_by(:competition_id, Map.get(scope, :competition_ids, []))
     |> scope_by(:team_id, Map.get(scope, :team_ids, []))
@@ -196,7 +233,8 @@ defmodule Kitrank.Kits do
   ## Competitions
 
   def list_competitions do
-    from(c in Competition, order_by: [asc: c.tier, asc: c.name], preload: :sport)
+    from(c in Competition, as: :competition, preload: :sport)
+    |> nach_liga()
     |> Repo.all()
   end
 
@@ -211,12 +249,13 @@ defmodule Kitrank.Kits do
   """
   def list_competitions_for_season(season) do
     from(c in Competition,
+      as: :competition,
       join: ts in TeamSeason,
       on: ts.competition_id == c.id and ts.season == ^season,
       distinct: true,
-      order_by: [asc: c.tier, asc: c.name],
       preload: :sport
     )
+    |> nach_liga()
     |> Repo.all()
   end
 

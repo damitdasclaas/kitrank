@@ -243,8 +243,11 @@ defmodule Kitrank.KitsTest do
   describe "overview/1" do
     test "gruppiert nach Liga, sortiert nach tier und liefert Trikots in fachlicher Reihenfolge" do
       season = "2026/27"
-      zweite = competition_fixture(name: "Zweite", tier: 2)
-      erste = competition_fixture(name: "Erste", tier: 1)
+      # Dieselbe Sportart, sonst entscheidet die und nicht die Spielklasse –
+      # competition_fixture legt sonst je Liga eine eigene an.
+      sport = sport_fixture()
+      zweite = competition_fixture(sport_id: sport.id, name: "Zweite", tier: 2)
+      erste = competition_fixture(sport_id: sport.id, name: "Erste", tier: 1)
 
       league_fixture(competition: zweite, season: season, team_count: 1, kit_types: ["home"])
 
@@ -263,6 +266,34 @@ defmodule Kitrank.KitsTest do
       # Sortierung nicht alphabetisch ("away" käme sonst vor "home").
       {_team, kits} = hd(first_teams)
       assert Enum.map(kits, & &1.kit_type) == ["home", "away", "special"]
+    end
+
+    test "sortiert nach Sportart, dann Land, dann Spielklasse" do
+      # Der Fall, um den es geht: die NFL ist erste Liga, schob sich damit
+      # aber zwischen 1. und 2. Bundesliga. Ligen eines Landes gehoeren
+      # beieinander.
+      season = "2026/27"
+      fussball = sport_fixture(name: "Fußball", slug: "fussball-sortierung")
+      football = sport_fixture(name: "American Football", slug: "nfl-sortierung")
+
+      bl2 =
+        competition_fixture(sport_id: fussball.id, name: "2. Bundesliga", country: "DE", tier: 2)
+
+      nfl = competition_fixture(sport_id: football.id, name: "NFL", country: "US", tier: 1)
+      bl1 = competition_fixture(sport_id: fussball.id, name: "Bundesliga", country: "DE", tier: 1)
+
+      for competition <- [bl2, nfl, bl1] do
+        league_fixture(
+          competition: competition,
+          season: season,
+          team_count: 1,
+          kit_types: ["home"]
+        )
+      end
+
+      namen = Kits.overview(season) |> Enum.map(fn {c, _} -> c.name end)
+
+      assert namen == ["Bundesliga", "2. Bundesliga", "NFL"]
     end
 
     test "zeigt nur die angefragte Saison" do
@@ -288,8 +319,9 @@ defmodule Kitrank.KitsTest do
   describe "list_rankable_kits/1" do
     test "liefert alle Trikots der Saison flach in Übersichts-Reihenfolge" do
       season = "2026/27"
-      zweite = competition_fixture(name: "Zweite", tier: 2)
-      erste = competition_fixture(name: "Erste", tier: 1)
+      sport = sport_fixture()
+      zweite = competition_fixture(sport_id: sport.id, name: "Zweite", tier: 2)
+      erste = competition_fixture(sport_id: sport.id, name: "Erste", tier: 1)
 
       league_fixture(competition: zweite, season: season, team_count: 1, kit_types: ["home"])
 
