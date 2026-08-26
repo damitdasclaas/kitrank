@@ -135,6 +135,14 @@ defmodule KitrankWeb.Layouts do
           >
             {gettext("Datenschutz")}
           </.link>
+          <.link
+            href="https://github.com/damitdasclaas/kitrank"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="text-ink underline-offset-2 transition hover:underline"
+          >
+            GitHub
+          </.link>
         </nav>
       </div>
     </footer>

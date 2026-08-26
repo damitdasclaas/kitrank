@@ -58,5 +58,6 @@ defmodule KitrankWeb.LegalControllerTest do
 
     assert has_element?(view, "a[href='/impressum']")
     assert has_element?(view, "a[href='/datenschutz']")
+    assert has_element?(view, "a[href='https://github.com/damitdasclaas/kitrank']")
   end
 end

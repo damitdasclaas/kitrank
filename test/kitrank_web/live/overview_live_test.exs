@@ -195,6 +195,7 @@ defmodule KitrankWeb.OverviewLiveTest do
       assert html =~ "Marken gehören ihren Inhabern"
       assert html =~ ~s(href="/impressum")
       assert html =~ ~s(href="/datenschutz")
+      assert html =~ ~s(href="https://github.com/damitdasclaas/kitrank")
     end
 
     test "sagt es, wenn für die Saison noch nichts hinterlegt ist", %{conn: conn} do
