@@ -37,8 +37,13 @@ defmodule Kitrank.Kits.ProductImages do
   @doc """
   Sammelt Bildkandidaten zu einer Produktseite.
 
-      {:ok, %{title: "adidas Heimtrikot 26/27", images: [...], source_url: "..."}}
+      {:ok, %{kind: :page, title: "adidas Heimtrikot 26/27", images: [...], source_url: "..."}}
       {:error, :blocked | :not_found | :unreachable | :invalid_url}
+
+  `kind` unterscheidet, worauf die Adresse zeigte: `:page` ist eine
+  Produktseite und taugt als Shop-Deep-Link, `:image` ist ein einzelnes Bild
+  und taugt dafür nicht — eine Bildadresse als „Zum Vereinsshop" wäre eine
+  Sackgasse für den Leser.
   """
   def fetch(url) when is_binary(url) do
     with {:ok, url} <- normalize(url),
@@ -46,7 +51,8 @@ defmodule Kitrank.Kits.ProductImages do
       # Wer direkt eine Bildadresse einfuegt, meint dieses Bild – nicht eine
       # Seite, auf der es vielleicht vorkommt.
       if String.starts_with?(content_type, "image/") do
-        {:ok, %{title: nil, images: [url], labels: %{}, variants: %{}, source_url: url}}
+        {:ok,
+         %{kind: :image, title: nil, images: [url], labels: %{}, variants: %{}, source_url: url}}
       else
         parse(body, url)
       end
@@ -89,6 +95,7 @@ defmodule Kitrank.Kits.ProductImages do
         images != [] ->
           {:ok,
            %{
+             kind: :page,
              title: title(body),
              images: images,
              labels: labels,

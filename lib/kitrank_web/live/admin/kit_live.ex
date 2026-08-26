@@ -71,15 +71,29 @@ defmodule KitrankWeb.Admin.KitLive do
 
   ## Bilder aus dem Shop holen
 
+  # Hoechstens so viele Adressen auf einmal: jede ist ein eigener Abruf, und
+  # eine versehentlich eingefuegte Textwand soll nicht minutenlang laufen.
+  @max_urls 8
+
   @impl true
-  def handle_event("fetch_images", %{"product_url" => url}, socket) do
-    # In einem eigenen Prozess: ein Shop, der nicht antwortet, wuerde die
-    # Oberflaeche sonst bis zum Timeout einfrieren – und ein eingefrorenes
-    # Fenster sieht aus wie ein Fehler, obwohl nur gewartet wird.
-    {:noreply,
-     socket
-     |> assign(fetching?: true, fetch_error: nil, candidates: [], candidate_variants: %{})
-     |> start_async(:fetch_images, fn -> @images.fetch(url) end)}
+  def handle_event("fetch_images", %{"product_url" => eingabe}, socket) do
+    case adressen(eingabe) do
+      [] ->
+        {:noreply, assign(socket, fetch_error: ProductImages.message(:invalid_url))}
+
+      urls ->
+        # In einem eigenen Prozess: ein Shop, der nicht antwortet, wuerde die
+        # Oberflaeche sonst bis zum Timeout einfrieren – und ein eingefrorenes
+        # Fenster sieht aus wie ein Fehler, obwohl nur gewartet wird.
+        {:noreply,
+         socket
+         |> assign(fetching?: true, fetch_error: nil)
+         |> start_async(:fetch_images, fn -> Enum.map(urls, &@images.fetch/1) end)}
+    end
+  end
+
+  def handle_event("clear_candidates", _params, socket) do
+    {:noreply, assign(socket, candidates: [], candidate_labels: %{}, candidate_variants: %{})}
   end
 
   @doc """
@@ -182,23 +196,24 @@ defmodule KitrankWeb.Admin.KitLive do
 
   @impl true
   def handle_async(:fetch_images, {:ok, ergebnis_oder_fehler}, socket) do
-    case ergebnis_oder_fehler do
-      {:ok, ergebnis} ->
-        # Den Produktlink gleich als Shop-Deep-Link uebernehmen – dafuer ist er da.
-        attrs = Map.put(current_attrs(socket), "source_shop_url", ergebnis.source_url)
+    ergebnisse = List.wrap(ergebnis_oder_fehler)
+    treffer = for {:ok, ergebnis} <- ergebnisse, do: ergebnis
 
+    case treffer do
+      [] ->
+        grund =
+          Enum.find_value(ergebnisse, :unreachable, fn
+            {:error, grund} -> grund
+            _ -> nil
+          end)
+
+        {:noreply, assign(socket, fetching?: false, fetch_error: ProductImages.message(grund))}
+
+      treffer ->
         {:noreply,
          socket
-         |> assign(
-           fetching?: false,
-           candidates: ergebnis.images,
-           candidate_labels: Map.get(ergebnis, :labels, %{}),
-           candidate_variants: Map.get(ergebnis, :variants, %{})
-         )
-         |> assign_form(socket.assigns.kit, Kits.change_kit(socket.assigns.kit, attrs))}
-
-      {:error, grund} ->
-        {:noreply, assign(socket, fetching?: false, fetch_error: ProductImages.message(grund))}
+         |> uebernimm_treffer(treffer)
+         |> assign(fetching?: false, fetch_error: fehler_text(ergebnisse))}
     end
   end
 
@@ -213,6 +228,46 @@ defmodule KitrankWeb.Admin.KitLive do
        fetching?: false,
        fetch_error: "Der Abruf ist abgebrochen. Bild-Adressen kannst du von Hand einfügen."
      )}
+  end
+
+  # Kandidaten kommen dazu, statt die vorherigen zu ersetzen: bei einem Shop,
+  # der automatisierte Abrufe ablehnt, sammelt man die Adressen von Hand ein –
+  # und dann soll die vierte nicht die ersten drei wegwerfen. Doppelte fallen
+  # raus, die Reihenfolge bleibt.
+  defp uebernimm_treffer(socket, treffer) do
+    bilder = Enum.flat_map(treffer, & &1.images)
+    labels = treffer |> Enum.map(&Map.get(&1, :labels, %{})) |> Enum.reduce(%{}, &Map.merge/2)
+
+    varianten =
+      treffer |> Enum.map(&Map.get(&1, :variants, %{})) |> Enum.reduce(%{}, &Map.merge/2)
+
+    socket =
+      assign(socket,
+        candidates: Enum.uniq(socket.assigns.candidates ++ bilder),
+        candidate_labels: Map.merge(socket.assigns.candidate_labels, labels),
+        candidate_variants: Map.merge(socket.assigns.candidate_variants, varianten)
+      )
+
+    # Den Produktlink als Shop-Deep-Link uebernehmen – dafuer ist er da. Eine
+    # Bildadresse taugt dafuer nicht: „Zum Vereinsshop" fuehrt sonst auf ein
+    # nacktes JPEG.
+    case Enum.find(treffer, &(&1.kind == :page)) do
+      nil ->
+        socket
+
+      seite ->
+        attrs = Map.put(current_attrs(socket), "source_shop_url", seite.source_url)
+        assign_form(socket, socket.assigns.kit, Kits.change_kit(socket.assigns.kit, attrs))
+    end
+  end
+
+  # Teilerfolg: was ging, ist da – was nicht ging, soll trotzdem gesagt werden.
+  defp fehler_text(ergebnisse) do
+    case for({:error, grund} <- ergebnisse, do: grund) do
+      [] -> nil
+      [grund] -> ProductImages.message(grund)
+      gruende -> "#{length(gruende)} Adressen gingen nicht: #{ProductImages.message(hd(gruende))}"
+    end
   end
 
   # Die aktuell gewaehlten Bilder in Klick-Reihenfolge: Freisteller zuerst.
@@ -306,6 +361,17 @@ defmodule KitrankWeb.Admin.KitLive do
       team_options: Enum.map(teams, &{"#{&1.name} (#{&1.short_code})", &1.id}),
       type_options: Enum.map(Kit.kit_types(), &{KitLabel.label(&1), &1})
     )
+  end
+
+  # Mehrere Adressen in einem Feld: Zeilenumbrueche, Kommas und Leerzeichen
+  # trennen. Wer bei einem blockenden Shop vier Bilder per Rechtsklick kopiert,
+  # soll sie in einem Rutsch loswerden.
+  defp adressen(eingabe) do
+    eingabe
+    |> String.split(~r/[\s,]+/, trim: true)
+    |> Enum.filter(&String.starts_with?(&1, ["http://", "https://"]))
+    |> Enum.uniq()
+    |> Enum.take(@max_urls)
   end
 
   defp umschalten(menge, wert) do
@@ -504,6 +570,9 @@ defmodule KitrankWeb.Admin.KitLive do
       <h3 class="kr-eyebrow">Bilder aus dem Shop holen</h3>
       <p class="mt-1 text-xs text-soft">
         Produktlink einfügen — danach anklicken, welche Bilder du willst.
+        Lehnt ein Shop den Abruf ab, kannst du hier auch Bild-Adressen einfügen,
+        mehrere durch Leerzeichen oder Zeilenumbruch getrennt. Abrufe sammeln
+        sich, bis du die Liste leerst.
       </p>
 
       <%!-- Ein eigenes Formular: nur so wird der Feldwert mitgeschickt, und
@@ -512,8 +581,11 @@ defmodule KitrankWeb.Admin.KitLive do
             verschachtelte Formulare sind ungueltig. --%>
       <form id="image-picker-form" phx-submit="fetch_images" class="mt-3 flex gap-2">
         <label for="product_url" class="sr-only">Produktlink</label>
+        <%!-- type="text", nicht "url": mehrere Adressen in einem Feld waeren
+              sonst „ungueltig", und die Pruefung des Browsers haette recht —
+              es ist keine einzelne URL mehr. --%>
         <input
-          type="url"
+          type="text"
           id="product_url"
           name="product_url"
           required
@@ -544,6 +616,19 @@ defmodule KitrankWeb.Admin.KitLive do
             class="ml-auto text-[11px] text-soft underline-offset-4 hover:text-ink hover:underline"
           >
             Auswahl leeren
+          </button>
+          <%!-- Gebraucht, weil Abrufe sich sammeln: sonst schleppt man die
+                Bilder des vorigen Produkts mit. --%>
+          <button
+            type="button"
+            phx-click="clear_candidates"
+            data-role="clear-candidates"
+            class={[
+              "text-[11px] text-soft underline-offset-4 hover:text-ink hover:underline",
+              @picked == [] && "ml-auto"
+            ]}
+          >
+            Liste leeren
           </button>
         </div>
 

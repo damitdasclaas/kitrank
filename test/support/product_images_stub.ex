@@ -24,14 +24,22 @@ defmodule Kitrank.Kits.ProductImagesStub do
   def fetch("kein-link"), do: {:error, :invalid_url}
 
   # Eine direkte Bildadresse ist ein einzelner Kandidat, keine Seite.
+  def fetch("https://stub/bild2.png" = url),
+    do:
+      {:ok,
+       %{kind: :image, title: nil, images: [url], labels: %{}, variants: %{}, source_url: url}}
+
   def fetch("https://stub/bild.png" = url),
-    do: {:ok, %{title: nil, images: [url], labels: %{}, variants: %{}, source_url: url}}
+    do:
+      {:ok,
+       %{kind: :image, title: nil, images: [url], labels: %{}, variants: %{}, source_url: url}}
 
   def fetch(url) when is_binary(url) do
     {:ok,
      %{
        title: "adidas Heimtrikot 26/27",
        images: @images,
+       kind: :page,
        # Manche Shops beschreiben ihre Bilder selbst.
        labels: %{hd(@images) => "Vorderansicht"},
        # Der Shop veroeffentlicht seine kleinen Varianten selbst – so wie es

@@ -180,6 +180,68 @@ defmodule KitrankWeb.Admin.ImagePickerTest do
     assert hole_bilder(view, "https://stub/produkt/2") =~ "2 gewählt"
   end
 
+  describe "Shops, die den Abruf ablehnen" do
+    test "mehrere Bild-Adressen auf einmal", %{view: view} do
+      # Der Weg bei einem blockenden Shop: im Browser rechtsklicken, Adressen
+      # kopieren, hier in einem Rutsch einfügen.
+      html = hole_bilder(view, "https://stub/bild.png https://stub/bild2.png")
+
+      assert html =~ "5 Bilder gefunden"
+      assert html =~ "https://stub/bild.png"
+      assert html =~ "https://stub/bild2.png"
+    end
+
+    test "Zeilenumbrüche und Kommas trennen genauso", %{view: view} do
+      html = hole_bilder(view, "https://stub/bild.png,\nhttps://stub/bild2.png")
+
+      assert html =~ "5 Bilder gefunden"
+    end
+
+    test "Abrufe sammeln sich, statt einander zu überschreiben", %{view: view} do
+      # Sonst wirft die vierte Adresse die ersten drei weg, und man fängt bei
+      # jedem Bild von vorn an.
+      hole_bilder(view, "https://stub/bild.png")
+      html = hole_bilder(view, "https://stub/bild2.png")
+
+      assert html =~ "5 Bilder gefunden"
+    end
+
+    test "'Liste leeren' setzt die Kandidaten zurück", %{view: view} do
+      html = view |> element(~s{[data-role="clear-candidates"]}) |> render_click()
+
+      refute html =~ "Bilder gefunden"
+    end
+
+    test "eine Bildadresse wird nicht zum Shop-Link", %{view: view} do
+      # „Zum Vereinsshop" führte sonst auf ein nacktes JPEG.
+      html = hole_bilder(view, "https://stub/bild.png")
+
+      refute html =~ ~s(value="https://stub/bild.png" name="kit[source_shop_url]")
+      refute html =~ ~s(name="kit[source_shop_url]" value="https://stub/bild.png")
+    end
+
+    test "eine Seite dazwischen setzt den Shop-Link trotzdem", %{view: view} do
+      html = hole_bilder(view, "https://stub/bild.png https://stub/produkt/9")
+
+      assert html =~ "https://stub/produkt/9"
+    end
+
+    test "was nicht ging, wird gesagt — was ging, ist trotzdem da", %{view: view} do
+      html = hole_bilder(view, "https://stub/bild.png https://stub/blockiert")
+
+      assert html =~ "4 Bilder gefunden"
+      assert html =~ "lässt automatisierte Abrufe nicht zu"
+    end
+
+    test "ohne brauchbare Adresse gar kein Abruf", %{view: view} do
+      html = hole_bilder(view, "kein-link")
+
+      assert html =~ "http://"
+      # Die vorhandenen Kandidaten bleiben stehen.
+      assert html =~ "3 Bilder gefunden"
+    end
+  end
+
   describe "Fehlerfälle" do
     test "meldet, wenn der Shop den Abruf ablehnt", %{view: view} do
       assert hole_bilder(view, "https://stub/blockiert") =~ "lässt automatisierte Abrufe nicht zu"
@@ -189,10 +251,11 @@ defmodule KitrankWeb.Admin.ImagePickerTest do
       assert hole_bilder(view, "kein-link") =~ "http://"
     end
 
-    test "nimmt eine direkt eingefügte Bildadresse als einzigen Kandidaten", %{view: view} do
+    test "nimmt eine direkt eingefügte Bildadresse als Kandidaten dazu", %{view: view} do
+      # Das Setup hat schon eine Seite geholt – die drei Bilder bleiben stehen.
       html = hole_bilder(view, "https://stub/bild.png")
 
-      assert html =~ "1 Bilder gefunden, 0 gewählt"
+      assert html =~ "4 Bilder gefunden, 0 gewählt"
       assert html =~ "https://stub/bild.png"
     end
 
