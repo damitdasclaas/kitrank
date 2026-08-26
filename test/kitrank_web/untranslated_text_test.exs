@@ -103,6 +103,11 @@ defmodule KitrankWeb.UntranslatedTextTest do
     pruefe(html)
   end
 
+  test "Impressum und Datenschutz", %{conn: conn} do
+    pruefe(html_response(get(conn, ~p"/impressum"), 200))
+    pruefe(html_response(get(conn, ~p"/datenschutz"), 200))
+  end
+
   test "der Wächter greift auch wirklich", %{conn: conn} do
     # Ohne Gegenprobe wäre nicht zu unterscheiden, ob nichts übrig ist oder ob
     # die Prüfung ins Leere greift.

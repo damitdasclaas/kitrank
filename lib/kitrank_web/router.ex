@@ -26,6 +26,11 @@ defmodule KitrankWeb.Router do
     # verlinkbar bleibt und der Zurueck-Button tut, was man erwartet.
     get "/sprache/:locale", LocaleController, :update
 
+    # Pflichtseiten. Liegen im :browser-Pipeline ohne live_session, weil sie
+    # keinen Socket brauchen – Impressum und Datenschutz sind HTML, kein LiveView.
+    get "/impressum", LegalController, :impressum
+    get "/datenschutz", LegalController, :datenschutz
+
     live_session :public,
       on_mount: [{KitrankWeb.UserAuth, :mount_current_scope}, KitrankWeb.Locale] do
       live "/", OverviewLive, :index

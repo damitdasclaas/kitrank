@@ -191,8 +191,10 @@ defmodule KitrankWeb.OverviewLiveTest do
       {:ok, _view, html} = live(conn, ~p"/")
 
       assert html =~ "privates Projekt"
-      assert html =~ "Verbindung zur DFL"
+      assert html =~ "genannten Ligen, Verbänden oder Vereinen"
       assert html =~ "Marken gehören ihren Inhabern"
+      assert html =~ ~s(href="/impressum")
+      assert html =~ ~s(href="/datenschutz")
     end
 
     test "sagt es, wenn für die Saison noch nichts hinterlegt ist", %{conn: conn} do

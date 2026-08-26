@@ -1,0 +1,264 @@
+<%!-- locale kommt vom Controller, die deutsche Fassung ist die rechtlich massgebliche. --%>
+<.page
+  flash={@flash}
+  current_scope={@current_scope}
+  eyebrow={if(@locale == "en", do: "Privacy", else: "Datenschutz")}
+  title={if(@locale == "en", do: "Privacy policy", else: "Datenschutzerklärung")}
+>
+  <%= if @locale == "en" do %>
+    <p class="text-soft">
+      Last updated: 27 August 2026. This text describes what KitRank actually does. It is not
+      legal advice.
+    </p>
+
+    <.section title="1. Controller">
+      <p>
+        {@betreiber.name}<br />
+        {@betreiber.street}<br />
+        {@betreiber.city}<br /> Email:
+        <a href={"mailto:#{@betreiber.email}"} class="text-ink underline-offset-2 hover:underline">
+          {@betreiber.email}
+        </a>
+      </p>
+    </.section>
+
+    <.section title="2. What this site does">
+      <p>
+        KitRank is a private site for ranking sports club kits. There is no advertising, no
+        affiliate programme, no newsletter and no analytics. Rankings work without an account,
+        via a secret edit link and a public share link.
+      </p>
+    </.section>
+
+    <.section title="3. Hosting">
+      <p>
+        The site is hosted by Railway (Railway Corp., USA). Requests — including IP address,
+        time, URL and browser — are processed on their servers in order to deliver the site
+        (Art. 6 (1) (f) GDPR).
+      </p>
+    </.section>
+
+    <.section title="4. Server logs">
+      <p>
+        The web server writes the usual request logs (IP address, time, requested path, status
+        code, user agent). They are used to keep the site running and to investigate faults, not
+        to profile visitors. Retention follows the host's defaults.
+      </p>
+    </.section>
+
+    <.section title="5. Cookies and local storage">
+      <p>
+        KitRank does not use tracking cookies. What is stored is needed to run the site
+        (section 25 (2) TDDDG), so there is no consent banner.
+      </p>
+      <ul class="list-disc space-y-1 pl-5">
+        <li>
+          <span class="text-ink">_kitrank_key</span>
+          — signed session cookie (locale, login, CSRF). SameSite Lax.
+        </li>
+        <li>
+          <span class="text-ink">_kitrank_web_user_remember_me</span>
+          — only after sign-in with "remember me", for 14 days.
+        </li>
+        <li>
+          <span class="text-ink">kitrank:rankings</span>
+          in localStorage — edit tokens of rankings you created, so they reappear on this device.
+        </li>
+        <li>
+          <span class="text-ink">kitrank:rooms</span>
+          in localStorage — host token of a Reveal room you created, so you keep control after a
+          reload.
+        </li>
+        <li>
+          <span class="text-ink">phx:theme</span> in localStorage — light/dark preference.
+        </li>
+      </ul>
+      <p>
+        The live connection (WebSocket to <span class="text-ink">/live</span>) is how the pages
+        update. Without it the site does not work.
+      </p>
+    </.section>
+
+    <.section title="6. Rankings and Reveal">
+      <p>
+        A ranking stores an optional display name, the order of kits, optional notes, and two
+        tokens (edit and share). There is no account behind it: whoever has the edit link can
+        change it. Rankings stay until they are deleted; there is no automatic expiry and no
+        delete button in the UI yet. To have a ranking removed, write to the address above and
+        include the edit or share link.
+      </p>
+      <p>
+        A Reveal room stores a room code, the host token, the chosen slice (season, leagues, kit
+        types) and the display names of people who joined. Rooms expire after 12 hours and are
+        then deleted. The rankings themselves are left untouched.
+      </p>
+    </.section>
+
+    <.section title="7. Accounts">
+      <p>
+        Registration is closed. Existing accounts (admins) store an email address and session
+        tokens. Sign-in uses a magic link sent by email. Legal basis: Art. 6 (1) (b) and (f) GDPR.
+      </p>
+    </.section>
+
+    <.section title="8. Fonts and kit images">
+      <p>
+        Fonts are loaded from Google Fonts (fonts.googleapis.com / fonts.gstatic.com). Your
+        browser therefore sends its IP address to Google. That is a transfer to a provider in
+        the USA.
+      </p>
+      <p>
+        Kit photos are linked from club shops, not copied. Opening a page with kit images causes
+        the browser to request those files from the shop or its CDN.
+      </p>
+    </.section>
+
+    <.section title="9. Retention">
+      <ul class="list-disc space-y-1 pl-5">
+        <li>Rankings: until deleted on request.</li>
+        <li>Reveal rooms: 12 hours, then automatic deletion.</li>
+        <li>Accounts: as long as the account exists.</li>
+        <li>Session cookie: for the browser session; "remember me" for 14 days.</li>
+      </ul>
+    </.section>
+
+    <.section title="10. Your rights">
+      <p>
+        You have the rights of access, rectification, erasure, restriction, data portability and
+        objection (Art. 15–21 GDPR), and the right to lodge a complaint with a supervisory
+        authority (Art. 77 GDPR). For this operator that is the Independent Centre for Data
+        Protection of Schleswig-Holstein (ULD), Holstenstrasse 98, 24103 Kiel.
+      </p>
+      <p>There is no automated decision-making and no profiling.</p>
+    </.section>
+  <% else %>
+    <p class="text-soft">
+      Stand: 27. August 2026. Der Text beschreibt, was KitRank tatsächlich tut. Das ist keine
+      Rechtsberatung.
+    </p>
+
+    <.section title="1. Verantwortlicher">
+      <p>
+        {@betreiber.name}<br />
+        {@betreiber.street}<br />
+        {@betreiber.city}<br /> E-Mail:
+        <a href={"mailto:#{@betreiber.email}"} class="text-ink underline-offset-2 hover:underline">
+          {@betreiber.email}
+        </a>
+      </p>
+    </.section>
+
+    <.section title="2. Worum es geht">
+      <p>
+        KitRank ist ein privates Angebot zum Ranken von Trikots von Sportvereinen. Es gibt keine
+        Werbung, kein Affiliate-Programm, keinen Newsletter und keine Reichweitenmessung.
+        Ranglisten funktionieren ohne Konto, über einen geheimen Bearbeiten-Link und einen
+        öffentlichen Teilen-Link.
+      </p>
+    </.section>
+
+    <.section title="3. Hosting">
+      <p>
+        Die Seite liegt bei Railway (Railway Corp., USA). Anfragen — einschließlich IP-Adresse,
+        Uhrzeit, aufgerufener Adresse und Browsers — werden auf deren Servern verarbeitet, damit
+        die Seite ausgeliefert werden kann (Art. 6 Abs. 1 lit. f DSGVO).
+      </p>
+    </.section>
+
+    <.section title="4. Server-Logfiles">
+      <p>
+        Der Webserver schreibt die üblichen Zugriffsprotokolle (IP-Adresse, Uhrzeit, Pfad,
+        Statuscode, User-Agent). Sie dienen dem Betrieb und der Fehlersuche, nicht der Bildung
+        von Profilen. Die Aufbewahrung richtet sich nach den Vorgaben des Hosters.
+      </p>
+    </.section>
+
+    <.section title="5. Cookies und lokaler Speicher">
+      <p>
+        KitRank setzt keine Tracking-Cookies. Was gespeichert wird, ist für den Betrieb nötig
+        (§ 25 Abs. 2 TDDDG), deshalb gibt es kein Einwilligungs-Banner.
+      </p>
+      <ul class="list-disc space-y-1 pl-5">
+        <li>
+          <span class="text-ink">_kitrank_key</span>
+          — signiertes Sitzungscookie (Sprache, Anmeldung, CSRF). SameSite Lax.
+        </li>
+        <li>
+          <span class="text-ink">_kitrank_web_user_remember_me</span>
+          — nur nach Anmeldung mit „Angemeldet bleiben“, 14 Tage.
+        </li>
+        <li>
+          <span class="text-ink">kitrank:rankings</span>
+          im localStorage — Bearbeiten-Tokens der eigenen Ranglisten, damit sie auf diesem Gerät
+          wieder auftauchen.
+        </li>
+        <li>
+          <span class="text-ink">kitrank:rooms</span>
+          im localStorage — Host-Token eines selbst erstellten Reveal-Raums, damit die Steuerung
+          nach einem Reload bleibt.
+        </li>
+        <li>
+          <span class="text-ink">phx:theme</span> im localStorage — Hell-/Dunkel-Einstellung.
+        </li>
+      </ul>
+      <p>
+        Die Live-Verbindung (WebSocket nach <span class="text-ink">/live</span>) ist der Weg, auf
+        dem sich die Seiten aktualisieren. Ohne sie funktioniert die App nicht.
+      </p>
+    </.section>
+
+    <.section title="6. Ranglisten und Reveal">
+      <p>
+        Eine Rangliste speichert einen optionalen Anzeigenamen, die Reihenfolge der Trikots,
+        optionale Notizen und zwei Tokens (Bearbeiten und Teilen). Dahinter steht kein Konto:
+        wer den Bearbeiten-Link hat, darf ändern. Ranglisten bleiben, bis sie gelöscht werden;
+        es gibt kein automatisches Verfallen und in der Oberfläche noch keinen Löschen-Knopf.
+        Zum Löschen reicht eine Mail an die Adresse oben, mit Bearbeiten- oder Teilen-Link.
+      </p>
+      <p>
+        Ein Reveal-Raum speichert Raumcode, Host-Token, den gewählten Ausschnitt (Saison, Ligen,
+        Kit-Typen) und die Anzeigenamen der Beigetretenen. Räume laufen nach 12 Stunden ab und
+        werden dann gelöscht. Die Ranglisten selbst bleiben unberührt.
+      </p>
+    </.section>
+
+    <.section title="7. Konten">
+      <p>
+        Die Registrierung ist zu. Bestehende Konten (Admins) speichern eine E-Mail-Adresse und
+        Sitzungstokens. Die Anmeldung läuft über einen Magic Link per E-Mail. Rechtsgrundlage:
+        Art. 6 Abs. 1 lit. b und f DSGVO.
+      </p>
+    </.section>
+
+    <.section title="8. Schriften und Trikotbilder">
+      <p>
+        Die Schriften kommen von Google Fonts (fonts.googleapis.com / fonts.gstatic.com). Der
+        Browser sendet dabei die IP-Adresse an Google. Das ist eine Übermittlung an einen
+        Anbieter in den USA.
+      </p>
+      <p>
+        Trikotfotos werden aus den Vereinsshops verlinkt, nicht kopiert. Beim Öffnen einer Seite
+        mit Trikotbildern fordert der Browser diese Dateien beim Shop bzw. dessen CDN an.
+      </p>
+    </.section>
+
+    <.section title="9. Speicherdauer">
+      <ul class="list-disc space-y-1 pl-5">
+        <li>Ranglisten: bis zur Löschung auf Anfrage.</li>
+        <li>Reveal-Räume: 12 Stunden, danach automatische Löschung.</li>
+        <li>Konten: solange das Konto besteht.</li>
+        <li>Sitzungscookie: für die Browsersitzung; „Angemeldet bleiben“ 14 Tage.</li>
+      </ul>
+    </.section>
+
+    <.section title="10. Ihre Rechte">
+      <p>
+        Sie haben die Rechte auf Auskunft, Berichtigung, Löschung, Einschränkung, Datenübertragbarkeit
+        und Widerspruch (Art. 15–21 DSGVO) sowie das Recht, sich bei einer Aufsichtsbehörde zu
+        beschweren (Art. 77 DSGVO). Für diesen Betreiber ist das das Unabhängige Landeszentrum
+        für Datenschutz Schleswig-Holstein (ULD), Holstenstraße 98, 24103 Kiel.
+      </p>
+      <p>Es gibt keine automatisierte Entscheidungsfindung und kein Profiling.</p>
+    </.section>
+  <% end %>
+</.page>

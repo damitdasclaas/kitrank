@@ -1,12 +1,12 @@
 # KitRank – Architecture
 
-KitRank ist eine Web-App zum Ranken von Trikots der 1. und 2. Bundesliga. Sie hat drei Bereiche:
+KitRank ist eine Web-App zum Ranken von Trikots von Sportvereinen – unabhängig von Sportart und Liga. Sie hat drei Bereiche:
 
 - **Übersicht** – alle Teams mit ihren aktuellen Trikots (Heim/Auswärts/Ausweich/Sonder), je als Cutout und als Model-Bilder, mit Link zum jeweiligen Shop.
 - **Ranking** – jede:r erstellt eine eigene, per Link jederzeit teilbare Rangliste aller Trikots inklusive optionaler Notiz pro Trikot.
 - **Reveal** – mehrere Personen decken ihre Ranglisten gemeinsam auf, Platzierung für Platzierung, live über verschiedene Geräte hinweg oder vor einem gemeinsamen Bildschirm.
 
-Kein Login nötig – Zugriff läuft über geheime Bearbeitungs-Links, öffentliche Share-Links und Raum-Codes fürs Reveal. Gedacht als wiederkehrendes Tool über mehrere Saisons hinweg, mit Blick auf spätere Erweiterung um weitere Ligen/Länder oder sogar andere Sportarten (siehe Abschnitt 11).
+Kein Login nötig – Zugriff läuft über geheime Bearbeitungs-Links, öffentliche Share-Links und Raum-Codes fürs Reveal. Gedacht als wiederkehrendes Tool über mehrere Saisons, Ligen und Sportarten hinweg (siehe Abschnitt 11).
 
 Stand: Entwurf zur gemeinsamen Diskussion. Alles hier ist Vorschlag, kein Commitment – Abschnitt 9 sammelt offene Fragen.
 
@@ -203,7 +203,7 @@ Empfehlung: mit (1) starten, (2) einbauen sobald erste Links tot sind.
 - **Reveal-Format**: Platzierung für Platzierung, Rang 18 → 1, alle Teilnehmer gleichzeitig pro Schritt.
 - **Teilnehmerzahl**: Soft-Limit 8, UI von Anfang an für "1 bis viele" gebaut statt fest verdrahtet.
 - **Datenpflege**: eigene Admin-UI statt Seed-Script als Dauerlösung.
-- **1./2. Bundesliga**: gleiches Datenmodell, Liga-Zugehörigkeit über `team_seasons` statt festem Feld auf `Team`, jährlich in der Admin-UI anpassbar.
+- **Liga-Zugehörigkeit**: über `team_seasons` statt festem Feld auf `Team`. Eine weitere Liga oder Sportart ist eine neue Zeile (oder Import-Datei), kein Deploy.
 - **Auth**: echter Login (`mix phx.gen.auth`), nicht `Plug.BasicAuth`. Begründung in 9.1.
 - **Reveal-Host**: übertragbar. Begründung in 9.2.
 - **Mobile-Layout Reveal**: nebeneinander mit horizontalem Swipen, nicht gestapelt. Begründung in 9.3.
@@ -347,17 +347,14 @@ Konfigurationsfrage, keine Codeänderung.
 
 ## 11. Erweiterbarkeit: Mehrsaison, weitere Ligen, andere Sportarten
 
-Muss heute nicht gebaut werden, beeinflusst aber, was oben schon anders modelliert ist.
+Das Datenmodell war von Anfang an darauf ausgelegt, nicht an 1. und 2. Bundesliga zu kleben. Fußball und NFL liegen heute als getrennte Import-Dateien in `priv/data/` – eine Datei pro Sportart, der Import räumt nur in seiner eigenen auf.
 
-**Jetzt schon eingepreist (kostet kaum was, verhindert spätere Migrationen):**
-- `sports` und `competitions` als eigene Tabellen statt hart codierter Strings (Abschnitt 3) – eine neue Liga oder Sportart ist später eine neue Zeile über die Admin-UI, kein Deploy.
-- `tier` auf `Competition` statt Namen zu parsen – ermöglicht saubere Sortierung/Gruppierung, egal wie die Liga heißt oder in welchem Land sie ist.
-- `team_seasons` als Dreh- und Angelpunkt für Auf-/Abstieg – funktioniert unverändert für 3. Liga oder ausländische Ligen, weil es nur Team ↔ Competition ↔ Saison verknüpft.
-- Ein `Team` selbst braucht kein eigenes `sport_id` – die Sportart ergibt sich transitiv über seine `Competition`. Spart ein Feld, das später ohnehin nur redundant wäre.
+**Eingepreist und in Gebrauch:**
+- `sports` und `competitions` als eigene Tabellen statt hart codierter Strings (Abschnitt 3) – eine neue Liga oder Sportart ist eine neue Zeile bzw. eine Import-Datei, kein Deploy.
+- `tier` auf `Competition` statt Namen zu parsen – Sortierung unabhängig vom Namen. Bundesliga und NFL können beide Tier 1 sein, ohne sich in die Quere zu kommen; die Reihenfolge läuft über Sportart, dann Land, dann Stufe.
+- `team_seasons` als Dreh- und Angelpunkt für saisonale Zugehörigkeit – Auf-/Abstieg beim Fußball, Roster-Wechsel bei der NFL, dieselbe Tabelle.
+- Ein `Team` selbst braucht kein eigenes `sport_id` – die Sportart ergibt sich transitiv über seine `Competition`.
 
-**Bewusst nicht jetzt gebaut (würde nur Komplexität ohne aktuellen Nutzen bringen):**
-- Eigener Context/eigenes Modul pro Sportart. Das `Kits`-Schema (Team, Saison, Variante, Cutout, Model-Bilder, Shop-Link) ist generisch genug, dass ein NFL- oder NBA-Trikot vermutlich in dieselbe Tabelle passt – `kit_type` ist schon ein freier String. Das würde ich erst anfassen, wenn der erste konkrete Sportart-Wunsch kommt, nicht auf Verdacht.
-- Sportart-spezifisches Vokabular in der UI ("Kit" vs. "Jersey" vs. "Trikot"). Bleibt vorerst fest auf Fußball-Deutsch, keine Vokabular-Abstraktion vorab bauen.
-- Multi-Sport-Filter/Umschalter in Übersicht, Ranking oder Reveal. Mit nur einer Sportart in der Datenbank gibt es nichts umzuschalten – das kommt erst mit der zweiten.
-
-Kurz: Die Datenmodell-Entscheidungen oben halten dir die Tür offen, ohne dass du heute mehr baust als nötig.
+**Bewusst noch nicht:**
+- Eigener Context/eigenes Modul pro Sportart. Das `Kits`-Schema bleibt generisch.
+- Sportart-spezifisches Vokabular in der UI ("Kit" vs. "Jersey" vs. "Trikot"). Bleibt vorerst auf Deutsch "Trikot", auch bei der NFL.

@@ -1,6 +1,7 @@
 # KitRank
 
-Web-App zum Ranken der Trikots von 1. und 2. Bundesliga. Drei Bereiche:
+Web-App zum Ranken von Trikots von Sportvereinen — unabhängig von Sportart
+und Liga. Drei Bereiche:
 
 - **Übersicht** – alle Teams mit ihren aktuellen Trikots (Heim/Auswärts/Ausweich/Sonder), je als Cutout und Model-Bilder, mit Link zum Shop.
 - **Ranking** – jede:r baut eine eigene, per Link teilbare Rangliste, optional mit Notiz pro Trikot.
@@ -45,18 +46,24 @@ Zwei Wege, bewusst getrennt nach dem, was sich wie oft ändert.
 
 ### Stammdaten: Import aus einer Datei
 
-Vereine, Ligen und Saison-Zuordnungen stehen in
-[`priv/data/teams_2026_27.json`](priv/data/teams_2026_27.json) — 36 Vereine mit
-Kürzel und Vereinsfarbe. Einspielen:
+Vereine, Wettbewerbe und Saison-Zuordnungen stehen in JSON-Dateien unter
+`priv/data/` — **eine Datei pro Sportart**. Heute liegen dort Fußball
+([`teams_2026_27.json`](priv/data/teams_2026_27.json), 1. und 2. Bundesliga)
+und American Football ([`nfl_2026_27.json`](priv/data/nfl_2026_27.json)). Eine
+weitere Liga oder Sportart ist eine weitere Datei, kein Deploy.
 
 ```bash
-mix kitrank.import                                        # lokal
+mix kitrank.import                                        # Fußball
+mix kitrank.import priv/data/nfl_2026_27.json             # NFL
 /app/bin/kitrank eval 'Kitrank.Release.import_teams()'    # auf dem Server
+/app/bin/kitrank eval 'Kitrank.Release.import_teams("data/nfl_2026_27.json")'
 ```
 
-Der Import ist **idempotent** und berichtet, was er getan hat. Für die nächste
-Saison die Datei kopieren, `season` hochsetzen, Auf- und Abstiege eintragen,
-neu einspielen — Vereine wechseln dann einfach die Liga.
+Der Import ist **idempotent** und berichtet, was er getan hat. Jede Datei räumt
+nur in ihrer eigenen Sportart auf — der Fußball-Lauf lässt die NFL in Ruhe und
+umgekehrt. Für die nächste Saison die Datei kopieren, `season` hochsetzen,
+Zuordnungen anpassen, neu einspielen. Beim Fußball heißt das Auf- und Abstieg:
+Vereine wechseln dann einfach die Liga.
 
 Drei Dinge, die er absichtlich **nicht** tut:
 
@@ -104,9 +111,10 @@ und Ausweich weiterhin genau eines. Dafür brauchen Sondertrikots einen **Namen*
 Umgesetzt über zwei partielle Unique-Indizes statt einer gelockerten Regel — so
 bleibt die Begrenzung dort, wo sie sinnvoll ist, statt überall zu fallen.
 
-`/admin` hat CRUD für alles. Die Trikot-Liste lässt sich nach **Saison und Liga**
-filtern und nach **Verein durchsuchen** (Name oder Kürzel) — bei über hundert
-Trikots pro Saison ist Scrollen sonst keine Option.
+`/admin` hat CRUD für alles, inklusive Sportarten und Wettbewerbe. Die
+Trikot-Liste lässt sich nach **Saison und Liga** filtern und nach **Verein
+durchsuchen** (Name oder Kürzel) — bei über hundert Trikots pro Saison ist
+Scrollen sonst keine Option.
 
 Sie zeigt ausdrücklich auch Trikots **ohne Liga-Zuordnung**, rot markiert. Die
 tauchen in der Übersicht nämlich nicht auf, und das soll im Admin auffallen
@@ -201,7 +209,7 @@ Zugangsdaten.
 
 ```
 lib/kitrank/
-  kits.ex           # Teams, Ligen, Trikots – liefert die Übersicht, schreibt für den Admin
+  kits.ex           # Sportarten, Wettbewerbe, Teams, Trikots – Übersicht und Admin-Schreibschicht
   kits/             # Sport, Competition, Team, TeamSeason, Kit + Season-/URL-Validierung
   rankings.ex       # Ranglisten anlegen, umsortieren, teilen
   rankings/         # Ranking (edit_token + share_slug), RankingEntry
@@ -233,9 +241,9 @@ es gibt keinen Veröffentlichen-Schritt. Unbekannte Tokens liefern 404 statt
 eines Serverfehlers, damit ein Fehlschlag nicht verrät, dass an der Stelle
 überhaupt etwas sein könnte.
 
-**Warum zwei Schritte statt einer Liste:** bei vollständigen 1. und 2. Bundesliga
-stehen über hundert Trikots zur Wahl. Die per Drag in eine Reihenfolge zu
-bringen wäre unbenutzbar, und ein Reveal darüber liefe hundert Runden.
+**Warum zwei Schritte statt einer Liste:** über Sportarten und Ligen hinweg
+stehen schnell über hundert Trikots zur Wahl. Die per Drag in eine Reihenfolge
+zu bringen wäre unbenutzbar, und ein Reveal darüber liefe hundert Runden.
 Ausgewählt wird deshalb in einem Raster, sortiert nur noch, was übrig bleibt.
 
 Die Auswahl beginnt mit dem **Ausschnitt** — drei Achsen, frei kombinierbar:
@@ -243,12 +251,13 @@ Die Auswahl beginnt mit dem **Ausschnitt** — drei Achsen, frei kombinierbar:
 | Achse | wofür |
 |---|---|
 | **Saison** | eine, mehrere, oder „Alle" fürs Archiv |
-| **Liga** | Bundesliga, 2. Bundesliga, … |
+| **Liga** | ein Wettbewerb, mehrere, oder „Alle" |
 | **Verein** | einer oder mehrere |
 
 Damit geht beides: „alle Heimtrikots der Bundesliga 2026/27" genauso wie
 **„alle HSV-Trikots der letzten zehn Jahre"** — Saison auf „Alle", Verein auf
-HSV, fertig.
+HSV, fertig. Dasselbe Raster gilt für die NFL oder eine spätere Sportart,
+ohne Extra-Schritt.
 
 Eine leere Menge heißt überall **keine Einschränkung**, wie beim Reveal-Raum.
 Damit das nicht wie ein Versehen aussieht, ist „Alle" ein eigener Knopf, der
@@ -362,9 +371,9 @@ Saison nicht gibt, fallen still weg statt leere Karten zu erzeugen.
 
 **Zur Gestaltung**, weil es dem Code sonst wie Willkür aussieht:
 
-- **Bilder werden in der Größe geladen, die der Ort braucht.** Gespeichert wird die größte Variante, die der Shop hergibt (beim HSV 1000×1000 bei 108 KB) — im Raster ist die Kachel aber nur ~250 px breit. `Kitrank.Kits.ImageVariant` leitet für bekannte Shop-CDNs die kleinere Adresse ab: 27 KB statt 108 KB, bei 36 Kacheln 0,9 MB statt 3,7 MB. Die große Ansicht lädt weiter das Original. Fremde Muster bleiben unangetastet — lieber ein zu großes Bild als ein gebrochenes, und bewusst kein `srcset`, weil es dort keinen Rückfall gibt.
+- **Bilder werden in der Größe geladen, die der Ort braucht.** Gespeichert wird die größte Variante, die der Shop hergibt (beim HSV 1000×1000 bei 108 KB) — im Raster ist die Kachel aber nur ~250 px breit. `Kitrank.Kits.ImageVariant` leitet für bekannte Shop-CDNs die kleinere Adresse ab: 27 KB statt 108 KB, bei einem vollen Raster spürbar weniger Traffic. Die große Ansicht lädt weiter das Original. Fremde Muster bleiben unangetastet — lieber ein zu großes Bild als ein gebrochenes, und bewusst kein `srcset`, weil es dort keinen Rückfall gibt.
 - **Fehlt ein Trikotbild, wird das Trikot gezeichnet** statt einen grauen Kasten zu zeigen — als SVG in der Vereinsfarbe, gemustert nach Kit-Typ. Das ist der Normalfall und nicht der Ausnahmefall, weil Bilder verlinkt und nicht gehostet werden.
-- **Die App hat keine eigene Akzentfarbe.** 36 Vereinsfarben tragen die Sättigung der Seite; ausgewählte Zustände nehmen die Farbe des jeweiligen Vereins an, statt mit ihr zu konkurrieren.
+- **Die App hat keine eigene Akzentfarbe.** Die Vereinsfarben tragen die Sättigung der Seite; ausgewählte Zustände nehmen die Farbe des jeweiligen Vereins an, statt mit ihr zu konkurrieren.
 - **Ein Klick auf jede Trikot-Fläche zeigt es groß** — mit Pfeiltasten durch die Bilder, Escape zurück. Escape schließt dabei erst die große Ansicht und nicht gleich das Modal darunter. Funktioniert auch bei Trikots ohne Foto, dort eben mit der Zeichnung.
 - **Die Trikot-Fläche bleibt in beiden Themes hell.** Trikots sind Produktfotos, und die liegen auf Weiß — im Dunkelmodus wirkt das wie ein Leuchtkasten statt wie ein invertiertes Foto.
 - Kontraste (Schrift auf Vereinsfarbe, Ärmelabstufungen) rechnet `KitrankWeb.Color` über die WCAG-Leuchtdichte aus, nicht über einen Helligkeits-Daumenwert. Sonst kippt es genau bei Dortmund-Gelb und Schalke-Blau in die falsche Richtung.
@@ -372,7 +381,7 @@ Saison nicht gibt, fallen still weg statt leere Karten zu erzeugen.
 Ein paar Entscheidungen, die man dem Code sonst nicht ansieht:
 
 - **Liga-Zugehörigkeit hängt an `team_seasons`**, nicht am Team. Auf-/Abstieg ist damit ein Datensatz pro Jahr, keine Änderung an Stammdaten.
-- **`sports` und `competitions` sind Tabellen**, keine hart codierten Strings. Eine weitere Liga oder Sportart ist später eine neue Zeile, kein Deploy.
+- **`sports` und `competitions` sind Tabellen**, keine hart codierten Strings. Eine weitere Liga oder Sportart ist eine neue Zeile (oder eine Import-Datei), kein Deploy.
 - **Reveal-State liegt in Postgres**, nicht in einem GenServer pro Raum. Für Freundesgruppen reicht "Write + Broadcast", und Reconnects brauchen dadurch keine Sonderbehandlung.
 - **Der Raumcode steuert nicht den Raum.** Er ist kurz und damit ratbar; die Host-Rechte hängen an einem eigenen langen `host_token`.
 - **Trikotbilder werden verlinkt, nicht gehostet** (Urheberrecht, Architektur Abschnitt 5). URL-Felder sind auf `http(s)` begrenzt, weil die Werte direkt in `src`/`href` landen.

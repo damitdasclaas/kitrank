@@ -1,0 +1,58 @@
+<%!-- locale kommt vom Controller, die deutsche Fassung ist die rechtlich massgebliche. --%>
+<.page
+  flash={@flash}
+  current_scope={@current_scope}
+  eyebrow={if(@locale == "en", do: "Legal", else: "Angaben gemäß § 5 DDG")}
+  title={if(@locale == "en", do: "Legal notice", else: "Impressum")}
+>
+  <%= if @locale == "en" do %>
+    <.section title="Operator">
+      <p>{@betreiber.name}</p>
+      <p>{@betreiber.street}<br />{@betreiber.city}</p>
+    </.section>
+
+    <.section title="Contact">
+      <p>
+        Email:
+        <a href={"mailto:#{@betreiber.email}"} class="text-ink underline-offset-2 hover:underline">
+          {@betreiber.email}
+        </a>
+      </p>
+    </.section>
+
+    <.section title="Responsible for content">
+      <p>
+        Responsible for content under section 18 (2) of the German Interstate Media Treaty (MStV)
+        is the operator named above.
+      </p>
+      <p>
+        KitRank is a private project, not a registered business. There is no VAT ID and no
+        commercial register entry.
+      </p>
+    </.section>
+  <% else %>
+    <.section title="Betreiber">
+      <p>{@betreiber.name}</p>
+      <p>{@betreiber.street}<br />{@betreiber.city}</p>
+    </.section>
+
+    <.section title="Kontakt">
+      <p>
+        E-Mail:
+        <a href={"mailto:#{@betreiber.email}"} class="text-ink underline-offset-2 hover:underline">
+          {@betreiber.email}
+        </a>
+      </p>
+    </.section>
+
+    <.section title="Verantwortlich für den Inhalt">
+      <p>
+        Verantwortlich für den Inhalt nach § 18 Abs. 2 MStV ist der oben genannte Betreiber.
+      </p>
+      <p>
+        KitRank ist ein privates Projekt, kein Gewerbe. Es gibt keine USt-IdNr. und keinen
+        Handelsregistereintrag.
+      </p>
+    </.section>
+  <% end %>
+</.page>

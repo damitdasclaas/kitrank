@@ -108,7 +108,7 @@ defmodule KitrankWeb.Layouts do
         <p>
           <span class="text-ink">{gettext("KitRank ist ein privates Projekt")}</span>
           {gettext(
-            "und steht in keiner Verbindung zur DFL oder zu den genannten Vereinen. Vereins- und Liganamen dienen allein dazu, die Trikots zu benennen; die Marken gehören ihren Inhabern."
+            "und steht in keiner Verbindung zu den genannten Ligen, Verbänden oder Vereinen. Vereins- und Liganamen dienen allein dazu, die Trikots zu benennen; die Marken gehören ihren Inhabern."
           )}
         </p>
         <p>
@@ -125,6 +125,17 @@ defmodule KitrankWeb.Layouts do
             "Die Shop-Verweise führen zum jeweiligen Vereinsshop; KitRank verdient an keinem Kauf mit."
           )}
         </p>
+        <nav class="flex flex-wrap gap-x-4 gap-y-1 pt-2" aria-label={gettext("Rechtliches")}>
+          <.link href={~p"/impressum"} class="text-ink underline-offset-2 transition hover:underline">
+            {gettext("Impressum")}
+          </.link>
+          <.link
+            href={~p"/datenschutz"}
+            class="text-ink underline-offset-2 transition hover:underline"
+          >
+            {gettext("Datenschutz")}
+          </.link>
+        </nav>
       </div>
     </footer>
 
