@@ -340,8 +340,12 @@ defmodule KitrankWeb.OverviewLiveTest do
 
       {:ok, view, _html} = live(conn, "/vergleich?trikots=#{kit.id},#{other.id}")
 
+      # Der Vergleich rendert zwei Layouts – eins fuers Handy, eins ab sm.
+      # Beide zeigen dasselbe Trikot, also braucht der Test die Rolle dazu.
       html =
-        view |> element(~s{button[phx-click="zoom"][phx-value-id="#{kit.id}"]}) |> render_click()
+        view
+        |> element(~s{[data-role="compare-zoom"][phx-value-id="#{kit.id}"]})
+        |> render_click()
 
       assert html =~ ~s(id="kit-lightbox")
       assert html =~ "https://example.com/cutout.jpg"
@@ -401,6 +405,87 @@ defmodule KitrankWeb.OverviewLiveTest do
 
       {:ok, _view, html} = live(conn, "/?trikots=#{a.id},#{b.id}")
       assert html =~ "Vergleichen (2)"
+    end
+
+    test "der Vergleich-Knopf steht auf dem Handy da, nicht erst beim Hovern", %{conn: conn} do
+      {:ok, _view, html} = live(conn, ~p"/")
+
+      [knopf] = Regex.run(~r/<button[^>]*data-role="tile-compare"[^>]*>/, html)
+
+      # Ohne Praefix gilt eine Klasse ab dem kleinsten Bildschirm. Ein nacktes
+      # opacity-0 heisst also: auf dem Handy unsichtbar, und dort gibt es kein
+      # Hover, das sie zurueckholt.
+      refute knopf =~ ~r/class="[^"]*(^|\s)opacity-0/
+      assert knopf =~ "sm:opacity-0"
+      assert knopf =~ "sm:group-hover:opacity-100"
+    end
+
+    test "der Vergleich fuellt auf dem Handy den Bildschirm", %{conn: conn, a: a, b: b} do
+      {:ok, _view, html} = live(conn, "/vergleich?trikots=#{a.id},#{b.id}")
+
+      # Randlos und ueber die volle Hoehe – sonst passen zwei Trikots nicht
+      # nebeneinander auf ein 390er Display.
+      assert html =~ "min-h-[100dvh]"
+      assert html =~ ~s(data-role="compare-zoom-mobile")
+
+      # Und die Tabelle mit ihren 560 px liegt auf dem Handy nicht davor.
+      assert html =~ ~r/class="hidden overflow-x-auto[^"]*sm:block/
+    end
+
+    test "beide Trikots stehen auf dem Handy nebeneinander", %{conn: conn, a: a, b: b} do
+      {:ok, _view, html} = live(conn, "/vergleich?trikots=#{a.id},#{b.id}")
+
+      spalten = Regex.scan(~r/data-role="compare-zoom-mobile"/, html)
+
+      assert length(spalten) == 2
+      assert html =~ "grid-template-columns: repeat(2, minmax(0, 1fr))"
+    end
+
+    test "aus dem Vergleich fuehrt ein Weg ins Detail", %{conn: conn, a: a, b: b} do
+      team = Kits.get_team!(a.team_id)
+      {:ok, view, html} = live(conn, "/vergleich?trikots=#{a.id},#{b.id}")
+
+      assert html =~ "/teams/#{team.id}?trikots=#{a.id}%2C#{b.id}&amp;zurueck=vergleich"
+
+      # Je Spalte einer – dieser gehoert zu a.
+      html =
+        view
+        |> element(~s{[data-role="compare-detail"][href^="/teams/#{team.id}?"]})
+        |> render_click()
+
+      # Das Detail zeigt, was der Vergleich nicht hat: alle Trikots des
+      # Vereins und den Weg in den Shop.
+      assert html =~ team.name
+      assert html =~ "Vereinsshop"
+    end
+
+    test "und aus dem Detail wieder zurueck in den Vergleich", %{conn: conn, a: a, b: b} do
+      team = Kits.get_team!(a.team_id)
+
+      {:ok, _view, html} =
+        live(conn, "/teams/#{team.id}?trikots=#{a.id},#{b.id}&zurueck=vergleich")
+
+      assert html =~ "/vergleich?trikots=#{a.id}%2C#{b.id}"
+    end
+
+    test "ohne diese Spur schliesst das Detail auf die Uebersicht", %{conn: conn, a: a} do
+      team = Kits.get_team!(a.team_id)
+
+      {:ok, _view, html} = live(conn, "/teams/#{team.id}?trikots=#{a.id}")
+
+      refute html =~ "/vergleich?"
+    end
+
+    test "steht nach dem Detail nur noch eins im Vergleich, geht es zur Uebersicht", %{
+      conn: conn,
+      a: a
+    } do
+      # Sonst landet man auf einem Vergleich, der nichts vergleicht.
+      team = Kits.get_team!(a.team_id)
+
+      {:ok, _view, html} = live(conn, "/teams/#{team.id}?trikots=#{a.id}&zurueck=vergleich")
+
+      refute html =~ "/vergleich?"
     end
 
     test "stellt im Modal alle gewählten Trikots gegenüber", %{conn: conn, a: a, b: b} do

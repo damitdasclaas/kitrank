@@ -35,6 +35,7 @@ defmodule KitrankWeb.OverviewLive do
     socket =
       socket
       |> assign_compare(params)
+      |> assign_back(params)
       |> assign_open_team(params)
       |> assign_page_title()
 
@@ -175,6 +176,7 @@ defmodule KitrankWeb.OverviewLive do
     |> assign_new(:image_choice, fn -> %{} end)
     |> assign_new(:zoom, fn -> nil end)
     |> assign_new(:compare_ids, fn -> [] end)
+    |> assign_new(:back, fn -> nil end)
     |> assign_new(:open_team, fn -> nil end)
     |> open_first_league()
   end
@@ -212,6 +214,13 @@ defmodule KitrankWeb.OverviewLive do
     assign(socket, :compare_ids, ids)
   end
 
+  # Woher das Detail aufgerufen wurde. Ohne diese Spur landet man beim
+  # Schliessen auf der Uebersicht, obwohl man aus dem Vergleich kam – und muss
+  # den Vergleich neu aufmachen, um beim naechsten Trikot dasselbe zu tun.
+  defp assign_back(socket, params) do
+    assign(socket, :back, if(params["zurueck"] == "vergleich", do: "vergleich"))
+  end
+
   defp assign_open_team(%{assigns: %{live_action: :team}} = socket, %{"id" => id}) do
     case Integer.parse(id) do
       {team_id, ""} -> assign(socket, :open_team, Map.get(socket.assigns.teams_by_id, team_id))
@@ -233,13 +242,16 @@ defmodule KitrankWeb.OverviewLive do
   end
 
   defp patch_compare(socket, ids) do
-    push_patch(socket, to: path_for(socket.assigns.live_action, socket.assigns.open_team, ids))
+    push_patch(socket,
+      to: path_for(socket.assigns.live_action, socket.assigns.open_team, ids, socket.assigns.back)
+    )
   end
 
   ## Pfade – die Auswahl reist über alle Ansichten mit
 
-  defp path_for(action, open_team, ids) do
+  defp path_for(action, open_team, ids, back \\ nil) do
     query = if ids == [], do: %{}, else: %{"trikots" => Enum.join(ids, ",")}
+    query = if back, do: Map.put(query, "zurueck", back), else: query
 
     case {action, open_team} do
       {:team, %{team: team}} -> ~p"/teams/#{team.id}?#{query}"
@@ -250,7 +262,13 @@ defmodule KitrankWeb.OverviewLive do
 
   defp index_path(ids), do: path_for(:index, nil, ids)
   defp compare_path(ids), do: path_for(:compare, nil, ids)
-  defp team_path(team, ids), do: path_for(:team, %{team: team}, ids)
+  defp team_path(team, ids, back \\ nil), do: path_for(:team, %{team: team}, ids, back)
+
+  # Der Weg zurueck aus dem Detail: in den Vergleich, wenn es von dort kam.
+  # Steht dort inzwischen nur noch ein Trikot, waere der Vergleich leer – dann
+  # doch die Uebersicht.
+  defp close_detail_path("vergleich", ids) when length(ids) >= 2, do: compare_path(ids)
+  defp close_detail_path(_back, ids), do: index_path(ids)
 
   ## Render
 
@@ -315,7 +333,7 @@ defmodule KitrankWeb.OverviewLive do
         season={@season}
         compare_ids={@compare_ids}
         image_choice={@image_choice}
-        close_path={index_path(@compare_ids)}
+        close_path={close_detail_path(@back, @compare_ids)}
         zoomed?={@zoom != nil}
       />
 
@@ -470,13 +488,18 @@ defmodule KitrankWeb.OverviewLive do
           phx-click="toggle_compare"
           phx-value-id={@lead_kit.id}
           data-role="tile-compare"
-          class={[
-            "absolute right-2 top-2 z-20 flex h-7 items-center gap-1 rounded-full border px-2",
-            "font-mono text-[10px] font-medium transition",
-            @lead_kit.id in @compare_ids && "border-transparent text-white",
-            @lead_kit.id not in @compare_ids &&
-              "border-black/10 bg-white/85 text-black/60 opacity-0 backdrop-blur focus-visible:opacity-100 group-hover:opacity-100"
-          ]}
+          class={
+            [
+              "absolute right-2 top-2 z-20 flex h-7 items-center gap-1 rounded-full border px-2",
+              "font-mono text-[10px] font-medium transition",
+              @lead_kit.id in @compare_ids && "border-transparent text-white",
+              # Auf dem Handy gibt es kein Hover: was nur beim Zeigen erscheint,
+              # existiert dort nicht. Deshalb sichtbar — und erst ab sm, wo eine
+              # Maus wahrscheinlich ist, zurueckhaltend.
+              @lead_kit.id not in @compare_ids &&
+                "border-black/10 bg-white/85 text-black/60 backdrop-blur sm:opacity-0 sm:focus-visible:opacity-100 sm:group-hover:opacity-100"
+            ]
+          }
           style={
             @lead_kit.id in @compare_ids &&
               "background-color: #{@color}; color: #{Color.readable_on(@color)}"
@@ -793,104 +816,179 @@ defmodule KitrankWeb.OverviewLive do
       label="Direktvergleich"
       size="max-w-6xl"
       close_on_escape={!@zoomed?}
+      full_on_mobile
     >
-      <div class="border-b border-line px-6 py-5">
-        <p class="kr-eyebrow">{gettext("Saison %{jahr}", jahr: @season)}</p>
-        <h2 class="kr-display mt-1.5 text-2xl">{gettext("Direktvergleich")}</h2>
-        <p class="mt-1 text-sm text-soft">
-          {gettext(
-            "%{anzahl} Trikots nebeneinander. Die Zeilen liegen auf einer Höhe, damit sich Verein, Typ und Shop direkt gegenüberstehen.",
-            anzahl: length(@entries)
-          )}
-        </p>
-      </div>
+      <%!-- Auf dem Handy fuellt der Vergleich den Bildschirm: die Bilder
+            bekommen den Rest der Hoehe, der Rest nur so viel, wie er braucht.
+            Ab sm ist es wieder eine Karte im Fluss. --%>
+      <div class="flex min-h-[100dvh] flex-col sm:block sm:min-h-0">
+        <div class="shrink-0 border-b border-line px-4 py-4 sm:px-6 sm:py-5">
+          <p class="kr-eyebrow">{gettext("Saison %{jahr}", jahr: @season)}</p>
+          <h2 class="kr-display mt-1.5 text-xl sm:text-2xl">{gettext("Direktvergleich")}</h2>
+          <p class="mt-1 hidden text-sm text-soft sm:block">
+            {gettext(
+              "%{anzahl} Trikots nebeneinander. Die Zeilen liegen auf einer Höhe, damit sich Verein, Typ und Shop direkt gegenüberstehen.",
+              anzahl: length(@entries)
+            )}
+          </p>
+        </div>
 
-      <div :if={@entries == []} class="px-6 py-16 text-center">
-        <p class="text-sm text-soft">
-          {gettext(
-            "Noch nichts ausgewählt. Tipp in der Übersicht auf „Vergleich“ bei zwei oder drei Trikots."
-          )}
-        </p>
-      </div>
+        <div :if={@entries == []} class="px-6 py-16 text-center">
+          <p class="text-sm text-soft">
+            {gettext(
+              "Noch nichts ausgewählt. Tipp in der Übersicht auf „Vergleich“ bei zwei oder drei Trikots."
+            )}
+          </p>
+        </div>
 
-      <div :if={@entries != []} class="overflow-x-auto px-6 py-6">
-        <div
-          class="grid min-w-[560px] gap-x-4"
-          style={"grid-template-columns: 5.5rem repeat(#{length(@entries)}, minmax(0, 1fr))"}
-        >
-          <div></div>
-          <div :for={entry <- @entries} class="pb-3">
-            <button
-              type="button"
-              phx-click="zoom"
-              phx-value-id={entry.kit.id}
-              class="group relative flex aspect-[4/5] w-full cursor-zoom-in items-center justify-center rounded-lg p-6"
-              style={"background-color: color-mix(in oklab, #{Color.team_color(entry.team)} 14%, #FFFFFF)"}
-              aria-label={
-                gettext("%{verein} %{trikot} groß ansehen",
-                  verein: entry.team.name,
-                  trikot: KitLabel.display(entry.kit)
-                )
-              }
-            >
-              <.kit_figure
-                kit={entry.kit}
-                team={entry.team}
-                fill
-                class="transition-transform duration-300 group-hover:scale-[1.04]"
-              />
-              <.zoom_hint />
-            </button>
-          </div>
+        <.compare_columns :if={@entries != []} entries={@entries} />
 
-          <.compare_row label="Verein" entries={@entries} first?>
-            <:cell :let={entry}>
-              <span class="font-medium">{entry.team.name}</span>
-              <span
-                class="ml-1.5 font-mono text-[11px] font-semibold"
-                style={"color: #{Color.team_color(entry.team)}"}
+        <div :if={@entries != []} class="hidden overflow-x-auto px-6 py-6 sm:block">
+          <div
+            class="grid min-w-[560px] gap-x-4"
+            style={"grid-template-columns: 5.5rem repeat(#{length(@entries)}, minmax(0, 1fr))"}
+          >
+            <div></div>
+            <div :for={entry <- @entries} class="pb-3">
+              <button
+                type="button"
+                phx-click="zoom"
+                phx-value-id={entry.kit.id}
+                data-role="compare-zoom"
+                class="group relative flex aspect-[4/5] w-full cursor-zoom-in items-center justify-center rounded-lg p-6"
+                style={"background-color: color-mix(in oklab, #{Color.team_color(entry.team)} 14%, #FFFFFF)"}
+                aria-label={
+                  gettext("%{verein} %{trikot} groß ansehen",
+                    verein: entry.team.name,
+                    trikot: KitLabel.display(entry.kit)
+                  )
+                }
               >
-                {entry.team.short_code}
-              </span>
-            </:cell>
-          </.compare_row>
+                <.kit_figure
+                  kit={entry.kit}
+                  team={entry.team}
+                  fill
+                  class="transition-transform duration-300 group-hover:scale-[1.04]"
+                />
+                <.zoom_hint />
+              </button>
+            </div>
 
-          <.compare_row label="Trikot" entries={@entries}>
-            <:cell :let={entry}>{KitLabel.display(entry.kit)}</:cell>
-          </.compare_row>
+            <.compare_row label="Verein" entries={@entries} first?>
+              <:cell :let={entry}>
+                <span class="font-medium">{entry.team.name}</span>
+                <span
+                  class="ml-1.5 font-mono text-[11px] font-semibold"
+                  style={"color: #{Color.team_color(entry.team)}"}
+                >
+                  {entry.team.short_code}
+                </span>
+              </:cell>
+            </.compare_row>
 
-          <.compare_row label="Liga" entries={@entries}>
-            <:cell :let={entry}>{entry.competition.name}</:cell>
-          </.compare_row>
+            <.compare_row label="Trikot" entries={@entries}>
+              <:cell :let={entry}>{KitLabel.display(entry.kit)}</:cell>
+            </.compare_row>
 
-          <.compare_row label="Shop" entries={@entries}>
-            <:cell :let={entry}>
-              <a
-                :if={entry.kit.source_shop_url}
-                href={entry.kit.source_shop_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                class="inline-flex items-center gap-1 underline underline-offset-4 hover:opacity-70"
-              >
-                {gettext("Vereinsshop")}
-                <.icon name="hero-arrow-top-right-on-square-mini" class="size-3" />
-              </a>
-              <span :if={!entry.kit.source_shop_url} class="text-soft">—</span>
-            </:cell>
-          </.compare_row>
+            <.compare_row label="Liga" entries={@entries}>
+              <:cell :let={entry}>{entry.competition.name}</:cell>
+            </.compare_row>
 
-          <div class="pt-4"></div>
-          <div :for={entry <- @entries} class="pt-4">
-            <button
-              type="button"
-              phx-click="toggle_compare"
-              phx-value-id={entry.kit.id}
-              class="w-full rounded-md border border-line px-3 py-2 font-mono text-[11px] text-soft transition hover:border-ink hover:text-ink"
-            >{gettext("Herausnehmen")}</button>
+            <.compare_row label="Shop" entries={@entries}>
+              <:cell :let={entry}>
+                <a
+                  :if={entry.kit.source_shop_url}
+                  href={entry.kit.source_shop_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="inline-flex items-center gap-1 underline underline-offset-4 hover:opacity-70"
+                >
+                  {gettext("Vereinsshop")}
+                  <.icon name="hero-arrow-top-right-on-square-mini" class="size-3" />
+                </a>
+                <span :if={!entry.kit.source_shop_url} class="text-soft">—</span>
+              </:cell>
+            </.compare_row>
+
+            <div class="pt-4"></div>
+            <div :for={entry <- @entries} class="flex gap-2 pt-4">
+              <.link
+                patch={team_path(entry.team, @compare_ids, "vergleich")}
+                data-role="compare-detail"
+                class="flex-1 rounded-md border border-line px-3 py-2 text-center font-mono text-[11px] text-soft transition hover:border-ink hover:text-ink"
+              >{gettext("Detail")}</.link>
+              <button
+                type="button"
+                phx-click="toggle_compare"
+                phx-value-id={entry.kit.id}
+                class="flex-1 rounded-md border border-line px-3 py-2 font-mono text-[11px] text-soft transition hover:border-ink hover:text-ink"
+              >{gettext("Herausnehmen")}</button>
+            </div>
           </div>
         </div>
       </div>
     </.modal>
+    """
+  end
+
+  attr :entries, :list, required: true
+
+  # Die Handy-Fassung des Vergleichs. Kein zweites Layout aus Bequemlichkeit:
+  # die Tabelle daneben braucht eine Beschriftungsspalte und 560 px Breite,
+  # damit die Zeilen gegenueberstehen. Auf 390 px heisst das seitlich scrollen —
+  # und dann sieht man nie beide Trikots gleichzeitig, was der ganze Zweck ist.
+  # Hier steht darum die Beschriftung ueber dem Wert statt daneben.
+  defp compare_columns(assigns) do
+    ~H"""
+    <div
+      class="grid min-h-0 flex-1 gap-2 px-3 pb-3 pt-3 sm:hidden"
+      style={"grid-template-columns: repeat(#{length(@entries)}, minmax(0, 1fr))"}
+    >
+      <div :for={entry <- @entries} class="flex min-h-0 flex-col">
+        <button
+          type="button"
+          phx-click="zoom"
+          phx-value-id={entry.kit.id}
+          data-role="compare-zoom-mobile"
+          class="group relative min-h-0 flex-1 overflow-hidden rounded-lg"
+          style={"background-color: color-mix(in oklab, #{Color.team_color(entry.team)} 14%, #FFFFFF)"}
+          aria-label={
+            gettext("%{verein} %{trikot} groß ansehen",
+              verein: entry.team.name,
+              trikot: KitLabel.display(entry.kit)
+            )
+          }
+        >
+          <%!-- Ohne Polster: `fill` misst gegen die Padding-Box, ein p-* am
+                Bild bliebe wirkungslos. Hier ist das richtig — im Vergleich
+                zaehlt jeder Pixel Trikot. --%>
+          <.kit_figure kit={entry.kit} team={entry.team} fill />
+        </button>
+
+        <p
+          class="mt-2 truncate font-mono text-[11px] font-semibold"
+          style={"color: #{Color.team_color(entry.team)}"}
+        >
+          {entry.team.short_code}
+        </p>
+        <p class="truncate text-[13px] leading-tight">{entry.team.name}</p>
+        <p class="truncate text-[11px] text-soft">{KitLabel.display(entry.kit)}</p>
+        <p class="truncate text-[11px] text-soft">{entry.competition.name}</p>
+
+        <.link
+          patch={team_path(entry.team, Enum.map(@entries, & &1.kit.id), "vergleich")}
+          data-role="compare-detail-mobile"
+          class="mt-2 rounded-md border border-line px-2 py-1.5 text-center font-mono text-[11px] text-soft transition hover:border-ink hover:text-ink"
+        >{gettext("Detail")}</.link>
+
+        <button
+          type="button"
+          phx-click="toggle_compare"
+          phx-value-id={entry.kit.id}
+          class="mt-1 rounded-md px-2 py-1.5 text-center font-mono text-[11px] text-soft transition hover:text-ink"
+        >{gettext("Herausnehmen")}</button>
+      </div>
+    </div>
     """
   end
 

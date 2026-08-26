@@ -334,6 +334,15 @@ defmodule KitrankWeb.KitComponents do
     default: true,
     doc: "aus, solange etwas darueber liegt – dann schliesst Escape erst das Obere"
 
+  attr :full_on_mobile, :boolean,
+    default: false,
+    doc: """
+    Auf dem Handy randlos ueber den ganzen Bildschirm statt als Karte mit
+    Rahmen. Fuer Inhalte, deren Sinn an der Flaeche haengt – der Vergleich
+    lebt davon, dass beide Trikots gleichzeitig zu sehen sind, und dafuer
+    zaehlt jeder Pixel. Ab `sm` bleibt es die Karte.
+    """
+
   slot :inner_block, required: true
 
   @doc "Modal-Huelle: Backdrop, Escape zum Schliessen, Fokus auf dem Dialog."
@@ -359,9 +368,16 @@ defmodule KitrankWeb.KitComponents do
       >
       </div>
 
-      <div class="relative flex min-h-full items-start justify-center p-3 sm:p-6">
+      <div class={[
+        "relative flex min-h-full items-start justify-center sm:p-6",
+        if(@full_on_mobile, do: "p-0", else: "p-3")
+      ]}>
         <div class={[
-          "kr-rise relative w-full rounded-xl border border-line bg-panel shadow-2xl",
+          "kr-rise relative w-full bg-panel shadow-2xl",
+          if(@full_on_mobile,
+            do: "min-h-[100dvh] sm:min-h-0 sm:rounded-xl sm:border sm:border-line",
+            else: "rounded-xl border border-line"
+          ),
           @size
         ]}>
           <button
