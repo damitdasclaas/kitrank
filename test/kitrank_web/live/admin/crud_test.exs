@@ -225,7 +225,11 @@ defmodule KitrankWeb.Admin.CrudTest do
       |> form("#kit-form", kit: %{team_id: team.id, season: season, kit_type: "home"})
       |> render_submit()
 
-      {:ok, _view, html} = live(conn, ~p"/")
+      # Ligen starten auf der Uebersicht zugeklappt – der Verein steht in der
+      # Kachel, also erst aufklappen.
+      {:ok, view, _html} = live(conn, ~p"/")
+      html = view |> element(~s{button[phx-click="toggle_league"]}) |> render_click()
+
       assert html =~ team.name
     end
   end

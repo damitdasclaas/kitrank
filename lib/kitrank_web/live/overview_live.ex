@@ -232,7 +232,7 @@ defmodule KitrankWeb.OverviewLive do
     |> assign_new(:sort_dir, fn -> :asc end)
     |> assign_visible()
     |> assign_new(:open_team, fn -> nil end)
-    |> open_first_league()
+    |> close_leagues()
   end
 
   # Was das Raster tatsaechlich zeigt: die geladene Uebersicht, durch Suche und
@@ -320,18 +320,14 @@ defmodule KitrankWeb.OverviewLive do
     Enum.filter(Kit.kit_types(), &MapSet.member?(vorhanden, &1))
   end
 
-  # Beim Laden und nach einem Saisonwechsel die oberste Liga aufklappen – bei
-  # zwei deutschen Ligen also die Bundesliga. Offen ist immer hoechstens eine;
-  # ein Klick auf eine andere klappt die vorige zu.
-  defp open_first_league(socket) do
-    erste =
-      case socket.assigns.overview do
-        [{competition, _teams} | _] -> competition.id
-        [] -> nil
-      end
-
-    assign(socket, :open_league, erste)
-  end
+  # Beim Laden und nach einem Saisonwechsel ist keine Liga offen: mit drei
+  # Ligen ueber zwei Sportarten ist die oberste keine gute Vorauswahl mehr, und
+  # 18 aufgeklappte Kacheln schieben die anderen Ligen unter den Bildschirmrand.
+  # Zu sehen ist erst die Liste der Ligen — was man will, klappt man auf.
+  #
+  # Offen ist weiterhin hoechstens eine; ein Klick auf eine andere klappt die
+  # vorige zu. Waehrend einer Suche gilt das nicht, siehe league_open?/3.
+  defp close_leagues(socket), do: assign(socket, :open_league, nil)
 
   # Nimmt nur IDs an, die es in dieser Saison wirklich gibt – ein geteilter Link
   # aus der Vorsaison soll nicht mit leeren Karten enden, sondern mit weniger.

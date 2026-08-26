@@ -12,6 +12,26 @@ defmodule KitrankWeb.OverviewLiveTest do
     league_fixture(Keyword.put_new(opts, :season, Kits.current_season()))
   end
 
+  # Seit alle Ligen zugeklappt starten, sieht ein frisch geladenes Raster keine
+  # Kacheln. Tests, die welche brauchen, klappen erst eine auf.
+  defp oeffne(view, competition) do
+    view
+    |> element(~s{button[phx-click="toggle_league"][phx-value-id="#{competition.id}"]})
+    |> render_click()
+  end
+
+  # Wenn es nur eine Liga gibt, muss der Test sie nicht benennen.
+  defp oeffne(view) do
+    view |> element(~s{button[phx-click="toggle_league"]}) |> render_click()
+  end
+
+  # Raster mit aufgeklappter Liga – der Ausgangspunkt fuer alles, was Kacheln
+  # braucht.
+  defp geoeffnet(conn) do
+    {:ok, view, _html} = live(conn, ~p"/")
+    {view, oeffne(view)}
+  end
+
   describe "Raster" do
     test "zeigt Ligen nach tier und die Teams darunter", %{conn: conn} do
       erste = competition_fixture(name: "Erste Liga", tier: 1)
@@ -52,7 +72,7 @@ defmodule KitrankWeb.OverviewLiveTest do
       assert html =~ "Bundesliga"
     end
 
-    test "die oberste Liga ist offen, die anderen zu", %{conn: conn} do
+    test "alle Ligen sind zunächst zu", %{conn: conn} do
       erste = competition_fixture(name: "Erste Liga", tier: 1)
       zweite = competition_fixture(name: "Zweite Liga", tier: 2)
       %{teams: [a]} = league(competition: erste, team_count: 1)
@@ -60,11 +80,17 @@ defmodule KitrankWeb.OverviewLiveTest do
 
       {:ok, view, html} = live(conn, ~p"/")
 
-      # Beide Ueberschriften da, aber nur die erste Liga zeigt ihre Vereine.
-      # Geprueft wird ueber die Kachel-Links: Namen aus Fixtures koennen
-      # Praefixe voneinander sein, dann trifft ein refute versehentlich zu.
+      # Zu sehen ist die Liste der Ligen, nicht 18 Kacheln, die alles andere
+      # unter den Bildschirmrand schieben. Geprueft wird ueber die
+      # Kachel-Links: Namen aus Fixtures koennen Praefixe voneinander sein,
+      # dann trifft ein refute versehentlich zu.
       assert html =~ "Erste Liga"
       assert html =~ "Zweite Liga"
+      refute has_element?(view, ~s{a[href="/teams/#{a.id}"]})
+      refute has_element?(view, ~s{a[href="/teams/#{b.id}"]})
+
+      # Aufklappen zeigt sie dann.
+      oeffne(view, erste)
       assert has_element?(view, ~s{a[href="/teams/#{a.id}"]})
       refute has_element?(view, ~s{a[href="/teams/#{b.id}"]})
     end
@@ -90,12 +116,10 @@ defmodule KitrankWeb.OverviewLiveTest do
       %{teams: [a]} = league(competition: erste, team_count: 1)
 
       {:ok, view, _html} = live(conn, ~p"/")
+      oeffne(view, erste)
       assert has_element?(view, ~s{a[href="/teams/#{a.id}"]})
 
-      html =
-        view
-        |> element(~s{button[phx-click="toggle_league"][phx-value-id="#{erste.id}"]})
-        |> render_click()
+      html = oeffne(view, erste)
 
       refute has_element?(view, ~s{a[href="/teams/#{a.id}"]})
       # Die Ueberschrift bleibt – die Seite wirkt nicht leer.
@@ -108,17 +132,21 @@ defmodule KitrankWeb.OverviewLiveTest do
       league(competition: erste, team_count: 1)
       league(competition: zweite, team_count: 1)
 
-      {:ok, _view, html} = live(conn, ~p"/")
+      {:ok, view, html} = live(conn, ~p"/")
 
-      assert html =~ ~s(aria-expanded="true")
+      # Zu Anfang ist keine offen.
+      refute html =~ ~s(aria-expanded="true")
       assert html =~ ~s(aria-expanded="false")
       assert html =~ ~s(aria-controls="liga-#{erste.id}")
+
+      assert oeffne(view, erste) =~ ~s(aria-expanded="true")
     end
 
     test "zeigt Kürzel und Name jedes Teams", %{conn: conn} do
       %{teams: [team | _]} = league(team_count: 1)
 
-      {:ok, _view, html} = live(conn, ~p"/")
+      {:ok, view, _html} = live(conn, ~p"/")
+      html = oeffne(view)
 
       assert html =~ team.name
       assert html =~ team.short_code
@@ -127,7 +155,8 @@ defmodule KitrankWeb.OverviewLiveTest do
     test "zeichnet ein Trikot ohne Bild als Silhouette", %{conn: conn} do
       league(team_count: 1, kit_types: ["home"])
 
-      {:ok, _view, html} = live(conn, ~p"/")
+      {:ok, view, _html} = live(conn, ~p"/")
+      html = oeffne(view)
 
       assert html =~ ~s(viewBox="0 0 100 110")
       assert html =~ "Platzhalter, kein Foto hinterlegt"
@@ -150,7 +179,8 @@ defmodule KitrankWeb.OverviewLiveTest do
         cutout_url: "https://example.com/trikot.png"
       )
 
-      {:ok, _view, html} = live(conn, ~p"/")
+      {:ok, view, _html} = live(conn, ~p"/")
+      html = oeffne(view)
 
       assert html =~ "https://example.com/trikot.png"
     end
@@ -282,9 +312,11 @@ defmodule KitrankWeb.OverviewLiveTest do
 
       html = view |> element(~s{[data-role="clear-search"]}) |> render_click()
 
-      assert kachel?(html, koeln)
-      # Und die Ligen stehen wieder, wie sie standen.
+      # Zurueck im Ausgangszustand: kein Kreuz mehr, und die Ligen sind wieder
+      # zu – die Suche hatte sie nur fuer die Dauer der Suche aufgeklappt.
       refute html =~ ~s(data-role="clear-search")
+      refute kachel?(html, koeln)
+      assert html =~ "Erste Liga"
     end
   end
 
@@ -343,20 +375,21 @@ defmodule KitrankWeb.OverviewLiveTest do
     end
 
     test "steht zunächst alphabetisch", %{conn: conn} do
-      {:ok, _view, html} = live(conn, ~p"/")
+      {:ok, view, _html} = live(conn, ~p"/")
+      html = oeffne(view)
 
       assert reihenfolge(html) == ["Aachen", "Mainz", "Zwickau"]
     end
 
     test "nochmal auf dieselbe dreht um", %{conn: conn} do
-      {:ok, view, _html} = live(conn, ~p"/")
+      {view, _html} = geoeffnet(conn)
 
       assert reihenfolge(sortiere(view, "name")) == ["Zwickau", "Mainz", "Aachen"]
       assert reihenfolge(sortiere(view, "name")) == ["Aachen", "Mainz", "Zwickau"]
     end
 
     test "nach Kürzel", %{conn: conn} do
-      {:ok, view, _html} = live(conn, ~p"/")
+      {view, _html} = geoeffnet(conn)
 
       # A… Zwickau, M… Aachen, Z… Mainz — nicht die alphabetische Reihenfolge.
       assert reihenfolge(sortiere(view, "code")) == ["Zwickau", "Aachen", "Mainz"]
@@ -365,7 +398,7 @@ defmodule KitrankWeb.OverviewLiveTest do
     test "nach Trikots — die meisten zuerst", %{conn: conn} do
       # Ein Wechsel des Schlüssels fängt bei dessen natürlicher Richtung an.
       # Bei „Trikots" ist das absteigend: 3, 2, 1.
-      {:ok, view, _html} = live(conn, ~p"/")
+      {view, _html} = geoeffnet(conn)
 
       assert reihenfolge(sortiere(view, "kits")) == ["Aachen", "Mainz", "Zwickau"]
       assert reihenfolge(sortiere(view, "kits")) == ["Zwickau", "Mainz", "Aachen"]
@@ -400,7 +433,7 @@ defmodule KitrankWeb.OverviewLiveTest do
     end
 
     test "zeigt zunaechst das Heimtrikot", %{conn: conn, a: a, b: b, kits: kits} do
-      {:ok, _view, html} = live(conn, ~p"/")
+      {_view, html} = geoeffnet(conn)
 
       assert zeigt?(html, trikot(kits, a, "home"))
       assert zeigt?(html, trikot(kits, b, "home"))
@@ -413,7 +446,7 @@ defmodule KitrankWeb.OverviewLiveTest do
       b: b,
       kits: kits
     } do
-      {:ok, view, _html} = live(conn, ~p"/")
+      {view, _html} = geoeffnet(conn)
 
       html =
         view
@@ -431,7 +464,7 @@ defmodule KitrankWeb.OverviewLiveTest do
       b: b,
       kits: kits
     } do
-      {:ok, view, _html} = live(conn, ~p"/")
+      {view, _html} = geoeffnet(conn)
 
       html =
         view
@@ -443,7 +476,7 @@ defmodule KitrankWeb.OverviewLiveTest do
     end
 
     test "alle auf einmal raeumt die einzeln gewaehlten weg", %{conn: conn, a: a, kits: kits} do
-      {:ok, view, _html} = live(conn, ~p"/")
+      {view, _html} = geoeffnet(conn)
 
       view
       |> element(~s{[data-role="tile-kit"][phx-value-team="#{a.id}"][phx-value-type="away"]})
@@ -468,7 +501,7 @@ defmodule KitrankWeb.OverviewLiveTest do
       %{kits: [nur_heim]} =
         league(competition: competition, team_count: 1, kit_types: ["home"])
 
-      {:ok, view, _html} = live(conn, ~p"/")
+      {view, _html} = geoeffnet(conn)
 
       html =
         view
@@ -489,7 +522,7 @@ defmodule KitrankWeb.OverviewLiveTest do
     end
 
     test "das Kuerzel des gezeigten Trikots ist als gedrueckt gemeldet", %{conn: conn, a: a} do
-      {:ok, view, _html} = live(conn, ~p"/")
+      {view, _html} = geoeffnet(conn)
 
       html =
         view
@@ -501,7 +534,7 @@ defmodule KitrankWeb.OverviewLiveTest do
     end
 
     test "die Kuerzel liegen ueber dem Kachel-Link, sonst faengt der die Klicks ab", %{conn: conn} do
-      {:ok, _view, html} = live(conn, ~p"/")
+      {_view, html} = geoeffnet(conn)
 
       # Der Link deckt die Kachel mit z-10 ab; die Leiste braucht mehr.
       assert html =~ ~r/class="relative z-20 ml-auto flex shrink-0 gap-1"/
@@ -515,7 +548,7 @@ defmodule KitrankWeb.OverviewLiveTest do
     end
 
     test "öffnet sich über die Kachel und zeigt alle Varianten", %{conn: conn, team: team} do
-      {:ok, view, _html} = live(conn, ~p"/")
+      {view, _html} = geoeffnet(conn)
 
       html =
         view
@@ -695,7 +728,7 @@ defmodule KitrankWeb.OverviewLiveTest do
     end
 
     test "nimmt ein Trikot auf und schreibt es in die URL", %{conn: conn, a: a} do
-      {:ok, view, _html} = live(conn, ~p"/")
+      {view, _html} = geoeffnet(conn)
 
       view
       |> element(~s{button[data-role="tile-compare"][phx-value-id="#{a.id}"]})
@@ -717,6 +750,7 @@ defmodule KitrankWeb.OverviewLiveTest do
 
     test "lässt höchstens drei Trikots zu", %{conn: conn, a: a, b: b, c: c, d: d} do
       {:ok, view, _html} = live(conn, "/?trikots=#{a.id},#{b.id},#{c.id}")
+      oeffne(view)
 
       html =
         view
@@ -744,7 +778,7 @@ defmodule KitrankWeb.OverviewLiveTest do
     end
 
     test "der Vergleich-Knopf steht auf dem Handy da, nicht erst beim Hovern", %{conn: conn} do
-      {:ok, _view, html} = live(conn, ~p"/")
+      {_view, html} = geoeffnet(conn)
 
       [knopf] = Regex.run(~r/<button[^>]*data-role="tile-compare"[^>]*>/, html)
 

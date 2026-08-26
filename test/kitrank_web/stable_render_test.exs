@@ -61,6 +61,8 @@ defmodule KitrankWeb.StableRenderTest do
 
   test "auch nach einem Ereignis", %{conn: conn} do
     {:ok, view, _html} = live(conn, ~p"/")
+    # Ligen starten zugeklappt; die IDs, um die es geht, stehen in den Kacheln.
+    view |> element(~s{button[phx-click="toggle_league"]}) |> render_click()
 
     vorher = ids(render(view))
 

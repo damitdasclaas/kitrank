@@ -30,7 +30,10 @@ defmodule KitrankWeb.ImageContainmentTest do
         Kits.update_kit(kit, %{"cutout_url" => "https://cdn.shopify.com/s/files/#{kit.id}.jpg"})
     end
 
-    {:ok, view, html} = live(conn, ~p"/")
+    # Ligen starten zugeklappt – ohne Aufklappen gibt es kein <img>, an dem
+    # sich etwas pruefen liesse.
+    {:ok, view, _html} = live(conn, ~p"/")
+    html = view |> element(~s{button[phx-click="toggle_league"]}) |> render_click()
 
     %{view: view, html: html, team: team}
   end

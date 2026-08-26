@@ -96,6 +96,8 @@ defmodule KitrankWeb.LocaleTest do
       # ein Test, der nur mount prüft, würde das nicht merken.
       conn = init_test_session(conn, %{locale: "en"})
       {:ok, view, _html} = live(conn, ~p"/")
+      # Ligen starten zugeklappt; ohne Kachel gibt es keinen Knopf zum Klicken.
+      view |> element(~s{button[phx-click="toggle_league"]}) |> render_click()
 
       html = view |> element(~s{button[data-role="tile-compare"]}) |> render_click()
 
