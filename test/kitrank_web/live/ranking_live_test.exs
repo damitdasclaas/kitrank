@@ -722,13 +722,30 @@ defmodule KitrankWeb.RankingLiveTest do
       |> render_click()
     end
 
-    test "stellt sie auf dem Handy nebeneinander, nicht untereinander", %{conn: conn, ranking: r} do
+    test "stellt sie auf dem Handy untereinander in fester Hoehe", %{conn: conn, ranking: r} do
       {:ok, _view, html} = live(conn, ~p"/rankings/#{r.edit_token}/duell")
 
-      # Untereinander sah man immer nur ein Trikot und musste zum anderen
-      # scrollen — bei „welches von beiden" die falsche Anordnung.
-      assert html =~ "grid grid-cols-2"
-      refute html =~ ~r/class="mt-6 grid gap-4 sm:grid-cols-2"/
+      # Untereinander, damit jedes Trikot die volle Breite bekommt — aber in
+      # begrenzter Hoehe, sonst passt das zweite nicht mehr aufs Display.
+      assert html =~ "grid-rows-2"
+      assert html =~ "h-[58dvh]"
+      # Ab sm wieder nebeneinander, dort ist Breite genug.
+      assert html =~ "sm:grid-cols-2"
+      assert html =~ "sm:h-auto"
+    end
+
+    test "macht dafuer im Kopf Platz — aber nur auf dem Handy", %{conn: conn, ranking: r} do
+      {:ok, _view, duell} = live(conn, ~p"/rankings/#{r.edit_token}/duell")
+      {:ok, _view, sortieren} = live(conn, ~p"/rankings/#{r.edit_token}/edit")
+
+      # Teilen-Block und sein Hinweis kosten genau die Hoehe, die die zweite
+      # Karte braucht. Weg sind sie nicht — nur auf dem Handy ausgeblendet.
+      assert duell =~ ~s(class="hidden sm:flex mt-5 flex-wrap)
+      # Ausgeblendet, nicht entfernt – ab sm steht der Block wieder da.
+      assert duell =~ "Link kopieren"
+
+      # Beim Sortieren steht er auf jedem Bildschirm.
+      assert sortieren =~ ~s(class="flex mt-5 flex-wrap)
     end
 
     test "aus jeder Karte fuehrt ein Weg ins Detail", %{conn: conn, ranking: r} do

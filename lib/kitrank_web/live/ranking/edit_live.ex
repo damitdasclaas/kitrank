@@ -365,6 +365,7 @@ defmodule KitrankWeb.Ranking.EditLive do
           share_url={@share_url}
           season={@season}
           count={@count}
+          compact={@live_action == :duel}
         />
 
         <.step_nav
@@ -1032,10 +1033,16 @@ defmodule KitrankWeb.Ranking.EditLive do
         </div>
       </div>
 
-      <%!-- Zwei Spalten schon auf dem Handy. Untereinander sah man immer nur
-            ein Trikot und musste zum anderen scrollen — bei einer Frage, die
-            „welches von beiden" lautet, ist das die falsche Anordnung. --%>
-      <div class="mt-6 grid grid-cols-2 gap-2 sm:gap-4">
+      <%!-- Auf dem Handy untereinander, aber in fester Hoehe: zwei Reihen,
+            die sich 58 % des Bildschirms teilen. So steht jedes Trikot ueber
+            die volle Breite und beide sind gleichzeitig zu sehen, ohne zu
+            scrollen. Nebeneinander waeren sie halb so breit; untereinander
+            ohne Hoehenbegrenzung passte das zweite nicht mehr aufs Display.
+
+            Der Rest der Hoehe geht an Kopf, Schritte und Fusszeile — deshalb
+            macht der Kopf im Duell auf dem Handy Platz (compact). Ab sm
+            wieder nebeneinander, dort ist Breite genug. --%>
+      <div class="mt-6 grid h-[58dvh] grid-rows-2 gap-2 sm:h-auto sm:grid-cols-2 sm:grid-rows-1 sm:gap-4">
         <.duel_card kit={@kits[elem(@frage, 0)]} side="new" hint="Pfeil links" />
         <.duel_card kit={@kits[elem(@frage, 1)]} side="existing" hint="Pfeil rechts" />
       </div>
@@ -1067,13 +1074,13 @@ defmodule KitrankWeb.Ranking.EditLive do
     assigns = assign(assigns, :color, Color.team_color(assigns.kit.team))
 
     ~H"""
-    <div class="group relative overflow-hidden rounded-xl border border-line bg-panel transition hover:border-ink hover:shadow-[0_10px_32px_-18px_rgb(0_0_0/0.5)]">
+    <div class="group relative flex min-h-0 flex-col overflow-hidden rounded-xl border border-line bg-panel transition hover:border-ink hover:shadow-[0_10px_32px_-18px_rgb(0_0_0/0.5)]">
       <button
         type="button"
         phx-click="duel_pick"
         phx-value-side={@side}
         data-role="duel-pick"
-        class="block w-full text-left"
+        class="flex min-h-0 w-full flex-1 flex-col text-left"
         aria-label={
           gettext("%{verein} %{trikot} wählen",
             verein: @kit.team.name,
@@ -1081,8 +1088,11 @@ defmodule KitrankWeb.Ranking.EditLive do
           )
         }
       >
+        <%!-- min-h-0, sonst weigert sich das Flex-Element, unter seine
+              Inhaltsgroesse zu schrumpfen, und die zweite Karte rutscht wieder
+              aus dem Bild. --%>
         <div
-          class="relative flex aspect-square items-center justify-center overflow-hidden p-8"
+          class="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden sm:aspect-square sm:flex-none"
           style={"background-color: color-mix(in oklab, #{@color} 14%, #FFFFFF)"}
         >
           <%!-- Die ID haengt am Trikot, nicht am Platz: wechselt das Paar, soll
@@ -1099,7 +1109,7 @@ defmodule KitrankWeb.Ranking.EditLive do
             class="transition-transform duration-300 group-hover:scale-105"
           />
         </div>
-        <div class="border-t border-line px-2.5 py-2 sm:px-4 sm:py-3">
+        <div class="shrink-0 border-t border-line px-2.5 py-2 sm:px-4 sm:py-3">
           <p class="flex flex-wrap items-baseline gap-x-2">
             <span class="font-mono text-xs font-semibold" style={"color: #{@color}"}>
               {@kit.team.short_code}

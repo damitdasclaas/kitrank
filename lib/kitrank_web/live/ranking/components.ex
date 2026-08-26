@@ -16,10 +16,19 @@ defmodule KitrankWeb.Ranking.Components do
   attr :season, :string, required: true
   attr :count, :integer, required: true
 
+  attr :compact, :boolean,
+    default: false,
+    doc: """
+    Auf dem Handy nur Saison und Name zeigen. Waehrend des Duells sind Teilen
+    und der Hinweis dazu nicht das Thema — und sie kosten den Platz, den die
+    beiden Trikots brauchen, um gleichzeitig auf den Bildschirm zu passen. Ab
+    `sm` steht wieder alles da.
+    """
+
   @doc "Name der Rangliste (direkt änderbar) und der öffentliche Teilen-Link."
   def ranking_header(assigns) do
     ~H"""
-    <div class="border-b border-line pb-6">
+    <div class={["border-b border-line", if(@compact, do: "pb-3 sm:pb-6", else: "pb-6")]}>
       <%!-- Merkt die Rangliste im Browser, damit man beim Wiederkommen nicht
             den Bearbeiten-Link braucht. Der Link bleibt der eigentliche
             Zugriffsweg – etwa beim Geraetewechsel. --%>
@@ -49,7 +58,10 @@ defmodule KitrankWeb.Ranking.Components do
         />
       </.form>
 
-      <div class="mt-5 flex flex-wrap items-center gap-2">
+      <div class={[
+        if(@compact, do: "hidden sm:flex", else: "flex"),
+        "mt-5 flex-wrap items-center gap-2"
+      ]}>
         <span class="kr-eyebrow">{gettext("Teilen")}</span>
         <code class="min-w-0 flex-1 truncate rounded-md bg-sunk px-3 py-2 font-mono text-xs text-soft">
           {@share_url}
@@ -68,7 +80,7 @@ defmodule KitrankWeb.Ranking.Components do
           class="shrink-0 text-xs text-soft underline-offset-4 hover:text-ink hover:underline"
         >{gettext("Ansehen")}</.link>
       </div>
-      <p class="mt-2 text-xs text-soft">
+      <p class={["mt-2 text-xs text-soft", @compact && "hidden sm:block"]}>
         {gettext(
           "Der Teilen-Link zeigt immer den aktuellen Stand — du musst nichts erneut verschicken. Die Adresse in deiner Adresszeile ist dagegen geheim: wer sie hat, kann mitändern."
         )}
