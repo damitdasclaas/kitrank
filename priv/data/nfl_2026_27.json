@@ -1,6 +1,7 @@
 {
   "_hinweis": "Stammdaten der NFL. Einspielen mit 'mix kitrank.import priv/data/nfl_2026_27.json' bzw. auf dem Server '/app/bin/kitrank eval \"Kitrank.Release.import_teams(\\\"data/nfl_2026_27.json\\\")\"'. Eine Datei beschreibt genau eine Sportart: der Import raeumt nur innerhalb seiner eigenen Sportart auf, der Fussball-Import laesst diese Zuordnungen also in Ruhe und umgekehrt. Steht die Liga schon in der Datenbank, muessen 'sport.slug', 'name' und 'country' hier genau so heissen wie dort — sonst legt der Import eine zweite daneben.",
-  "_farben": "primary_color faerbt die Kachel-Buehne (13-15 % Farbe auf Weiss). Wo die offizielle Farbliste mit Schwarz beginnt, steht hier die naechste Farbe derselben Liste: Schwarz ergibt einen Grauton, in dem sich die Vereine nicht mehr unterscheiden lassen. Betrifft Ravens (Purple), Bengals (Orange), Steelers (Gold), Texans (Battle Red), Jaguars (Teal) und Panthers (Panther Blue).",
+  "_farben": "primary_color faerbt die Kachel-Buehne (13-15 % Farbe auf Weiss). Wo die offizielle Farbliste mit Schwarz beginnt, steht hier die naechste Farbe derselben Liste: Schwarz ergibt einen Grauton, in dem sich die Vereine nicht mehr unterscheiden lassen. Betrifft Ravens (Purple), Bengals (Orange), Steelers (Gold), Texans (Battle Red), Jaguars (Teal) und Panthers (Panther Blue). Tennessee Titans: Rebrand vom 12./13. Maerz 2026 — Titans Blue (#4B92DB) ist seither die Hauptfarbe, Navy nur noch Nebenfarbe.",
+  "_shops": "Wo ein eigener Team-Fanshop existiert, steht der; sonst die offizielle Team-Seite im NFLShop, dem Store der Liga. Beides sind offizielle Quellen und keine Affiliate-Links — KitRank verdient an keinem Kauf mit (siehe Fusszeile der App).",
   "season": "2026/27",
   "sport": {
     "name": "American Football",
@@ -21,25 +22,25 @@
           "name": "Buffalo Bills",
           "short_code": "BUF",
           "primary_color": "#003087",
-          "shop_url": "https://www.buffalobills.com/shop/"
+          "shop_url": "https://shop.buffalobills.com/"
         },
         {
           "name": "Miami Dolphins",
           "short_code": "MIA",
           "primary_color": "#008C95",
-          "shop_url": "https://www.miamidolphins.com/shop/"
+          "shop_url": "https://shop.miamidolphins.com/"
         },
         {
           "name": "New England Patriots",
           "short_code": "NE",
           "primary_color": "#0C2340",
-          "shop_url": "https://www.patriots.com/shop/"
+          "shop_url": "https://proshop.patriots.com/"
         },
         {
           "name": "New York Jets",
           "short_code": "NYJ",
           "primary_color": "#125740",
-          "shop_url": "https://www.newyorkjets.com/shop/"
+          "shop_url": "https://www.nflshop.com/new-york-jets/t-81932633+z-839015-3582935029"
         },
         {
           "name": "Baltimore Ravens",
@@ -51,103 +52,103 @@
           "name": "Cincinnati Bengals",
           "short_code": "CIN",
           "primary_color": "#DC4405",
-          "shop_url": "https://www.bengals.com/shop/"
+          "shop_url": "https://www.nflshop.com/cincinnati-bengals/t-36370248+z-9423154-598202139"
         },
         {
           "name": "Cleveland Browns",
           "short_code": "CLE",
           "primary_color": "#311D00",
-          "shop_url": "https://www.clevelandbrowns.com/shop/"
+          "shop_url": "https://www.nflshop.com/cleveland-browns/t-25159183+z-70750-3323314768"
         },
         {
           "name": "Pittsburgh Steelers",
           "short_code": "PIT",
           "primary_color": "#FFB612",
-          "shop_url": "https://www.steelers.com/shop/"
+          "shop_url": "https://www.nflshop.com/pittsburgh-steelers/t-47607161+z-840301-1902115047"
         },
         {
           "name": "Houston Texans",
           "short_code": "HOU",
           "primary_color": "#E4002B",
-          "shop_url": "https://www.houstontexans.com/shop/"
+          "shop_url": "https://shop.houstontexans.com/"
         },
         {
           "name": "Indianapolis Colts",
           "short_code": "IND",
           "primary_color": "#003A70",
-          "shop_url": "https://www.colts.com/shop/"
+          "shop_url": "https://www.nflshop.com/indianapolis-colts/t-36159267+z-9864067-435143303"
         },
         {
           "name": "Jacksonville Jaguars",
           "short_code": "JAX",
           "primary_color": "#006271",
-          "shop_url": "https://www.jaguars.com/shop/"
+          "shop_url": "https://www.nflshop.com/jacksonville-jaguars/t-14371424+z-9736823-4280408112"
         },
         {
           "name": "Tennessee Titans",
           "short_code": "TEN",
-          "primary_color": "#0C2340",
-          "shop_url": "https://www.titansonline.com/shop/"
+          "primary_color": "#4B92DB",
+          "shop_url": "https://www.nflshop.com/tennessee-titans/t-36594979+z-9562652-1869101916"
         },
         {
           "name": "Denver Broncos",
           "short_code": "DEN",
           "primary_color": "#FC4C02",
-          "shop_url": "https://www.denverbroncos.com/shop/"
+          "shop_url": "https://shop.denverbroncos.com/"
         },
         {
           "name": "Kansas City Chiefs",
           "short_code": "KC",
           "primary_color": "#C8102E",
-          "shop_url": "https://www.chiefs.com/shop/"
+          "shop_url": "https://shop.chiefs.com/"
         },
         {
           "name": "Las Vegas Raiders",
           "short_code": "LV",
           "primary_color": "#A7A8A9",
-          "shop_url": "https://www.raiders.com/shop/"
+          "shop_url": "https://www.nflshop.com/las-vegas-raiders/t-25045903+z-9049896-2398406640"
         },
         {
           "name": "Los Angeles Chargers",
           "short_code": "LAC",
           "primary_color": "#0072CE",
-          "shop_url": "https://www.chargers.com/shop/"
+          "shop_url": "https://www.nflshop.com/los-angeles-chargers/t-21441805+z-9001241-2526666002"
         },
         {
           "name": "Dallas Cowboys",
           "short_code": "DAL",
           "primary_color": "#0C2340",
-          "shop_url": "https://www.dallascowboys.com/shop/"
+          "shop_url": "https://shop.dallascowboys.com/"
         },
         {
           "name": "New York Giants",
           "short_code": "NYG",
           "primary_color": "#0B2265",
-          "shop_url": "https://www.giants.com/shop/"
+          "shop_url": "https://www.nflshop.com/new-york-giants/t-35509091+z-9322851-3483277076"
         },
         {
           "name": "Philadelphia Eagles",
           "short_code": "PHI",
           "primary_color": "#004C54",
-          "shop_url": "https://www.philadelphiaeagles.com/shop/"
+          "shop_url": "https://shop.eagles.com/"
         },
         {
           "name": "Washington Commanders",
           "short_code": "WAS",
           "primary_color": "#5A1414",
-          "shop_url": "https://www.commanders.com/shop/"
+          "shop_url": "https://www.nflshop.com/washington-commanders/t-14930514+z-9650960-152084737"
         },
         {
           "name": "Chicago Bears",
           "short_code": "CHI",
           "primary_color": "#091F2C",
-          "shop_url": "https://www.chicagobears.com/shop/"
+          "shop_url": "https://www.nflshop.com/chicago-bears/t-14716836+z-9525984-212468155"
         },
         {
           "name": "Detroit Lions",
           "short_code": "DET",
           "primary_color": "#0069B1",
-          "shop_url": "https://www.detroitlions.com/shop/"
+          "shop_url": "https://www.nflshop.com/detroit-lions/t-36377931+z-9432566-482725144"
         },
         {
           "name": "Green Bay Packers",
@@ -159,55 +160,55 @@
           "name": "Minnesota Vikings",
           "short_code": "MIN",
           "primary_color": "#582C83",
-          "shop_url": "https://www.vikings.com/shop/"
+          "shop_url": "https://www.nflshop.com/minnesota-vikings/t-14609251+z-9123207-2760977927"
         },
         {
           "name": "Atlanta Falcons",
           "short_code": "ATL",
           "primary_color": "#A6192E",
-          "shop_url": "https://www.atlantafalcons.com/shop/"
+          "shop_url": "https://www.nflshop.com/atlanta-falcons/t-25269009+z-846076-1712408145"
         },
         {
           "name": "Carolina Panthers",
           "short_code": "CAR",
           "primary_color": "#0085CA",
-          "shop_url": "https://www.panthers.com/shop/"
+          "shop_url": "https://www.nflshop.com/carolina-panthers/t-36484679+z-9917544-2409711364"
         },
         {
           "name": "New Orleans Saints",
           "short_code": "NO",
           "primary_color": "#D3BC8D",
-          "shop_url": "https://www.neworleanssaints.com/shop/"
+          "shop_url": "https://www.nflshop.com/new-orleans-saints/t-58042564+z-893901-3486365028"
         },
         {
           "name": "Tampa Bay Buccaneers",
           "short_code": "TB",
           "primary_color": "#D50A0A",
-          "shop_url": "https://www.buccaneers.com/shop/"
+          "shop_url": "https://shop.buccaneers.com/"
         },
         {
           "name": "Arizona Cardinals",
           "short_code": "ARI",
           "primary_color": "#9B2743",
-          "shop_url": "https://www.azcardinals.com/shop/"
+          "shop_url": "https://www.nflshop.com/arizona-cardinals/t-36045697+z-9791086-4017153551"
         },
         {
           "name": "Los Angeles Rams",
           "short_code": "LAR",
           "primary_color": "#1E22AA",
-          "shop_url": "https://www.therams.com/shop/"
+          "shop_url": "https://www.nflshop.com/los-angeles-rams/t-36049204+z-9366185-3000849326"
         },
         {
           "name": "San Francisco 49ers",
           "short_code": "SF",
           "primary_color": "#AA0000",
-          "shop_url": "https://www.49ers.com/shop/"
+          "shop_url": "https://www.shop49ers.com/"
         },
         {
           "name": "Seattle Seahawks",
           "short_code": "SEA",
           "primary_color": "#002244",
-          "shop_url": "https://www.seahawks.com/shop/"
+          "shop_url": "https://www.nflshop.com/seattle-seahawks/t-14261575+z-9008694-1557674260"
         }
       ]
     }
