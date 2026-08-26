@@ -20,6 +20,7 @@ defmodule KitrankWeb.OverviewLive do
   alias Kitrank.Kits.Kit
   alias KitrankWeb.Color
   alias KitrankWeb.KitLabel
+  alias KitrankWeb.Search
 
   @max_compare 3
 
@@ -274,17 +275,7 @@ defmodule KitrankWeb.OverviewLive do
       String.contains?(suchform(team.short_code), gesucht)
   end
 
-  # Kleinschreibung reicht bei deutschen Vereinsnamen nicht: wer "koln" tippt,
-  # meint Köln, und wer "fussball" tippt, meint Fußball. Akzente werden
-  # abgetrennt (NFD) und weggeworfen, ß wird zu ss.
-  defp suchform(text) do
-    text
-    |> String.downcase()
-    |> String.replace("ß", "ss")
-    |> :unicode.characters_to_nfd_binary()
-    |> String.replace(~r/[\x{0300}-\x{036F}]/u, "")
-    |> String.trim()
-  end
+  defdelegate suchform(text), to: Search, as: :normalize
 
   ## Sortierung der Vereine – innerhalb ihrer Liga, die Ligen bleiben, wie sie sind
 
