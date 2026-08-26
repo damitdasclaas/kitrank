@@ -390,6 +390,7 @@ defmodule KitrankWeb.Ranking.EditLive do
           duel={@duel}
           kits={Map.new(@entries, &{&1.kit_id, &1.kit})}
           edit_token={@ranking.edit_token}
+          detail_open?={@detail != nil}
         />
 
         <.sorting
@@ -408,6 +409,7 @@ defmodule KitrankWeb.Ranking.EditLive do
         index={detail_index(@entries, @detail)}
         total={@count}
         image={@detail.image}
+        ranked?={@live_action != :duel}
       />
     </Layouts.app>
     """
@@ -796,6 +798,14 @@ defmodule KitrankWeb.Ranking.EditLive do
   attr :total, :integer, required: true
   attr :image, :integer, required: true
 
+  attr :ranked?, :boolean,
+    default: true,
+    doc: """
+    Ob der Platz schon feststeht. Waehrend des Duells nicht: dort ist die
+    Reihenfolge gerade das, was ermittelt wird – eine Platzangabe waere eine
+    Momentaufnahme, und Hoeher/Tiefer wuerde das Duell gleich ueberschreiben.
+    """
+
   defp entry_detail(assigns) do
     images = kit_images(assigns.entry.kit)
 
@@ -853,9 +863,10 @@ defmodule KitrankWeb.Ranking.EditLive do
         </div>
 
         <div class="flex flex-col border-t border-line p-5 sm:col-span-2 sm:border-l sm:border-t-0">
-          <p class="kr-eyebrow">
+          <p :if={@ranked?} class="kr-eyebrow">
             {gettext("Platz %{platz} von %{gesamt}", platz: @index + 1, gesamt: @total)}
           </p>
+          <p :if={!@ranked?} class="kr-eyebrow">{gettext("Noch im Vergleich")}</p>
           <h2 class="kr-display mt-1.5 text-2xl leading-tight">{@entry.kit.team.name}</h2>
           <p class="mt-1 flex items-baseline gap-2">
             <span class="font-mono text-xs font-semibold" style={"color: #{@color}"}>
@@ -898,6 +909,7 @@ defmodule KitrankWeb.Ranking.EditLive do
 
           <div class="mt-5 flex flex-wrap gap-2 border-t border-line pt-4">
             <button
+              :if={@ranked?}
               type="button"
               phx-click="move"
               phx-value-id={@entry.kit_id}
@@ -908,6 +920,7 @@ defmodule KitrankWeb.Ranking.EditLive do
               <.icon name="hero-chevron-up-mini" class="size-3.5" /> {gettext("Höher")}
             </button>
             <button
+              :if={@ranked?}
               type="button"
               phx-click="move"
               phx-value-id={@entry.kit_id}
@@ -935,6 +948,10 @@ defmodule KitrankWeb.Ranking.EditLive do
   attr :duel, :map, required: true
   attr :kits, :map, required: true
   attr :edit_token, :string, required: true
+
+  attr :detail_open?, :boolean,
+    default: false,
+    doc: "solange das Detail oben liegt, gehoeren die Pfeiltasten ihm"
 
   defp duel_stage(assigns) do
     assigns =
@@ -988,7 +1005,7 @@ defmodule KitrankWeb.Ranking.EditLive do
     <div
       :if={@frage != :done}
       id="duell"
-      phx-window-keydown="duel_key"
+      phx-window-keydown={!@detail_open? && "duel_key"}
       class="mt-8"
     >
       <div class="flex flex-wrap items-baseline gap-3">
@@ -1015,7 +1032,10 @@ defmodule KitrankWeb.Ranking.EditLive do
         </div>
       </div>
 
-      <div class="mt-6 grid gap-4 sm:grid-cols-2">
+      <%!-- Zwei Spalten schon auf dem Handy. Untereinander sah man immer nur
+            ein Trikot und musste zum anderen scrollen — bei einer Frage, die
+            „welches von beiden" lautet, ist das die falsche Anordnung. --%>
+      <div class="mt-6 grid grid-cols-2 gap-2 sm:gap-4">
         <.duel_card kit={@kits[elem(@frage, 0)]} side="new" hint="Pfeil links" />
         <.duel_card kit={@kits[elem(@frage, 1)]} side="existing" hint="Pfeil rechts" />
       </div>
@@ -1041,45 +1061,74 @@ defmodule KitrankWeb.Ranking.EditLive do
   attr :side, :string, required: true
   attr :hint, :string, required: true
 
+  # Die Karte ist kein Knopf mehr, sondern ein Kasten mit zweien darin: ein
+  # Knopf im Knopf ist ungueltiges HTML, und das Detail braucht einen eigenen.
   defp duel_card(assigns) do
     assigns = assign(assigns, :color, Color.team_color(assigns.kit.team))
 
     ~H"""
-    <button
-      type="button"
-      phx-click="duel_pick"
-      phx-value-side={@side}
-      class="group overflow-hidden rounded-xl border border-line bg-panel text-left transition hover:border-ink hover:shadow-[0_10px_32px_-18px_rgb(0_0_0/0.5)]"
-    >
-      <div
-        class="relative flex aspect-square items-center justify-center overflow-hidden p-8"
-        style={"background-color: color-mix(in oklab, #{@color} 14%, #FFFFFF)"}
+    <div class="group relative overflow-hidden rounded-xl border border-line bg-panel transition hover:border-ink hover:shadow-[0_10px_32px_-18px_rgb(0_0_0/0.5)]">
+      <button
+        type="button"
+        phx-click="duel_pick"
+        phx-value-side={@side}
+        data-role="duel-pick"
+        class="block w-full text-left"
+        aria-label={
+          gettext("%{verein} %{trikot} wählen",
+            verein: @kit.team.name,
+            trikot: KitLabel.display(@kit)
+          )
+        }
       >
-        <%!-- Die ID haengt am Trikot, nicht am Platz: wechselt das Paar, soll
+        <div
+          class="relative flex aspect-square items-center justify-center overflow-hidden p-8"
+          style={"background-color: color-mix(in oklab, #{@color} 14%, #FFFFFF)"}
+        >
+          <%!-- Die ID haengt am Trikot, nicht am Platz: wechselt das Paar, soll
               LiveView das Element austauschen und nicht nur das src aendern.
               Sonst zeigt der Browser das alte Bild weiter, bis das neue da ist
               — und man sieht zweimal dasselbe Trikot. --%>
-        <.kit_figure
-          id={"duell-bild-#{@side}-#{@kit.id}"}
-          kit={@kit}
-          team={@kit.team}
-          size={:thumb}
-          eager
-          fill
-          class="transition-transform duration-300 group-hover:scale-105"
-        />
-      </div>
-      <div class="border-t border-line px-4 py-3">
-        <p class="flex flex-wrap items-baseline gap-x-2">
-          <span class="font-mono text-xs font-semibold" style={"color: #{@color}"}>
-            {@kit.team.short_code}
-          </span>
-          <span class="text-sm font-medium">{@kit.team.name}</span>
-          <span class="text-xs text-soft">{KitLabel.display(@kit)}</span>
-        </p>
-        <p class="mt-1 font-mono text-[10px] text-soft">{@hint}</p>
-      </div>
-    </button>
+          <.kit_figure
+            id={"duell-bild-#{@side}-#{@kit.id}"}
+            kit={@kit}
+            team={@kit.team}
+            size={:thumb}
+            eager
+            fill
+            class="transition-transform duration-300 group-hover:scale-105"
+          />
+        </div>
+        <div class="border-t border-line px-2.5 py-2 sm:px-4 sm:py-3">
+          <p class="flex flex-wrap items-baseline gap-x-2">
+            <span class="font-mono text-xs font-semibold" style={"color: #{@color}"}>
+              {@kit.team.short_code}
+            </span>
+            <span class="text-[13px] font-medium leading-tight sm:text-sm">{@kit.team.name}</span>
+            <span class="text-xs text-soft">{KitLabel.display(@kit)}</span>
+          </p>
+          <%!-- Der Tastenhinweis gilt nur, wo es eine Tastatur gibt. --%>
+          <p class="mt-1 hidden font-mono text-[10px] text-soft sm:block">{@hint}</p>
+        </div>
+      </button>
+
+      <%!-- Sichtbar, nicht erst beim Hovern: auf dem Handy gibt es keins. --%>
+      <button
+        type="button"
+        phx-click="open_detail"
+        phx-value-id={@kit.id}
+        data-role="duel-detail"
+        class="absolute right-1.5 top-1.5 z-10 rounded-full border border-black/10 bg-white/85 px-2 py-1 font-mono text-[10px] text-black/60 backdrop-blur transition hover:text-black"
+        aria-label={
+          gettext("%{verein} %{trikot} im Detail",
+            verein: @kit.team.name,
+            trikot: KitLabel.display(@kit)
+          )
+        }
+      >
+        {gettext("Detail")}
+      </button>
+    </div>
     """
   end
 end

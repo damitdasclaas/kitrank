@@ -722,6 +722,72 @@ defmodule KitrankWeb.RankingLiveTest do
       |> render_click()
     end
 
+    test "stellt sie auf dem Handy nebeneinander, nicht untereinander", %{conn: conn, ranking: r} do
+      {:ok, _view, html} = live(conn, ~p"/rankings/#{r.edit_token}/duell")
+
+      # Untereinander sah man immer nur ein Trikot und musste zum anderen
+      # scrollen — bei „welches von beiden" die falsche Anordnung.
+      assert html =~ "grid grid-cols-2"
+      refute html =~ ~r/class="mt-6 grid gap-4 sm:grid-cols-2"/
+    end
+
+    test "aus jeder Karte fuehrt ein Weg ins Detail", %{conn: conn, ranking: r} do
+      {:ok, view, html} = live(conn, ~p"/rankings/#{r.edit_token}/duell")
+
+      assert length(Regex.scan(~r/data-role="duel-detail"/, html)) == 2
+
+      [_, kit_id] =
+        Regex.run(~r/<button[^>]*phx-value-id="(\d+)"[^>]*data-role="duel-detail"/, html)
+
+      html =
+        view
+        |> element(~s{[data-role="duel-detail"][phx-value-id="#{kit_id}"]})
+        |> render_click()
+
+      # Was das Duell nicht zeigt: die weiteren Bilder und der Shop-Link.
+      assert html =~ ~s(id="entry-detail")
+      assert html =~ "Zum Vereinsshop" or html =~ "Notiz"
+    end
+
+    test "der Detail-Knopf liegt nicht im Waehl-Knopf", %{conn: conn, ranking: r} do
+      # Ein <button> in einem <button> ist ungueltiges HTML; der Browser
+      # zerlegt die Verschachtelung und die Karte verliert ihre Klickflaeche.
+      {:ok, _view, html} = live(conn, ~p"/rankings/#{r.edit_token}/duell")
+
+      [karte] =
+        Regex.run(~r/<button[^>]*data-role="duel-pick".*?<\/button>/s, html) |> Enum.take(1)
+
+      refute karte =~ "duel-detail"
+    end
+
+    test "waehrend das Detail offen ist, waehlen die Pfeiltasten nicht", %{conn: conn, ranking: r} do
+      {:ok, view, html} = live(conn, ~p"/rankings/#{r.edit_token}/duell")
+
+      assert html =~ ~s(phx-window-keydown="duel_key")
+
+      [_, kit_id] =
+        Regex.run(~r/<button[^>]*phx-value-id="(\d+)"[^>]*data-role="duel-detail"/, html)
+
+      html =
+        view |> element(~s{[data-role="duel-detail"][phx-value-id="#{kit_id}"]}) |> render_click()
+
+      refute html =~ ~s(phx-window-keydown="duel_key")
+    end
+
+    test "im Duell steht kein Platz — der wird ja gerade ermittelt", %{conn: conn, ranking: r} do
+      {:ok, view, html} = live(conn, ~p"/rankings/#{r.edit_token}/duell")
+
+      [_, kit_id] =
+        Regex.run(~r/<button[^>]*phx-value-id="(\d+)"[^>]*data-role="duel-detail"/, html)
+
+      html =
+        view |> element(~s{[data-role="duel-detail"][phx-value-id="#{kit_id}"]}) |> render_click()
+
+      assert html =~ "Noch im Vergleich"
+      refute html =~ "Höher"
+      refute html =~ "Tiefer"
+    end
+
     test "stellt zwei Trikots gegeneinander", %{conn: conn, ranking: r} do
       {:ok, _view, html} = live(conn, ~p"/rankings/#{r.edit_token}/duell")
 
