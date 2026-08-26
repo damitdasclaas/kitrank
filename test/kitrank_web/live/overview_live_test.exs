@@ -172,6 +172,133 @@ defmodule KitrankWeb.OverviewLiveTest do
     end
   end
 
+  describe "Trikot-Variante umschalten" do
+    setup do
+      %{teams: [a, b], kits: kits, competition: competition} =
+        league(team_count: 2, kit_types: ["home", "away", "third"])
+
+      %{a: a, b: b, kits: kits, competition: competition}
+    end
+
+    # Der Vergleich-Knopf der Kachel traegt die ID des gerade gezeigten
+    # Trikots – daran laesst sich ablesen, welche Variante die Kachel zeigt.
+    defp zeigt?(html, kit) do
+      html =~ ~s(phx-value-id="#{kit.id}" data-role="tile-compare")
+    end
+
+    defp trikot(kits, team, kit_type) do
+      Enum.find(kits, &(&1.team_id == team.id and &1.kit_type == kit_type))
+    end
+
+    test "zeigt zunaechst das Heimtrikot", %{conn: conn, a: a, b: b, kits: kits} do
+      {:ok, _view, html} = live(conn, ~p"/")
+
+      assert zeigt?(html, trikot(kits, a, "home"))
+      assert zeigt?(html, trikot(kits, b, "home"))
+      refute zeigt?(html, trikot(kits, a, "away"))
+    end
+
+    test "ein Klick auf das Kuerzel schaltet nur diese Kachel um", %{
+      conn: conn,
+      a: a,
+      b: b,
+      kits: kits
+    } do
+      {:ok, view, _html} = live(conn, ~p"/")
+
+      html =
+        view
+        |> element(~s{[data-role="tile-kit"][phx-value-team="#{a.id}"][phx-value-type="away"]})
+        |> render_click()
+
+      assert zeigt?(html, trikot(kits, a, "away"))
+      # Der andere Verein bleibt, wo er war.
+      assert zeigt?(html, trikot(kits, b, "home"))
+    end
+
+    test "der Schalter im Kopf stellt alle auf einmal um", %{
+      conn: conn,
+      a: a,
+      b: b,
+      kits: kits
+    } do
+      {:ok, view, _html} = live(conn, ~p"/")
+
+      html =
+        view
+        |> element(~s{[data-role="show-all-kits"][phx-value-type="third"]})
+        |> render_click()
+
+      assert zeigt?(html, trikot(kits, a, "third"))
+      assert zeigt?(html, trikot(kits, b, "third"))
+    end
+
+    test "alle auf einmal raeumt die einzeln gewaehlten weg", %{conn: conn, a: a, kits: kits} do
+      {:ok, view, _html} = live(conn, ~p"/")
+
+      view
+      |> element(~s{[data-role="tile-kit"][phx-value-team="#{a.id}"][phx-value-type="away"]})
+      |> render_click()
+
+      html =
+        view
+        |> element(~s{[data-role="show-all-kits"][phx-value-type="home"]})
+        |> render_click()
+
+      # Sonst bliebe die Ansicht gemischt, ohne dass man sieht warum.
+      assert zeigt?(html, trikot(kits, a, "home"))
+      refute zeigt?(html, trikot(kits, a, "away"))
+    end
+
+    test "ein Verein ohne diese Variante faellt aufs Heimtrikot zurueck", %{
+      conn: conn,
+      competition: competition
+    } do
+      # Nur Heim – dieser Verein kann kein Ausweichtrikot zeigen. In dieselbe
+      # Liga, denn nur die oberste ist aufgeklappt.
+      %{kits: [nur_heim]} =
+        league(competition: competition, team_count: 1, kit_types: ["home"])
+
+      {:ok, view, _html} = live(conn, ~p"/")
+
+      html =
+        view
+        |> element(~s{[data-role="show-all-kits"][phx-value-type="third"]})
+        |> render_click()
+
+      # Keine Luecke im Raster.
+      assert zeigt?(html, nur_heim)
+    end
+
+    test "der Schalter zeigt nur Varianten, die es in der Saison gibt", %{conn: conn} do
+      {:ok, _view, html} = live(conn, ~p"/")
+
+      assert html =~ ~s(phx-value-type="home" data-role="show-all-kits")
+      assert html =~ ~s(phx-value-type="third" data-role="show-all-kits")
+      # Sondertrikots gibt es hier keine – ein Schalter dafuer taete nichts.
+      refute html =~ ~s(phx-value-type="special")
+    end
+
+    test "das Kuerzel des gezeigten Trikots ist als gedrueckt gemeldet", %{conn: conn, a: a} do
+      {:ok, view, _html} = live(conn, ~p"/")
+
+      html =
+        view
+        |> element(~s{[data-role="tile-kit"][phx-value-team="#{a.id}"][phx-value-type="away"]})
+        |> render_click()
+
+      assert html =~
+               ~s(phx-value-team="#{a.id}" phx-value-type="away" data-role="tile-kit" aria-pressed="true")
+    end
+
+    test "die Kuerzel liegen ueber dem Kachel-Link, sonst faengt der die Klicks ab", %{conn: conn} do
+      {:ok, _view, html} = live(conn, ~p"/")
+
+      # Der Link deckt die Kachel mit z-10 ab; die Leiste braucht mehr.
+      assert html =~ ~r/class="relative z-20 ml-auto flex shrink-0 gap-1"/
+    end
+  end
+
   describe "Team-Modal" do
     setup do
       %{teams: [team | _]} = league(team_count: 1, kit_types: ["home", "away", "third"])

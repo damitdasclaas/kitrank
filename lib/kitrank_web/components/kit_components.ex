@@ -290,6 +290,10 @@ defmodule KitrankWeb.KitComponents do
   attr :kit_type, :string, required: true
   attr :class, :string, default: nil
 
+  attr :style, :any,
+    default: nil,
+    doc: "fuer die Vereinsfarbe, die als Hex-Wert nicht in eine Klasse passt"
+
   @doc "Kurzmarke für den Kit-Typ – H, A, 3 oder S."
   def kit_badge(assigns) do
     ~H"""
@@ -299,6 +303,7 @@ defmodule KitrankWeb.KitComponents do
         "font-semibold leading-none tracking-tight",
         @class
       ]}
+      style={@style}
       title={KitLabel.label(@kit_type)}
     >
       {short_badge(@kit_type)}

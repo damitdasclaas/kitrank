@@ -17,6 +17,7 @@ defmodule KitrankWeb.OverviewLive do
   import KitrankWeb.KitComponents
 
   alias Kitrank.Kits
+  alias Kitrank.Kits.Kit
   alias KitrankWeb.Color
   alias KitrankWeb.KitLabel
 
@@ -47,8 +48,13 @@ defmodule KitrankWeb.OverviewLive do
   @impl true
   def handle_event("select_season", %{"season" => season}, socket) do
     # Beim Saisonwechsel fällt die Auswahl weg – sie zeigt auf Trikots, die es
-    # in der neuen Saison so nicht gibt.
-    {:noreply, socket |> load_season(season) |> push_patch(to: ~p"/")}
+    # in der neuen Saison so nicht gibt. Die einzeln umgeschalteten Kacheln
+    # ebenso: welche Varianten ein Verein hat, ist von Saison zu Saison anders.
+    {:noreply,
+     socket
+     |> load_season(season)
+     |> assign(:tile_kit, %{})
+     |> push_patch(to: ~p"/")}
   end
 
   def handle_event("toggle_league", %{"id" => id}, socket) do
@@ -80,6 +86,21 @@ defmodule KitrankWeb.OverviewLive do
       true ->
         {:noreply, patch_compare(socket, selected ++ [id])}
     end
+  end
+
+  # Eine Kachel umschalten. Die Wahl gilt nur fuer diesen Verein und ueberstimmt
+  # die globale – wer bei einem Verein das Auswaertstrikot sehen will, will
+  # deshalb nicht ueberall Auswaerts.
+  def handle_event("show_kit", %{"team" => team_id, "type" => kit_type}, socket) do
+    tile_kit = Map.put(socket.assigns.tile_kit, String.to_integer(team_id), kit_type)
+    {:noreply, assign(socket, :tile_kit, tile_kit)}
+  end
+
+  # Alle auf einmal. Das raeumt die einzelnen Wahlen weg: „alle auf Auswaerts"
+  # heisst alle, sonst blieben vorher angetippte Kacheln stehen und die Ansicht
+  # waere gemischt, ohne dass man sieht warum.
+  def handle_event("show_all_kits", %{"type" => kit_type}, socket) do
+    {:noreply, assign(socket, kit_view: kit_type, tile_kit: %{})}
   end
 
   def handle_event("select_image", %{"kit-id" => kit_id, "index" => index}, socket) do
@@ -171,14 +192,30 @@ defmodule KitrankWeb.OverviewLive do
       overview: overview,
       kits_by_id: kits_by_id,
       teams_by_id: teams_by_id,
-      kit_count: map_size(kits_by_id)
+      kit_count: map_size(kits_by_id),
+      kit_types: available_kit_types(overview)
     )
     |> assign_new(:image_choice, fn -> %{} end)
     |> assign_new(:zoom, fn -> nil end)
     |> assign_new(:compare_ids, fn -> [] end)
     |> assign_new(:back, fn -> nil end)
+    |> assign_new(:kit_view, fn -> "home" end)
+    |> assign_new(:tile_kit, fn -> %{} end)
     |> assign_new(:open_team, fn -> nil end)
     |> open_first_league()
+  end
+
+  # Nur die Typen, die es in dieser Saison wirklich gibt – ein Schalter fuer
+  # „Sonder", wenn kein Verein ein Sondertrikot hat, taete nichts.
+  defp available_kit_types(overview) do
+    vorhanden =
+      for {_competition, teams} <- overview,
+          {_team, kits} <- teams,
+          kit <- kits,
+          into: MapSet.new(),
+          do: kit.kit_type
+
+    Enum.filter(Kit.kit_types(), &MapSet.member?(vorhanden, &1))
   end
 
   # Beim Laden und nach einem Saisonwechsel die oberste Liga aufklappen – bei
@@ -282,6 +319,9 @@ defmodule KitrankWeb.OverviewLive do
           seasons={@seasons}
           kit_count={@kit_count}
           team_count={map_size(@teams_by_id)}
+          kit_types={@kit_types}
+          kit_view={@kit_view}
+          tile_kit={@tile_kit}
         />
 
         <div
@@ -313,6 +353,7 @@ defmodule KitrankWeb.OverviewLive do
               team={team}
               kits={kits}
               compare_ids={@compare_ids}
+              shown={Map.get(@tile_kit, team.id, @kit_view)}
               href={team_path(team, @compare_ids)}
             />
           </div>
@@ -364,6 +405,9 @@ defmodule KitrankWeb.OverviewLive do
   attr :seasons, :list, required: true
   attr :kit_count, :integer, required: true
   attr :team_count, :integer, required: true
+  attr :kit_types, :list, required: true
+  attr :kit_view, :string, required: true
+  attr :tile_kit, :map, required: true
 
   defp page_intro(assigns) do
     ~H"""
@@ -392,22 +436,49 @@ defmodule KitrankWeb.OverviewLive do
         </p>
       </div>
 
-      <div :if={length(@seasons) > 1} class="flex items-center gap-2">
-        <span class="kr-eyebrow">{gettext("Saison")}</span>
-        <div class="flex gap-1 rounded-lg border border-line bg-sunk p-1">
-          <button
-            :for={option <- @seasons}
-            phx-click="select_season"
-            phx-value-season={option}
-            class={[
-              "rounded-md px-3 py-1.5 font-mono text-xs transition",
-              option == @season && "bg-panel text-ink shadow-sm",
-              option != @season && "text-soft hover:text-ink"
-            ]}
-            aria-pressed={to_string(option == @season)}
-          >
-            {option}
-          </button>
+      <div class="flex flex-col gap-3 md:items-end">
+        <%!-- Alle Kacheln auf einmal. Einzeln geht es ueber die Kuerzel auf
+              der Kachel selbst – das ist der haeufigere Fall, deshalb steht
+              es dort und nicht hier. --%>
+        <div :if={length(@kit_types) > 1} class="flex items-center gap-2">
+          <span class="kr-eyebrow">{gettext("Trikot")}</span>
+          <div class="flex gap-1 rounded-lg border border-line bg-sunk p-1">
+            <button
+              :for={kit_type <- @kit_types}
+              type="button"
+              phx-click="show_all_kits"
+              phx-value-type={kit_type}
+              data-role="show-all-kits"
+              class={[
+                "rounded-md px-2.5 py-1.5 font-mono text-xs transition",
+                kit_type == @kit_view && @tile_kit == %{} && "bg-panel text-ink shadow-sm",
+                (kit_type != @kit_view || @tile_kit != %{}) && "text-soft hover:text-ink"
+              ]}
+              aria-pressed={to_string(kit_type == @kit_view && @tile_kit == %{})}
+              title={KitLabel.label(kit_type)}
+            >
+              {KitLabel.label(kit_type)}
+            </button>
+          </div>
+        </div>
+
+        <div :if={length(@seasons) > 1} class="flex items-center gap-2">
+          <span class="kr-eyebrow">{gettext("Saison")}</span>
+          <div class="flex gap-1 rounded-lg border border-line bg-sunk p-1">
+            <button
+              :for={option <- @seasons}
+              phx-click="select_season"
+              phx-value-season={option}
+              class={[
+                "rounded-md px-3 py-1.5 font-mono text-xs transition",
+                option == @season && "bg-panel text-ink shadow-sm",
+                option != @season && "text-soft hover:text-ink"
+              ]}
+              aria-pressed={to_string(option == @season)}
+            >
+              {option}
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -458,11 +529,15 @@ defmodule KitrankWeb.OverviewLive do
   attr :compare_ids, :list, required: true
   attr :href, :string, required: true
 
+  attr :shown, :string,
+    required: true,
+    doc: "gewuenschter Trikot-Typ; hat der Verein ihn nicht, bleibt es beim Heimtrikot"
+
   defp team_tile(assigns) do
     assigns =
       assigns
       |> assign(:color, Color.team_color(assigns.team))
-      |> assign(:lead_kit, lead_kit(assigns.kits))
+      |> assign(:lead_kit, shown_kit(assigns.kits, assigns.shown))
 
     ~H"""
     <div class="group relative overflow-hidden rounded-lg border border-line bg-panel transition hover:border-ink/25 hover:shadow-[0_8px_28px_-16px_rgb(0_0_0/0.45)]">
@@ -535,12 +610,37 @@ defmodule KitrankWeb.OverviewLive do
           {@team.short_code}
         </span>
         <span class="truncate text-[13px] leading-tight">{@team.name}</span>
-        <span class="ml-auto flex shrink-0 gap-1">
-          <.kit_badge
+        <%!-- Ueber dem Kachel-Link, sonst faengt der die Klicks ab. --%>
+        <span class="relative z-20 ml-auto flex shrink-0 gap-1">
+          <button
             :for={kit <- @kits}
-            kit_type={kit.kit_type}
-            class="bg-sunk text-soft"
-          />
+            type="button"
+            phx-click="show_kit"
+            phx-value-team={@team.id}
+            phx-value-type={kit.kit_type}
+            data-role="tile-kit"
+            aria-pressed={to_string(@lead_kit && kit.id == @lead_kit.id)}
+            aria-label={
+              gettext("%{verein}: %{trikot} zeigen",
+                verein: @team.name,
+                trikot: KitLabel.label(kit.kit_type)
+              )
+            }
+            class="rounded-[3px] transition hover:opacity-80"
+          >
+            <.kit_badge
+              kit_type={kit.kit_type}
+              class={
+                if @lead_kit && kit.id == @lead_kit.id,
+                  do: "text-white",
+                  else: "bg-sunk text-soft"
+              }
+              style={
+                @lead_kit && kit.id == @lead_kit.id &&
+                  "background-color: #{@color}; color: #{Color.readable_on(@color)}"
+              }
+            />
+          </button>
         </span>
       </div>
 
@@ -558,6 +658,13 @@ defmodule KitrankWeb.OverviewLive do
 
   defp lead_kit(kits) do
     Enum.find(kits, &(&1.kit_type == "home")) || List.first(kits)
+  end
+
+  # Faellt auf das Heimtrikot zurueck, statt die Kachel leer zu lassen: nicht
+  # jeder Verein hat ein Ausweich- oder Sondertrikot, und „alle auf Ausweich"
+  # soll keine Luecken ins Raster reissen.
+  defp shown_kit(kits, kit_type) do
+    Enum.find(kits, &(&1.kit_type == kit_type)) || lead_kit(kits)
   end
 
   ## Vergleichsleiste
