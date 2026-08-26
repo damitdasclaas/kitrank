@@ -451,14 +451,15 @@ defmodule KitrankWeb.OverviewLive do
       <%!-- Die Bühne bleibt in beiden Themes hell: Trikots sind Produktfotos,
             und die liegen auf Weiß. --%>
       <div
-        class="relative flex aspect-[4/3] items-center justify-center px-6 py-4"
+        class="relative flex aspect-[4/3] items-center justify-center overflow-hidden px-6 py-4"
         style={"background-color: color-mix(in oklab, #{@color} 15%, #FFFFFF)"}
       >
         <.kit_figure
           :if={@lead_kit}
           kit={@lead_kit}
           team={@team}
-          class="h-full w-full transition-transform duration-300 group-hover:-translate-y-1"
+          fill
+          class="transition-transform duration-300 group-hover:-translate-y-1"
           size={:thumb}
         />
         <span :if={!@lead_kit} class="font-mono text-[11px] text-black/40">{gettext("kein Trikot")}</span>
@@ -707,7 +708,7 @@ defmodule KitrankWeb.OverviewLive do
         type="button"
         phx-click="zoom"
         phx-value-id={@kit.id}
-        class="group relative flex aspect-square cursor-zoom-in items-center justify-center p-4 sm:p-8"
+        class="group relative flex aspect-square cursor-zoom-in items-center justify-center overflow-hidden p-4 sm:p-8"
         style={"background-color: color-mix(in oklab, #{@color} 13%, #FFFFFF)"}
         aria-label={
           gettext("%{verein} %{trikot} groß ansehen",
@@ -720,7 +721,8 @@ defmodule KitrankWeb.OverviewLive do
           kit={@kit}
           team={@team}
           image_url={@active_image}
-          class="h-full w-full transition-transform duration-300 group-hover:scale-[1.04]"
+          fill
+          class="transition-transform duration-300 group-hover:scale-[1.04]"
         />
         <.zoom_hint />
       </button>
@@ -834,7 +836,8 @@ defmodule KitrankWeb.OverviewLive do
               <.kit_figure
                 kit={entry.kit}
                 team={entry.team}
-                class="h-full w-full transition-transform duration-300 group-hover:scale-[1.04]"
+                fill
+                class="transition-transform duration-300 group-hover:scale-[1.04]"
               />
               <.zoom_hint />
             </button>

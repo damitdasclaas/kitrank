@@ -556,10 +556,10 @@ defmodule KitrankWeb.Ranking.EditLive do
       style={@selected && "--tw-ring-color: #{@color}"}
     >
       <div
-        class="relative flex aspect-square items-center justify-center p-4"
+        class="relative flex aspect-square items-center justify-center overflow-hidden p-4"
         style={"background-color: color-mix(in oklab, #{@color} 14%, #FFFFFF)"}
       >
-        <.kit_figure kit={@kit} team={@team} class="h-full w-full" />
+        <.kit_figure kit={@kit} team={@team} fill />
         <span
           :if={@selected}
           class="absolute right-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-full"
@@ -798,7 +798,7 @@ defmodule KitrankWeb.Ranking.EditLive do
                 aspect-square heisst ein Bildschirm pro Bild, und die Notiz
                 darunter sieht man erst nach dem Scrollen. --%>
           <div
-            class="flex aspect-[4/3] items-center justify-center rounded-tl-xl p-4 sm:aspect-square sm:p-8"
+            class="relative flex aspect-[4/3] items-center justify-center overflow-hidden rounded-tl-xl p-4 sm:aspect-square sm:p-8"
             style={"background-color: color-mix(in oklab, #{@color} 13%, #FFFFFF)"}
           >
             <%!-- :medium, nicht :full — das Original gehoert in die Lupe, nicht
@@ -809,7 +809,7 @@ defmodule KitrankWeb.Ranking.EditLive do
               team={@entry.kit.team}
               image_url={@src}
               size={:medium}
-              class="h-full w-full"
+              fill
             />
           </div>
 
@@ -1025,7 +1025,7 @@ defmodule KitrankWeb.Ranking.EditLive do
       class="group overflow-hidden rounded-xl border border-line bg-panel text-left transition hover:border-ink hover:shadow-[0_10px_32px_-18px_rgb(0_0_0/0.5)]"
     >
       <div
-        class="flex aspect-square items-center justify-center p-8"
+        class="relative flex aspect-square items-center justify-center overflow-hidden p-8"
         style={"background-color: color-mix(in oklab, #{@color} 14%, #FFFFFF)"}
       >
         <%!-- Die ID haengt am Trikot, nicht am Platz: wechselt das Paar, soll
@@ -1038,7 +1038,8 @@ defmodule KitrankWeb.Ranking.EditLive do
           team={@kit.team}
           size={:thumb}
           eager
-          class="h-full w-full transition-transform duration-300 group-hover:scale-105"
+          fill
+          class="transition-transform duration-300 group-hover:scale-105"
         />
       </div>
       <div class="border-t border-line px-4 py-3">

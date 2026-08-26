@@ -52,6 +52,16 @@ defmodule KitrankWeb.KitComponents do
     default: false,
     doc: "sofort laden statt beim Scrollen – fuer Bilder, die der Grund der Seite sind"
 
+  attr :fill, :boolean,
+    default: false,
+    doc: """
+    Fuellt den umgebenden Kasten aus, statt ihn ueber `h-full w-full` zu
+    messen. Fuer jeden Kasten mit `aspect-*` der richtige Weg: eine
+    Prozenthoehe in einem Flex-Element mit `aspect-ratio` loest Safari nicht
+    zuverlaessig auf, und dann nimmt das Bild seine Eigengroesse und laeuft aus
+    dem Kasten. Der Kasten muss dafuer `relative` sein.
+    """
+
   @doc """
   Ein Trikot als Bild, falls hinterlegt – sonst als gezeichnete Silhouette.
 
@@ -87,7 +97,11 @@ defmodule KitrankWeb.KitComponents do
       |> assign(:color, Color.team_color(assigns.team))
 
     ~H"""
-    <div class={["relative flex items-center justify-center", @class]}>
+    <div class={[
+      if(@fill, do: "absolute inset-0", else: "relative"),
+      "flex items-center justify-center",
+      @class
+    ]}>
       <img
         :if={@src}
         src={@src}

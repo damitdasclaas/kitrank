@@ -40,7 +40,7 @@ defmodule KitrankWeb.MobileLayoutTest do
     test "das Polster der Bildfläche wächst erst mit dem Bildschirm", %{conn: conn, team: team} do
       {:ok, _view, html} = live(conn, ~p"/teams/#{team.id}")
 
-      assert html =~ "justify-center p-4 sm:p-8"
+      assert html =~ "justify-center overflow-hidden p-4 sm:p-8"
     end
 
     test "die Fußzeile der Kachel bricht auf dem Handy um", %{conn: conn, team: team} do
@@ -90,7 +90,8 @@ defmodule KitrankWeb.MobileLayoutTest do
 
       html = view |> element(~s{[data-role="detail-link"]}) |> render_click()
 
-      assert html =~ "aspect-[4/3] items-center justify-center rounded-tl-xl p-4 sm:aspect-square"
+      assert html =~
+               "aspect-[4/3] items-center justify-center overflow-hidden rounded-tl-xl p-4 sm:aspect-square"
     end
   end
 

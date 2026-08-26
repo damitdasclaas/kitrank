@@ -487,7 +487,7 @@ defmodule KitrankWeb.Reveal.Components do
       class="group overflow-hidden rounded-lg border border-line text-left transition hover:border-ink"
     >
       <div
-        class="flex aspect-[4/3] items-center justify-center p-5"
+        class="relative flex aspect-[4/3] items-center justify-center overflow-hidden p-5"
         style={"background-color: color-mix(in oklab, #{@color} 14%, #FFFFFF)"}
       >
         <%!-- Die ID haengt am Trikot, nicht am Platz: wechselt das Paar, soll
@@ -500,7 +500,8 @@ defmodule KitrankWeb.Reveal.Components do
           team={@kit.team}
           size={:thumb}
           eager
-          class="h-full w-full transition-transform duration-300 group-hover:scale-105"
+          fill
+          class="transition-transform duration-300 group-hover:scale-105"
         />
       </div>
       <div class="border-t border-line px-3 py-2">
@@ -803,10 +804,10 @@ defmodule KitrankWeb.Reveal.Components do
 
       <div
         :if={@entry.revealed? && @entry.kit}
-        class="flex aspect-square items-center justify-center p-6"
+        class="relative flex aspect-square items-center justify-center overflow-hidden p-6"
         style={"background-color: color-mix(in oklab, #{@color} 14%, #FFFFFF)"}
       >
-        <.kit_figure kit={@entry.kit} team={@entry.kit.team} class="h-full w-full" />
+        <.kit_figure kit={@entry.kit} team={@entry.kit.team} fill />
       </div>
 
       <div

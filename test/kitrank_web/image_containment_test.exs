@@ -50,7 +50,11 @@ defmodule KitrankWeb.ImageContainmentTest do
   test "der umgebende Kasten ist relativ", %{html: html} do
     # Ohne `relative` misst `inset-0` gegen den nächsten positionierten
     # Vorfahren — irgendwo weit oben, und das Bild deckt die halbe Seite ab.
-    assert html =~ "relative flex items-center justify-center"
+    # Das `relative` sitzt jetzt beim Aufrufer, nicht mehr an kit_figure: in
+    # `fill`-Modus legt sich der Wrapper selbst mit `absolute inset-0` in den
+    # Kasten, also muss der Kasten der positionierte Vorfahre sein.
+    assert html =~ ~r/class="relative flex aspect-\[4\/3\][^"]*overflow-hidden/
+    assert html =~ "absolute inset-0 flex items-center justify-center"
   end
 
   test "jeder Aufrufer gibt dem Kasten eine Größe" do
@@ -64,6 +68,9 @@ defmodule KitrankWeb.ImageContainmentTest do
       for {pfad, quelle} <- quellen,
           [aufruf] <- Regex.scan(~r/<\.kit_figure\b[^>]*?\/>/s, quelle),
           not Regex.match?(~r/class="[^"]*\bh-(?:full|\d|\[)/, aufruf),
+          # `fill` ist der andere gueltige Weg: dort kommt die Groesse nicht vom
+          # Bild, sondern vom Kasten, der es traegt.
+          not Regex.match?(~r/\bfill\b/, aufruf),
           do: {pfad, aufruf |> String.replace(~r/\s+/, " ") |> String.slice(0, 90)}
 
     assert ohne_groesse == []
