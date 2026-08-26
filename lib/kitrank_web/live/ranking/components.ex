@@ -171,6 +171,7 @@ defmodule KitrankWeb.Ranking.Components do
   attr :entry, :map, required: true
   attr :index, :integer, required: true
   attr :last?, :boolean, required: true
+  attr :total, :integer, required: true, doc: "Laenge der Liste – die Obergrenze des Platzfeldes"
 
   attr :note_epoch, :integer,
     default: 0,
@@ -195,9 +196,34 @@ defmodule KitrankWeb.Ranking.Components do
         <.icon name="hero-bars-3" class="size-4" />
       </button>
 
-      <span class="kr-display mt-0.5 w-7 shrink-0 text-right text-lg tabular-nums leading-none">
-        {@index + 1}
-      </span>
+      <%!-- Die Ziffer ist das Feld. Bei zwanzig Trikots ist „auf Platz 3"
+            ein Tastendruck, waehrend Pfeile siebzehn Klicks brauchen und
+            Ziehen ueber den halben Bildschirm geht.
+
+            phx-blur speichert genauso wie Enter: wer tippt und danach
+            woanders hinfasst, hat den Platz gemeint, nicht verworfen. Die
+            ID im Namen des Formulars haengt am Trikot und wechselt beim
+            Umsortieren nicht mit der Position. --%>
+      <form id={"platz-form-#{@entry.kit_id}"} phx-submit="move_to" class="mt-0.5 shrink-0">
+        <input type="hidden" name="kit_id" value={@entry.kit_id} />
+        <input
+          type="number"
+          name="position"
+          value={@index + 1}
+          min="1"
+          max={@total}
+          inputmode="numeric"
+          phx-blur="move_to"
+          phx-value-kit-id={@entry.kit_id}
+          aria-label={
+            gettext("Platz von %{verein} %{trikot}",
+              verein: @entry.kit.team.name,
+              trikot: KitLabel.display(@entry.kit)
+            )
+          }
+          class="kr-display w-10 rounded-md border border-transparent bg-transparent px-1 py-0.5 text-right text-lg tabular-nums leading-none transition hover:border-line focus:border-ink focus:outline-none"
+        />
+      </form>
 
       <button
         type="button"

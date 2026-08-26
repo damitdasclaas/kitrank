@@ -600,6 +600,53 @@ defmodule KitrankWeb.RankingLiveTest do
       assert Rankings.count_entries(r.id) == 2
     end
 
+    test "setzt einen Eintrag über die Platzziffer", %{conn: conn, ranking: r, kits: [a, b, c]} do
+      {:ok, view, _html} = live(conn, ~p"/rankings/#{r.edit_token}/edit")
+
+      view
+      |> form("#platz-form-#{c.id}", %{"position" => "1"})
+      |> render_submit()
+
+      assert Rankings.list_entries(r) |> Enum.map(& &1.kit_id) == [c.id, a.id, b.id]
+    end
+
+    test "Wegklicken speichert genauso wie Enter", %{conn: conn, ranking: r, kits: [a, b, c]} do
+      {:ok, view, _html} = live(conn, ~p"/rankings/#{r.edit_token}/edit")
+
+      # phx-blur schickt den Feldinhalt unter "value" – nicht unter "position".
+      render_blur(view, "move_to", %{"kit-id" => to_string(a.id), "value" => "3"})
+
+      assert Rankings.list_entries(r) |> Enum.map(& &1.kit_id) == [b.id, c.id, a.id]
+    end
+
+    test "eine Zahl jenseits der Liste rutscht ans Ende", %{
+      conn: conn,
+      ranking: r,
+      kits: [a, b, c]
+    } do
+      {:ok, view, _html} = live(conn, ~p"/rankings/#{r.edit_token}/edit")
+
+      view |> form("#platz-form-#{a.id}", %{"position" => "99"}) |> render_submit()
+
+      assert Rankings.list_entries(r) |> Enum.map(& &1.kit_id) == [b.id, c.id, a.id]
+    end
+
+    test "eine leere Eingabe laesst die Liste in Ruhe", %{conn: conn, ranking: r, kits: [a, b, c]} do
+      {:ok, view, _html} = live(conn, ~p"/rankings/#{r.edit_token}/edit")
+
+      html = view |> form("#platz-form-#{c.id}", %{"position" => ""}) |> render_submit()
+
+      assert Rankings.list_entries(r) |> Enum.map(& &1.kit_id) == [a.id, b.id, c.id]
+      # Der halb getippte Wert darf nicht stehen bleiben.
+      assert html =~ ~s(name="position" value="3")
+    end
+
+    test "das Feld kennt die Laenge der Liste", %{conn: conn, ranking: r} do
+      {:ok, _view, html} = live(conn, ~p"/rankings/#{r.edit_token}/edit")
+
+      assert html =~ ~s(max="3")
+    end
+
     test "schiebt einen Eintrag nach oben", %{conn: conn, ranking: r, kits: [a, b, c]} do
       {:ok, view, _html} = live(conn, ~p"/rankings/#{r.edit_token}/edit")
 

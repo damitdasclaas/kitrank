@@ -144,6 +144,29 @@ defmodule Kitrank.Rankings do
 
   @doc "Verschiebt einen Eintrag um `delta` Plätze; am Rand passiert nichts."
   def move_entry(%Ranking{} = ranking, kit_id, delta) do
+    with_index(ranking, kit_id, fn ids, index ->
+      target = index + delta
+
+      if target < 0 or target >= length(ids), do: :ok, else: place(ranking, ids, index, target)
+    end)
+  end
+
+  @doc """
+  Setzt einen Eintrag auf einen bestimmten Platz, gezählt ab 1.
+
+  Werte ausserhalb der Liste rutschen an den nächsten Rand: wer bei zwölf
+  Einträgen die 99 eintippt, meint „ganz nach unten" und soll keinen Fehler
+  vorgesetzt bekommen.
+  """
+  def move_to(%Ranking{} = ranking, kit_id, position) when is_integer(position) do
+    with_index(ranking, kit_id, fn ids, index ->
+      target = position |> max(1) |> min(length(ids)) |> Kernel.-(1)
+
+      if target == index, do: :ok, else: place(ranking, ids, index, target)
+    end)
+  end
+
+  defp with_index(ranking, kit_id, fun) do
     ids =
       Repo.all(
         from e in RankingEntry,
@@ -153,21 +176,16 @@ defmodule Kitrank.Rankings do
       )
 
     case Enum.find_index(ids, &(&1 == kit_id)) do
-      nil ->
-        {:error, :not_found}
-
-      index ->
-        target = index + delta
-
-        if target < 0 or target >= length(ids) do
-          :ok
-        else
-          ids
-          |> List.delete_at(index)
-          |> List.insert_at(target, kit_id)
-          |> then(&reorder(ranking, &1))
-        end
+      nil -> {:error, :not_found}
+      index -> fun.(ids, index)
     end
+  end
+
+  defp place(ranking, ids, index, target) do
+    ids
+    |> List.delete_at(index)
+    |> List.insert_at(target, Enum.at(ids, index))
+    |> then(&reorder(ranking, &1))
   end
 
   def remove_entry(%RankingEntry{} = entry) do

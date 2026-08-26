@@ -138,6 +138,58 @@ defmodule Kitrank.RankingsTest do
     end
   end
 
+  describe "move_to/3" do
+    setup do
+      %{kits: [a, b, c] = kits} = league_fixture(team_count: 3, kit_types: ["home"])
+      %{ranking: ranking_with_kits_fixture(kits), a: a, b: b, c: c}
+    end
+
+    defp reihenfolge(ranking) do
+      Rankings.list_entries(ranking) |> Enum.map(& &1.kit_id)
+    end
+
+    test "setzt einen Eintrag auf den genannten Platz", %{ranking: r, a: a, b: b, c: c} do
+      assert :ok = Rankings.move_to(r, c.id, 1)
+      assert reihenfolge(r) == [c.id, a.id, b.id]
+    end
+
+    test "zaehlt ab 1, nicht ab 0", %{ranking: r, a: a, b: b, c: c} do
+      assert :ok = Rankings.move_to(r, a.id, 2)
+      assert reihenfolge(r) == [b.id, a.id, c.id]
+    end
+
+    test "haelt die Positionen luecken- und doppelfrei", %{ranking: r, c: c} do
+      :ok = Rankings.move_to(r, c.id, 1)
+
+      assert Rankings.list_entries(r) |> Enum.map(& &1.position) == [1, 2, 3]
+    end
+
+    test "eine zu grosse Zahl heisst ans Ende", %{ranking: r, a: a, b: b, c: c} do
+      assert :ok = Rankings.move_to(r, a.id, 99)
+      assert reihenfolge(r) == [b.id, c.id, a.id]
+    end
+
+    test "eine zu kleine Zahl heisst an den Anfang", %{ranking: r, a: a, b: b, c: c} do
+      assert :ok = Rankings.move_to(r, c.id, 0)
+      assert reihenfolge(r) == [c.id, a.id, b.id]
+
+      assert :ok = Rankings.move_to(r, b.id, -5)
+      assert reihenfolge(r) == [b.id, c.id, a.id]
+    end
+
+    test "der eigene Platz aendert nichts", %{ranking: r, a: a, b: b, c: c} do
+      assert :ok = Rankings.move_to(r, b.id, 2)
+      assert reihenfolge(r) == [a.id, b.id, c.id]
+    end
+
+    test "ein fremdes Trikot ist ein Fehler, kein stiller Umbau", %{ranking: r, a: a, b: b, c: c} do
+      %{kits: [fremd]} = league_fixture(team_count: 1, kit_types: ["home"])
+
+      assert {:error, :not_found} = Rankings.move_to(r, fremd.id, 1)
+      assert reihenfolge(r) == [a.id, b.id, c.id]
+    end
+  end
+
   describe "remove_entry/1" do
     test "schließt die entstehende Lücke in den Positionen" do
       %{kits: [a, b, c]} = league_fixture(team_count: 3, kit_types: ["home"])

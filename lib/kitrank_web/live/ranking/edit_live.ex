@@ -247,6 +247,17 @@ defmodule KitrankWeb.Ranking.EditLive do
     {:noreply, load_entries(socket)}
   end
 
+  # Zwei Wege, dieselbe Absicht: Enter schickt das Formular, dessen Feld
+  # "position" heisst; Wegklicken schickt phx-blur, wo LiveView den Inhalt des
+  # Feldes selbst unter "value" mitgibt.
+  def handle_event("move_to", %{"kit_id" => id, "position" => position}, socket) do
+    {:noreply, move_to(socket, id, position)}
+  end
+
+  def handle_event("move_to", %{"kit-id" => id, "value" => position}, socket) do
+    {:noreply, move_to(socket, id, position)}
+  end
+
   def handle_event("remove", %{"id" => id}, socket) do
     {:ok, _} = Rankings.remove_kit(socket.assigns.ranking, String.to_integer(id))
     {:noreply, load_entries(socket)}
@@ -304,6 +315,21 @@ defmodule KitrankWeb.Ranking.EditLive do
       {:error, changeset} ->
         {:noreply, assign(socket, name_form: to_form(changeset))}
     end
+  end
+
+  # Leer oder keine Zahl heisst „doch nicht": die Liste bleibt, wie sie ist,
+  # und das neu gerenderte Feld zeigt wieder den echten Platz – ein halb
+  # getippter Wert soll nicht stehen bleiben.
+  defp move_to(socket, id, position) do
+    case Integer.parse(String.trim(position)) do
+      {position, ""} ->
+        Rankings.move_to(socket.assigns.ranking, String.to_integer(id), position)
+
+      _ ->
+        :ok
+    end
+
+    load_entries(socket)
   end
 
   defp note_saved(socket, entry, note) do
@@ -613,13 +639,14 @@ defmodule KitrankWeb.Ranking.EditLive do
         entry={entry}
         index={index}
         last?={index == length(@entries) - 1}
+        total={length(@entries)}
         note_epoch={@note_epoch}
       />
     </ul>
 
     <p :if={@entries != []} class="mt-4 text-xs text-soft">
       {gettext(
-        "Ziehen am Griff sortiert um. Ohne Maus gehen auch die Pfeile — beides speichert sofort."
+        "Ziehen am Griff sortiert um, die Pfeile gehen ohne Maus — und die Platzziffer lässt sich überschreiben: Zahl eintippen, Enter. Alles speichert sofort."
       )}
       <.link
         :if={length(@entries) > 1}
