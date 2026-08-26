@@ -4,8 +4,12 @@ defmodule Mix.Tasks.Kitrank.Import do
   @moduledoc """
   Vereine, Ligen und Saison-Zuordnungen aus einer Datei einspielen.
 
-      mix kitrank.import                          # priv/data/teams_2026_27.json
-      mix kitrank.import priv/data/eigene.json    # eine andere Datei
+      mix kitrank.import                              # priv/data/teams_2026_27.json
+      mix kitrank.import priv/data/nfl_2026_27.json   # die NFL
+      mix kitrank.import priv/data/eigene.json        # eine andere Datei
+
+  Jede Datei beschreibt eine Sportart und räumt nur in ihrer eigenen auf — die
+  Läufe stören sich also nicht gegenseitig.
 
   Idempotent — mehrfaches Ausführen ändert nichts doppelt.
 

@@ -19,7 +19,14 @@ defmodule Kitrank.Kits.Import do
 
   Der Import ist idempotent: mehrfaches Ausführen legt nichts doppelt an und
   überschreibt nur, was sich geändert hat.
+
+  **Eine Datei, eine Sportart.** `priv/data/teams_2026_27.json` ist der Fußball,
+  `priv/data/nfl_2026_27.json` die NFL. Aufgeräumt wird nur innerhalb der
+  eigenen Sportart: was die Datei nicht erwähnt, aber zu einer anderen Sportart
+  gehört, bleibt stehen. Sonst würde jeder Lauf die jeweils andere Liga leeren.
   """
+
+  import Ecto.Query, only: [from: 2]
 
   alias Kitrank.Kits
   alias Kitrank.Kits.{Competition, Kit, Team, TeamSeason}
@@ -75,7 +82,7 @@ defmodule Kitrank.Kits.Import do
 
     # Was in dieser Saison noch zugeordnet ist, aber nicht mehr in der Datei
     # steht, ist abgestiegen oder aufgestiegen – und gehoert nicht mehr hierher.
-    verwaist = remove_stale(season, competitions)
+    verwaist = remove_stale(sport, season, competitions)
 
     Map.put(bericht, :entfernt, verwaist)
   end
@@ -177,18 +184,33 @@ defmodule Kitrank.Kits.Import do
   # Zuordnungen dieser Saison, die es in der Datei nicht mehr gibt. Die Vereine
   # selbst bleiben stehen – ihre Trikots aus frueheren Saisons sollen nicht
   # verschwinden, nur weil sie abgestiegen sind.
-  defp remove_stale(season, competitions) do
+  #
+  # Nur die eigene Sportart: eine Datei beschreibt eine Sportart, und was sie
+  # nicht erwaehnt, hat sie nicht zu verantworten. Ohne diese Einschraenkung
+  # loescht der Fussball-Import beim Durchlauf die NFL-Zuordnungen derselben
+  # Saison – und der NFL-Import danach die des Fussballs.
+  defp remove_stale(sport, season, competitions) do
     gueltig =
       for competition <- competitions,
           team <- competition["teams"],
           into: MapSet.new(),
           do: String.upcase(team["short_code"])
 
-    season
-    |> Kits.list_team_seasons()
+    sport
+    |> team_seasons_of_sport(season)
     |> Enum.reject(&MapSet.member?(gueltig, &1.team.short_code))
     |> Enum.map(&insert!(Kits.delete_team_season(&1)))
     |> length()
+  end
+
+  defp team_seasons_of_sport(sport, season) do
+    from(ts in TeamSeason,
+      join: c in assoc(ts, :competition),
+      join: t in assoc(ts, :team),
+      where: ts.season == ^season and c.sport_id == ^sport.id,
+      preload: [team: t]
+    )
+    |> Repo.all()
   end
 
   defp insert!({:ok, record}), do: record

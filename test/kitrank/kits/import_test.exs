@@ -223,4 +223,56 @@ defmodule Kitrank.Kits.ImportTest do
       assert length(zweite_teams) == 18
     end
   end
+
+  describe "Zwei Sportarten in derselben Saison" do
+    # Eine Datei beschreibt eine Sportart. Raeumte der Import saisonweit auf,
+    # wuerde der Fussball-Lauf die NFL leeren und der NFL-Lauf den Fussball —
+    # abwechselnd, bei jedem Deploy.
+    defp nfl_daten(season, teams) do
+      %{
+        "season" => season,
+        "sport" => %{"name" => "American Football", "slug" => "american-football"},
+        "competitions" => [
+          %{"name" => "NFL", "country" => "US", "tier" => 1, "teams" => teams}
+        ]
+      }
+    end
+
+    setup do
+      fussball = datei(saison_daten("2026/27", [verein("FC Bayern", "FCB")]))
+      nfl = datei(nfl_daten("2026/27", [verein("Buffalo Bills", "BUF", "#003087")]))
+
+      {:ok, _} = Import.run(fussball)
+      {:ok, _} = Import.run(nfl)
+
+      %{fussball: fussball, nfl: nfl}
+    end
+
+    test "der Fussball-Import laesst die NFL stehen", %{fussball: fussball} do
+      assert {:ok, bericht} = Import.run(fussball)
+
+      assert bericht.entfernt == 0
+      assert Enum.any?(Kits.overview("2026/27"), fn {c, _} -> c.name == "NFL" end)
+    end
+
+    test "und der NFL-Import den Fussball", %{nfl: nfl} do
+      assert {:ok, bericht} = Import.run(nfl)
+
+      assert bericht.entfernt == 0
+      assert Enum.any?(Kits.overview("2026/27"), fn {c, _} -> c.name == "Bundesliga" end)
+    end
+
+    test "aufgeraeumt wird weiterhin – aber nur in der eigenen Sportart" do
+      # Buffalo faellt aus der NFL-Datei, Bayern steht unveraendert in seiner.
+      leer = datei(nfl_daten("2026/27", [verein("Miami Dolphins", "MIA", "#008C95")]))
+
+      assert {:ok, bericht} = Import.run(leer)
+
+      assert bericht.entfernt == 1
+      codes = for {_, teams} <- Kits.overview("2026/27"), {t, _} <- teams, do: t.short_code
+      assert "FCB" in codes
+      assert "MIA" in codes
+      refute "BUF" in codes
+    end
+  end
 end
