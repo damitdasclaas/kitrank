@@ -30,17 +30,45 @@ defmodule KitrankWeb.SportsLive do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope}>
       <div class="mx-auto max-w-[1100px] px-4 pb-32 pt-10 sm:px-6 lg:px-8">
-        <div class="border-b border-line pb-8">
-          <p class="kr-eyebrow">{gettext("Saison %{jahr}", jahr: @season)}</p>
-          <h1 class="kr-display mt-2 max-w-[14ch] text-4xl leading-[0.95] text-balance sm:text-5xl">
-            {gettext("Welches Trikot ist das schönste?")}
-          </h1>
-          <p class="mt-4 max-w-md text-sm leading-relaxed text-soft">
-            {gettext("Such dir eine Sportart aus — oder bau gleich")}
-            <.link navigate={~p"/rankings/new"} class="text-ink underline underline-offset-4">
-              {gettext("eine eigene Rangliste")}
-            </.link>.
-          </p>
+        <%!-- Zwei Wege nebeneinander, nicht einer im Text und einer in der
+            Navigation: allein stoebern steht links und geht unten weiter, das
+            Reveal steht rechts als eigener Kasten. Es ist das, was diese App
+            kann und trikotranking.de nicht — in einer Ecke der Kopfzeile war
+            es dafuer zu leise. --%>
+        <div class="grid items-start gap-8 border-b border-line pb-10 md:grid-cols-[1fr_auto]">
+          <div>
+            <p class="kr-eyebrow">{gettext("Saison %{jahr}", jahr: @season)}</p>
+            <h1 class="kr-display mt-2 max-w-[14ch] text-4xl leading-[0.95] text-balance sm:text-5xl">
+              {gettext("Welches Trikot ist das schönste?")}
+            </h1>
+            <p class="mt-4 max-w-md text-sm leading-relaxed text-soft">
+              {gettext("Such dir unten eine Sportart aus — oder bau gleich")}
+              <.link navigate={~p"/rankings/new"} class="text-ink underline underline-offset-4">
+                {gettext("eine eigene Rangliste")}
+              </.link>.
+            </p>
+          </div>
+
+          <%!-- Dunkel, weil alles andere auf dieser Seite hell ist: der
+                Unterschied soll man sehen, bevor man ihn liest. --%>
+          <div class="rounded-xl bg-ink p-6 text-chalk md:max-w-sm">
+            <p class="kr-eyebrow !text-chalk/60">{gettext("Zu mehreren")}</p>
+            <h2 class="kr-display mt-2 text-2xl leading-tight">
+              {gettext("Zusammen aufdecken")}
+            </h2>
+            <p class="mt-3 text-sm leading-relaxed text-chalk/75">
+              {gettext(
+                "Jede:r baut seine eigene Liste. Dann dreht ihr Platz für Platz um, alle Geräte gleichzeitig — und seht, wo ihr euch einig seid und wo überhaupt nicht."
+              )}
+            </p>
+            <.link
+              navigate={~p"/reveal/new"}
+              data-role="reveal-hero"
+              class="mt-5 inline-block rounded-md bg-chalk px-5 py-2.5 text-sm font-semibold text-ink transition hover:opacity-90"
+            >
+              {gettext("Reveal starten oder beitreten")}
+            </.link>
+          </div>
         </div>
 
         <div

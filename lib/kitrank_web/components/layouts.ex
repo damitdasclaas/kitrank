@@ -56,12 +56,9 @@ defmodule KitrankWeb.Layouts do
           >
             {gettext("Ranglisten")}
           </.link>
-          <.link
-            navigate={~p"/reveal/new"}
-            class="rounded-md bg-ink px-3 py-1.5 text-xs font-semibold text-chalk transition hover:opacity-90"
-          >
-            {gettext("Reveal")}
-          </.link>
+          <%!-- Das Reveal stand hier als Knopf und war trotzdem zu leise: eine
+                Ecke der Kopfzeile erklaert nicht, was es ist. Es steht jetzt
+                im Hero der Startseite, wo Platz fuer einen Satz dazu ist. --%>
           <%!-- Kein Anmelde-Link: Konten sind noch nicht offen, der Weg hinein
                 ist /users/log-in. Wer angemeldet ist, sieht seine Wege. --%>
           <.link

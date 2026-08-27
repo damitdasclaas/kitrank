@@ -72,6 +72,29 @@ defmodule KitrankWeb.SportsLiveTest do
     end
   end
 
+  describe "Reveal im Hero" do
+    test "steht auf der Startseite mit einem Satz dazu", %{conn: conn} do
+      # Als Knopf in der Kopfzeile war es zu leise: eine Ecke erklaert nicht,
+      # was das Reveal ist, und es ist das, was diese App kann und die
+      # Konkurrenz nicht.
+      {:ok, _view, html} = live(conn, ~p"/")
+
+      assert html =~ ~s(data-role="reveal-hero")
+      assert html =~ "Zusammen aufdecken"
+      assert html =~ "alle Geräte gleichzeitig"
+      assert html =~ ~s(href="/reveal/new")
+    end
+
+    test "und nicht mehr in der Kopfzeile", %{conn: conn} do
+      %{sport: sport} = sportart("Fußball", "fussball-hero")
+
+      {:ok, _view, html} = live(conn, ~p"/#{sport.slug}")
+
+      kopf = html |> String.split("</header>") |> hd()
+      refute kopf =~ "/reveal/new"
+    end
+  end
+
   describe "Übersicht je Sportart" do
     setup do
       %{sport: fussball, teams: [f_team | _], kits: [f_kit | _]} =

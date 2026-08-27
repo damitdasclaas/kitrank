@@ -37,7 +37,7 @@ msgstr ""
 msgid "Abdeckung des Ausschnitts"
 msgstr ""
 
-#: lib/kitrank_web/components/layouts.ex:87
+#: lib/kitrank_web/components/layouts.ex:84
 #, elixir-autogen, elixir-format
 msgid "Abmelden"
 msgstr ""
@@ -47,7 +47,7 @@ msgstr ""
 msgid "Actions"
 msgstr ""
 
-#: lib/kitrank_web/components/layouts.ex:72
+#: lib/kitrank_web/components/layouts.ex:69
 #, elixir-autogen, elixir-format
 msgid "Admin"
 msgstr ""
@@ -74,7 +74,7 @@ msgid "Alle treten mit dem Teilen-Link ihrer Rangliste bei — nicht mit dem Bea
 msgstr ""
 
 #: lib/kitrank_web/live/ranking/components.ex:98
-#: lib/kitrank_web/live/sports_live.ex:100
+#: lib/kitrank_web/live/sports_live.ex:128
 #, elixir-autogen, elixir-format
 msgid "Ansehen"
 msgstr ""
@@ -203,7 +203,7 @@ msgstr ""
 msgid "Detail"
 msgstr ""
 
-#: lib/kitrank_web/components/layouts.ex:124
+#: lib/kitrank_web/components/layouts.ex:121
 #, elixir-autogen, elixir-format
 msgid "Die Shop-Verweise führen zum jeweiligen Vereinsshop; KitRank verdient an keinem Kauf mit."
 msgstr ""
@@ -377,17 +377,17 @@ msgstr ""
 msgid "Kein Streit"
 msgstr ""
 
-#: lib/kitrank_web/components/layouts.ex:123
+#: lib/kitrank_web/components/layouts.ex:120
 #, elixir-autogen, elixir-format
 msgid "Keine Affiliate-Links, keine Provision."
 msgstr ""
 
-#: lib/kitrank_web/components/layouts.ex:109
+#: lib/kitrank_web/components/layouts.ex:106
 #, elixir-autogen, elixir-format
 msgid "KitRank ist ein privates Projekt"
 msgstr ""
 
-#: lib/kitrank_web/components/layouts.ex:79
+#: lib/kitrank_web/components/layouts.ex:76
 #, elixir-autogen, elixir-format
 msgid "Konto"
 msgstr ""
@@ -546,11 +546,6 @@ msgstr ""
 msgid "Raumcode"
 msgstr ""
 
-#: lib/kitrank_web/components/layouts.ex:63
-#, elixir-autogen, elixir-format
-msgid "Reveal"
-msgstr ""
-
 #: lib/kitrank_web/kit_label.ex:70
 #, elixir-autogen, elixir-format
 msgid "Rückseite"
@@ -646,12 +641,12 @@ msgid "Toms Rangliste"
 msgstr ""
 
 #: lib/kitrank_web/live/overview_live.ex:483
-#: lib/kitrank_web/live/sports_live.ex:54
+#: lib/kitrank_web/live/sports_live.ex:82
 #, elixir-autogen, elixir-format
 msgid "Trag Ligen, Teams und Trikots im Admin ein — dann füllt sich diese Seite."
 msgstr ""
 
-#: lib/kitrank_web/components/layouts.ex:115
+#: lib/kitrank_web/components/layouts.ex:112
 #, elixir-autogen, elixir-format
 msgid "Trikotbilder werden von den Vereinsshops verlinkt, nicht kopiert. Fehlt ein Bild, zeichnet KitRank das Trikot in den Vereinsfarben."
 msgstr ""
@@ -932,7 +927,7 @@ msgstr ""
 msgid "E-Mail-Adresse und Passwort deines Kontos"
 msgstr ""
 
-#: lib/kitrank_web/components/layouts.ex:188
+#: lib/kitrank_web/components/layouts.ex:185
 #, elixir-autogen, elixir-format
 msgid "Etwas ist schiefgelaufen"
 msgstr ""
@@ -947,7 +942,7 @@ msgstr ""
 msgid "Hier läuft der lokale Mailversand."
 msgstr ""
 
-#: lib/kitrank_web/components/layouts.ex:173
+#: lib/kitrank_web/components/layouts.ex:170
 #, elixir-autogen, elixir-format
 msgid "Keine Verbindung"
 msgstr ""
@@ -1012,7 +1007,7 @@ msgstr ""
 #: lib/kitrank_web/live/overview_live.ex:593
 #: lib/kitrank_web/live/overview_live.ex:1204
 #: lib/kitrank_web/live/ranking/new_live.ex:76
-#: lib/kitrank_web/live/sports_live.ex:34
+#: lib/kitrank_web/live/sports_live.ex:40
 #, elixir-autogen, elixir-format
 msgid "Saison %{jahr}"
 msgstr ""
@@ -1022,8 +1017,8 @@ msgstr ""
 msgid "Schon registriert?"
 msgstr ""
 
-#: lib/kitrank_web/components/layouts.ex:181
-#: lib/kitrank_web/components/layouts.ex:196
+#: lib/kitrank_web/components/layouts.ex:178
+#: lib/kitrank_web/components/layouts.ex:193
 #, elixir-autogen, elixir-format
 msgid "Verbindung wird wiederhergestellt"
 msgstr ""
@@ -1034,7 +1029,7 @@ msgid "Verschickte Mails liegen im"
 msgstr ""
 
 #: lib/kitrank_web/live/overview_live.ex:603
-#: lib/kitrank_web/live/sports_live.ex:36
+#: lib/kitrank_web/live/sports_live.ex:42
 #, elixir-autogen, elixir-format
 msgid "Welches Trikot ist das schönste?"
 msgstr ""
@@ -1373,7 +1368,7 @@ msgid "Für %{verein} sind in %{saison} noch keine Trikots hinterlegt."
 msgstr ""
 
 #: lib/kitrank_web/live/overview_live.ex:480
-#: lib/kitrank_web/live/sports_live.ex:51
+#: lib/kitrank_web/live/sports_live.ex:79
 #, elixir-autogen, elixir-format
 msgid "Noch keine Trikots für %{saison}"
 msgstr ""
@@ -1485,7 +1480,7 @@ msgid "%{verein} %{trikot} wählen"
 msgstr ""
 
 #: lib/kitrank_web/live/overview_live.ex:714
-#: lib/kitrank_web/live/sports_live.ex:82
+#: lib/kitrank_web/live/sports_live.ex:110
 #, elixir-autogen, elixir-format
 msgid "%{anzahl} Verein"
 msgid_plural "%{anzahl} Vereine"
@@ -1533,29 +1528,29 @@ msgstr ""
 msgid "Vereine durchsuchen"
 msgstr ""
 
-#: lib/kitrank_web/components/layouts.ex:136
+#: lib/kitrank_web/components/layouts.ex:133
 #: lib/kitrank_web/controllers/legal_controller.ex:30
 #, elixir-autogen, elixir-format
 msgid "Datenschutz"
 msgstr ""
 
-#: lib/kitrank_web/components/layouts.ex:130
+#: lib/kitrank_web/components/layouts.ex:127
 #: lib/kitrank_web/controllers/legal_controller.ex:22
 #, elixir-autogen, elixir-format
 msgid "Impressum"
 msgstr ""
 
-#: lib/kitrank_web/components/layouts.ex:128
+#: lib/kitrank_web/components/layouts.ex:125
 #, elixir-autogen, elixir-format
 msgid "Rechtliches"
 msgstr ""
 
-#: lib/kitrank_web/components/layouts.ex:110
+#: lib/kitrank_web/components/layouts.ex:107
 #, elixir-autogen, elixir-format
 msgid "und steht in keiner Verbindung zu den genannten Ligen, Verbänden oder Vereinen. Vereins- und Liganamen dienen allein dazu, die Trikots zu benennen; die Marken gehören ihren Inhabern."
 msgstr ""
 
-#: lib/kitrank_web/live/sports_live.ex:78
+#: lib/kitrank_web/live/sports_live.ex:106
 #, elixir-autogen, elixir-format
 msgid "%{anzahl} Liga"
 msgid_plural "%{anzahl} Ligen"
@@ -1567,12 +1562,7 @@ msgstr[1] ""
 msgid "Sportarten"
 msgstr ""
 
-#: lib/kitrank_web/live/sports_live.ex:39
-#, elixir-autogen, elixir-format
-msgid "Such dir eine Sportart aus — oder bau gleich"
-msgstr ""
-
-#: lib/kitrank_web/live/sports_live.ex:41
+#: lib/kitrank_web/live/sports_live.ex:47
 #, elixir-autogen, elixir-format
 msgid "eine eigene Rangliste"
 msgstr ""
@@ -1742,4 +1732,29 @@ msgstr ""
 #: lib/kitrank_web/live/ranking/show_live.ex:247
 #, elixir-autogen, elixir-format
 msgid "Mit einem Konto findest du deine Listen überall wieder."
+msgstr ""
+
+#: lib/kitrank_web/live/sports_live.ex:60
+#, elixir-autogen, elixir-format
+msgid "Jede:r baut seine eigene Liste. Dann dreht ihr Platz für Platz um, alle Geräte gleichzeitig — und seht, wo ihr euch einig seid und wo überhaupt nicht."
+msgstr ""
+
+#: lib/kitrank_web/live/sports_live.ex:69
+#, elixir-autogen, elixir-format
+msgid "Reveal starten oder beitreten"
+msgstr ""
+
+#: lib/kitrank_web/live/sports_live.ex:45
+#, elixir-autogen, elixir-format
+msgid "Such dir unten eine Sportart aus — oder bau gleich"
+msgstr ""
+
+#: lib/kitrank_web/live/sports_live.ex:55
+#, elixir-autogen, elixir-format
+msgid "Zu mehreren"
+msgstr ""
+
+#: lib/kitrank_web/live/sports_live.ex:57
+#, elixir-autogen, elixir-format
+msgid "Zusammen aufdecken"
 msgstr ""
