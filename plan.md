@@ -154,7 +154,26 @@ muss gewinnen.
 
 ---
 
-## 4. Suchbare Mehrfachauswahl bei der Vereinsauswahl
+## 4. Suchbare Mehrfachauswahl bei der Vereinsauswahl — **fertig**
+
+**So gebaut:** Gewähltes als abwählbare Chips, ein Suchfeld, Treffer als Liste
+darunter (höchstens acht). Suche über `KitrankWeb.Search`, also
+umlautnachsichtig. Enter nimmt den ersten Treffer, Escape leert das Feld.
+
+**Die vertagte Entscheidung ist gefallen:** keine Pfeiltasten durch die Liste.
+Das wäre ein eigenes Stück Hook-Code, und ohne echten Bedarf Aufwand ohne
+Gegenwert. Anklickbar und mit Tab erreichbar ist jeder Treffer. Wenn sich das
+im Gebrauch als zu wenig erweist, ist es nachrüstbar.
+
+**Ein Fehler, den erst der Test gefunden hat:** `Search.matches?/2` trifft bei
+leerer Suche absichtlich alles — Enter im leeren Feld hätte damit den
+erstbesten Verein aufgenommen. Und die Suche kommt jetzt aus dem Formular statt
+aus den Assigns: Enter kann vor dem nächsten `phx-change` ankommen, dann wäre
+der Zustand einen Tastendruck alt.
+
+Der Rest dieses Abschnitts ist die ursprüngliche Überlegung.
+
+---
 
 Alle Vereine als Pillen ist bei 68 (und wachsend) unbrauchbar. Gebraucht wird
 eine **Multi-Select-Combobox**: Textfeld, das filtert, Treffer darunter,
@@ -223,6 +242,6 @@ wird — sonst baut man eine Anmeldung ohne Anlass.
 1. ~~**Sportart-Routing**~~ — fertig.
 2. ~~**Trikot-Kategorien pro Sportart**~~ — fertig.
 3. ~~**Ausschnitt speichern + Typ-Achse**~~ — fertig.
-4. **Multi-Select** — unabhängig, kann auch vorgezogen werden.
+4. ~~**Multi-Select**~~ — fertig.
 5. **Geteilter Link mit Gate** — zuletzt, hier sitzen die Produktfragen.
 6. **Konten** — erst wenn 5 den Anlass geliefert hat.

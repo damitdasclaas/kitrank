@@ -15,6 +15,16 @@ defmodule KitrankWeb.RankingLiveTest do
     league_fixture(Keyword.put_new(opts, :season, Kits.current_season()))
   end
 
+  # Vereine stehen nicht mehr als Pillen da – sie werden gesucht und dann aus
+  # der Trefferliste genommen.
+  defp verein(view, team) do
+    view |> form("#verein-picker", %{"q" => team.short_code}) |> render_change()
+
+    view
+    |> element(~s{[data-role="team-treffer"][phx-value-item="#{team.id}"]})
+    |> render_click()
+  end
+
   defp ranking_with(kits) do
     {:ok, ranking} = Rankings.create_ranking(%{display_name: "Testliste"})
     Enum.each(kits, &Rankings.add_kit(ranking, &1.id))
@@ -247,15 +257,10 @@ defmodule KitrankWeb.RankingLiveTest do
     end
 
     test "grenzt auf einen Verein ein", %{conn: conn, ranking: r, erste_kits: kits} do
-      team_id = hd(kits).team_id
+      team = Kits.get_team!(hd(kits).team_id)
       {:ok, view, _html} = live(conn, ~p"/rankings/#{r.edit_token}/auswahl")
 
-      html =
-        view
-        |> element(~s{button[phx-value-axis="teams"][phx-value-item="#{team_id}"]})
-        |> render_click()
-
-      assert html =~ "2 Trikots"
+      assert verein(view, team) =~ "2 Trikots"
     end
 
     test "'Alle' hebt die Einschränkung wieder auf", %{conn: conn, ranking: r, erste: erste} do
@@ -286,10 +291,7 @@ defmodule KitrankWeb.RankingLiveTest do
       |> element(~s{button[phx-value-axis="competitions"][phx-value-item="#{erste.id}"]})
       |> render_click()
 
-      html =
-        view
-        |> element(~s{button[phx-value-axis="teams"][phx-value-item="#{hd(kits).team_id}"]})
-        |> render_click()
+      html = verein(view, Kits.get_team!(hd(kits).team_id))
 
       assert html =~ "Nichts im Ausschnitt"
     end
@@ -304,6 +306,141 @@ defmodule KitrankWeb.RankingLiveTest do
       {:ok, _view, html} = live(conn, ~p"/rankings/#{r.edit_token}/auswahl")
 
       assert html =~ "· #{kit.season}"
+    end
+  end
+
+  describe "Vereine suchen statt alle zu zeigen" do
+    setup do
+      # Namen fest, Kuerzel aus dem Fixture: short_code ist eindeutig, und zwei
+      # async-Tests mit demselben festen Wert blockieren sich gegenseitig.
+      koeln = team_fixture(name: "1. FC Köln")
+      dortmund = team_fixture(name: "Borussia Dortmund")
+      competition = competition_fixture(name: "Erste Liga", tier: 1)
+
+      for team <- [koeln, dortmund] do
+        {:ok, _} =
+          Kits.create_team_season(%{
+            team_id: team.id,
+            competition_id: competition.id,
+            season: Kits.current_season()
+          })
+
+        kit_fixture(team_id: team.id, season: Kits.current_season(), kit_type: "home")
+      end
+
+      %{ranking: ranking_with([]), koeln: koeln, dortmund: dortmund}
+    end
+
+    defp suche_verein(view, text) do
+      view |> form("#verein-picker", %{"q" => text}) |> render_change()
+    end
+
+    test "zeigt zunächst keinen einzigen Verein", %{conn: conn, ranking: r, koeln: koeln} do
+      # 68 Pillen nebeneinander waren eine Wand, in der man nichts wiederfindet.
+      {:ok, _view, html} = live(conn, ~p"/rankings/#{r.edit_token}/auswahl")
+
+      refute html =~ ~s(data-role="team-treffer")
+      refute html =~ koeln.name
+    end
+
+    test "findet über den Namen", %{conn: conn, ranking: r, koeln: koeln, dortmund: dortmund} do
+      {:ok, view, _html} = live(conn, ~p"/rankings/#{r.edit_token}/auswahl")
+
+      html = suche_verein(view, "dortmund")
+
+      assert html =~ dortmund.name
+      refute html =~ koeln.name
+    end
+
+    test "findet über das Kürzel", %{conn: conn, ranking: r, koeln: koeln} do
+      {:ok, view, _html} = live(conn, ~p"/rankings/#{r.edit_token}/auswahl")
+
+      assert suche_verein(view, String.downcase(koeln.short_code)) =~ koeln.name
+    end
+
+    test "achtet nicht auf Umlaute", %{conn: conn, ranking: r, koeln: koeln} do
+      # Dieselbe Suche wie auf der Startseite: „koln" findet den 1. FC Köln.
+      {:ok, view, _html} = live(conn, ~p"/rankings/#{r.edit_token}/auswahl")
+
+      assert suche_verein(view, "koln") =~ koeln.name
+    end
+
+    test "sagt es, wenn nichts passt", %{conn: conn, ranking: r} do
+      {:ok, view, _html} = live(conn, ~p"/rankings/#{r.edit_token}/auswahl")
+
+      assert suche_verein(view, "gibtsnicht") =~ "Kein Verein passt"
+    end
+
+    test "ein Treffer wird zum Chip und die Suche leert sich", %{
+      conn: conn,
+      ranking: r,
+      dortmund: dortmund
+    } do
+      {:ok, view, _html} = live(conn, ~p"/rankings/#{r.edit_token}/auswahl")
+
+      html = verein(view, dortmund)
+
+      assert html =~ ~s(data-role="team-chip")
+      assert html =~ dortmund.short_code
+      # Die Trefferliste zeigt sonst weiter eine Suche, deren Ergebnis drin ist.
+      refute html =~ ~s(data-role="team-treffer")
+    end
+
+    test "Enter nimmt den ersten Treffer", %{conn: conn, ranking: r, dortmund: dortmund} do
+      # Ohne das müsste man nach dem Tippen zur Maus greifen.
+      {:ok, view, _html} = live(conn, ~p"/rankings/#{r.edit_token}/auswahl")
+
+      html = view |> form("#verein-picker", %{"q" => "borussia"}) |> render_submit()
+
+      assert html =~ ~s(data-role="team-chip")
+
+      frisch = Rankings.get_ranking_by_edit_token(r.edit_token)
+      assert Rankings.Ranking.scope(frisch).team_ids == [dortmund.id]
+    end
+
+    test "Enter ohne Treffer legt nichts an", %{conn: conn, ranking: r} do
+      {:ok, view, _html} = live(conn, ~p"/rankings/#{r.edit_token}/auswahl")
+
+      view |> form("#verein-picker", %{"q" => "gibtsnicht"}) |> render_submit()
+
+      frisch = Rankings.get_ranking_by_edit_token(r.edit_token)
+      assert Rankings.Ranking.scope(frisch).team_ids == []
+    end
+
+    test "ein Chip lässt sich wieder abwählen", %{conn: conn, ranking: r, dortmund: dortmund} do
+      {:ok, view, _html} = live(conn, ~p"/rankings/#{r.edit_token}/auswahl")
+
+      verein(view, dortmund)
+
+      html =
+        view
+        |> element(~s{[data-role="team-chip"][phx-value-item="#{dortmund.id}"]})
+        |> render_click()
+
+      refute html =~ ~s(data-role="team-chip")
+    end
+
+    test "ein schon gewählter Verein steht nicht nochmal in den Treffern", %{
+      conn: conn,
+      ranking: r,
+      dortmund: dortmund
+    } do
+      {:ok, view, _html} = live(conn, ~p"/rankings/#{r.edit_token}/auswahl")
+
+      verein(view, dortmund)
+      html = suche_verein(view, "dortmund")
+
+      refute html =~ ~s(data-role="team-treffer")
+      assert html =~ "Kein Verein passt"
+    end
+
+    test "Escape leert das Feld", %{conn: conn, ranking: r} do
+      {:ok, view, _html} = live(conn, ~p"/rankings/#{r.edit_token}/auswahl")
+
+      suche_verein(view, "dortmund")
+      html = render_keydown(view, "clear_team_search", %{"key" => "Escape"})
+
+      refute html =~ ~s(data-role="team-treffer")
     end
   end
 
@@ -350,9 +487,7 @@ defmodule KitrankWeb.RankingLiveTest do
       typ(view, "away")
 
       html =
-        view
-        |> element(~s{button[phx-value-axis="teams"][phx-value-item="#{a.id}"]})
-        |> render_click()
+        verein(view, a)
 
       assert html =~ "1 Trikots"
     end
@@ -362,9 +497,7 @@ defmodule KitrankWeb.RankingLiveTest do
 
       typ(view, "away")
 
-      view
-      |> element(~s{button[phx-value-axis="teams"][phx-value-item="#{a.id}"]})
-      |> render_click()
+      verein(view, a)
 
       # Neu geladen – die Einstellungen stehen noch.
       {:ok, _view, html} = live(conn, ~p"/rankings/#{r.edit_token}/auswahl")
@@ -439,9 +572,7 @@ defmodule KitrankWeb.RankingLiveTest do
       |> render_click()
 
       html =
-        view
-        |> element(~s{button[phx-value-axis="teams"][phx-value-item="#{team.id}"]})
-        |> render_click()
+        verein(view, team)
 
       assert html =~ "3 Trikots · alle Saisons, HSV"
       assert html =~ "2024/25"
@@ -454,9 +585,7 @@ defmodule KitrankWeb.RankingLiveTest do
       |> element(~s{button[phx-click="clear_filter"][phx-value-axis="seasons"]})
       |> render_click()
 
-      view
-      |> element(~s{button[phx-value-axis="teams"][phx-value-item="#{team.id}"]})
-      |> render_click()
+      verein(view, team)
 
       view
       |> element(~s{button[phx-click="quick_select"][phx-value-type="all"]})

@@ -22,6 +22,7 @@ defmodule KitrankWeb.Ranking.EditLive do
   alias Kitrank.Rankings.Duel
   alias KitrankWeb.Color
   alias KitrankWeb.KitLabel
+  alias KitrankWeb.Search
 
   @impl true
   def mount(%{"edit_token" => token}, _session, socket) do
@@ -90,9 +91,23 @@ defmodule KitrankWeb.Ranking.EditLive do
       end
 
     socket
-    |> assign(:scope, scope)
+    |> assign(scope: scope, team_query: "")
     |> merke_scope()
     |> load_catalog()
+  end
+
+  # Eine leere Suche trifft bei Search.matches?/2 absichtlich alles – hier waere
+  # das falsch: Enter im leeren Feld wuerde den erstbesten Verein aufnehmen.
+  defp erster_treffer(_socket, q) when q in [nil, ""], do: nil
+
+  defp erster_treffer(socket, q) do
+    if String.trim(q) == "" do
+      nil
+    else
+      socket.assigns.all_teams
+      |> Enum.reject(&(&1.id in socket.assigns.scope.team_ids))
+      |> Enum.find(&Search.matches?([&1.name, &1.short_code], q))
+    end
   end
 
   defp vorgabe(socket) do
@@ -189,12 +204,44 @@ defmodule KitrankWeb.Ranking.EditLive do
         if wert in werte, do: List.delete(werte, wert), else: werte ++ [wert]
       end)
 
-    {:noreply, socket |> assign(:scope, scope) |> merke_scope() |> load_catalog()}
+    # Das Suchfeld leert sich mit: die Trefferliste zeigt sonst weiter eine
+    # Suche, deren Ergebnis schon im Ausschnitt steht.
+    {:noreply, socket |> assign(scope: scope, team_query: "") |> merke_scope() |> load_catalog()}
   end
 
   def handle_event("clear_filter", %{"axis" => axis}, socket) do
     scope = Map.put(socket.assigns.scope, achse(axis), [])
-    {:noreply, socket |> assign(:scope, scope) |> merke_scope() |> load_catalog()}
+
+    {:noreply, socket |> assign(scope: scope, team_query: "") |> merke_scope() |> load_catalog()}
+  end
+
+  ## Vereine suchen statt alle 68 nebeneinander zu zeigen
+
+  def handle_event("search_teams", %{"q" => q}, socket) do
+    {:noreply, assign(socket, :team_query, q)}
+  end
+
+  def handle_event("clear_team_search", _params, socket) do
+    {:noreply, assign(socket, :team_query, "")}
+  end
+
+  # Enter nimmt den ersten Treffer. Ohne das muesste man nach dem Tippen zur
+  # Maus greifen, und das ist bei „vier Vereine eintragen" der langsamste Weg.
+  #
+  # Die Suche kommt aus dem Formular und nicht aus den Assigns: Enter kann vor
+  # dem naechsten phx-change ankommen, und dann waere der Zustand einen
+  # Tastendruck alt.
+  def handle_event("pick_first_team", %{"q" => q}, socket) do
+    case erster_treffer(socket, q) do
+      nil ->
+        {:noreply, assign(socket, :team_query, "")}
+
+      team ->
+        scope = Map.update!(socket.assigns.scope, :team_ids, &(&1 ++ [team.id]))
+
+        {:noreply,
+         socket |> assign(scope: scope, team_query: "") |> merke_scope() |> load_catalog()}
+    end
   end
 
   ## Schnellauswahl – wirkt nur auf den gewählten Ausschnitt
@@ -407,6 +454,7 @@ defmodule KitrankWeb.Ranking.EditLive do
           all_competitions={@all_competitions}
           all_teams={@all_teams}
           all_kit_types={@all_kit_types}
+          team_query={@team_query}
           multi_season?={@multi_season?}
         />
 
@@ -456,6 +504,7 @@ defmodule KitrankWeb.Ranking.EditLive do
   attr :all_competitions, :list, required: true
   attr :all_teams, :list, required: true
   attr :all_kit_types, :list, required: true
+  attr :team_query, :string, required: true
   attr :multi_season?, :boolean, required: true
 
   defp selection(assigns) do
@@ -471,9 +520,7 @@ defmodule KitrankWeb.Ranking.EditLive do
         <:chip :for={c <- @all_competitions} value={c.id} label={c.name} />
       </.filter_row>
 
-      <.filter_row axis="teams" label="Verein" chosen={@scope.team_ids}>
-        <:chip :for={t <- @all_teams} value={t.id} label={t.short_code} title={t.name} />
-      </.filter_row>
+      <.team_picker chosen={@scope.team_ids} all_teams={@all_teams} query={@team_query} />
 
       <%!-- Die vierte Achse. Ohne sie liess sich „alle Auswärtstrikots dieser
             vier Vereine" gar nicht ausdruecken — es gab fuer Typen nur eine
@@ -805,6 +852,116 @@ defmodule KitrankWeb.Ranking.EditLive do
   end
 
   defp typ_teil(kit_types), do: Enum.map_join(kit_types, "/", &KitLabel.label/1)
+
+  attr :chosen, :list, required: true
+  attr :all_teams, :list, required: true
+  attr :query, :string, required: true
+
+  # Vereine suchen und mehrere auswaehlen.
+  #
+  # Alle 68 Vereine als Pillen nebeneinander war eine Wand, in der man nichts
+  # wiederfindet — und mit jeder Sportart waechst sie. Stattdessen: Gewaehltes
+  # als abwaehlbare Chips, ein Feld zum Suchen, Treffer darunter.
+  #
+  # Die Suche ist dieselbe wie auf der Startseite (KitrankWeb.Search), also
+  # umlautnachsichtig: „koln" findet den 1. FC Koeln.
+  #
+  # Tastatur bewusst schlicht: Enter nimmt den ersten Treffer, Escape leert das
+  # Feld. Pfeiltasten durch die Liste gibt es nicht — das waere ein eigenes
+  # Stueck Hook-Code, und ohne echten Bedarf Aufwand ohne Gegenwert. Anklickbar
+  # und mit Tab erreichbar ist jeder Treffer.
+  defp team_picker(assigns) do
+    gewaehlt = Enum.filter(assigns.all_teams, &(&1.id in assigns.chosen))
+
+    treffer =
+      if assigns.query == "" do
+        []
+      else
+        assigns.all_teams
+        |> Enum.reject(&(&1.id in assigns.chosen))
+        |> Enum.filter(&Search.matches?([&1.name, &1.short_code], assigns.query))
+        |> Enum.take(8)
+      end
+
+    assigns = assign(assigns, gewaehlt: gewaehlt, treffer: treffer)
+
+    ~H"""
+    <div class="flex flex-wrap items-baseline gap-2">
+      <span class="kr-eyebrow w-14 shrink-0">{gettext("Verein")}</span>
+
+      <button
+        type="button"
+        phx-click="clear_filter"
+        phx-value-axis="teams"
+        aria-pressed={to_string(@chosen == [])}
+        class={[
+          "rounded-full border px-3 py-1 text-xs transition",
+          @chosen == [] && "border-transparent bg-ink text-chalk",
+          @chosen != [] && "border-line text-soft hover:border-ink hover:text-ink"
+        ]}
+      >{gettext("Alle")}</button>
+
+      <%!-- Gewaehltes bleibt sichtbar und einzeln abwaehlbar – sonst weiss man
+            nach dem dritten Verein nicht mehr, was drin ist. --%>
+      <button
+        :for={team <- @gewaehlt}
+        type="button"
+        phx-click="toggle_filter"
+        phx-value-axis="teams"
+        phx-value-item={team.id}
+        data-role="team-chip"
+        title={team.name}
+        aria-label={gettext("%{verein} aus dem Ausschnitt nehmen", verein: team.name)}
+        class="flex items-center gap-1.5 rounded-full border border-transparent bg-ink px-3 py-1 text-xs text-chalk transition hover:opacity-80"
+      >
+        {team.short_code}
+        <.icon name="hero-x-mark-mini" class="size-3" />
+      </button>
+
+      <div class="relative">
+        <form phx-change="search_teams" phx-submit="pick_first_team" id="verein-picker">
+          <label for="team-q" class="sr-only">{gettext("Verein suchen")}</label>
+          <input
+            type="text"
+            id="team-q"
+            name="q"
+            value={@query}
+            phx-debounce="150"
+            autocomplete="off"
+            phx-key="Escape"
+            phx-keydown="clear_team_search"
+            placeholder={gettext("Verein suchen …")}
+            class="w-44 rounded-full border border-line bg-panel px-3 py-1 text-xs placeholder:text-soft/70 focus:border-ink focus:outline-none"
+          />
+        </form>
+
+        <%!-- Ueber allem, was darunter kommt: die Liste faellt sonst hinter die
+              naechste Filterzeile. --%>
+        <ul
+          :if={@query != ""}
+          class="absolute left-0 top-full z-30 mt-1 w-64 overflow-hidden rounded-lg border border-line bg-panel shadow-lg"
+        >
+          <li :for={team <- @treffer}>
+            <button
+              type="button"
+              phx-click="toggle_filter"
+              phx-value-axis="teams"
+              phx-value-item={team.id}
+              data-role="team-treffer"
+              class="flex w-full items-baseline gap-2 px-3 py-2 text-left text-xs transition hover:bg-sunk"
+            >
+              <span class="font-mono font-semibold">{team.short_code}</span>
+              <span class="truncate text-soft">{team.name}</span>
+            </button>
+          </li>
+          <li :if={@treffer == []} class="px-3 py-2 text-xs text-soft">
+            {gettext("Kein Verein passt zu „%{suche}“", suche: @query)}
+          </li>
+        </ul>
+      </div>
+    </div>
+    """
+  end
 
   attr :type, :string, required: true
   attr :label, :string, required: true
