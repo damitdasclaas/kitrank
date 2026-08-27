@@ -16,7 +16,9 @@ defmodule KitrankWeb.Ranking.EditLive do
 
   alias Kitrank.Kits
   alias Kitrank.Kits.Kit
+  alias Kitrank.Kits.Scope
   alias Kitrank.Rankings
+  alias Kitrank.Rankings.Ranking
   alias Kitrank.Rankings.Duel
   alias KitrankWeb.Color
   alias KitrankWeb.KitLabel
@@ -68,25 +70,46 @@ defmodule KitrankWeb.Ranking.EditLive do
   # HSV-Trikots gewählt hat, landet wieder dort.
   #
   # Eine leere Menge heißt überall "keine Einschränkung", wie beim Reveal-Raum.
+  # Der Ausschnitt steht an der Rangliste. Vorher wurde er beim Laden aus den
+  # vorhandenen Eintraegen erraten — Tab zu, Einstellungen weg, und was jemand
+  # eingestellt hatte, liess sich nicht wiederherstellen.
+  #
+  # Leer heisst „alles". Fuer eine frische Liste ist das zu viel: eine Auswahl
+  # ueber alle Saisons zu beginnen hilft niemandem. Deshalb faengt sie bei der
+  # laufenden Saison an — aber als gespeicherte Entscheidung, nicht als
+  # Zufallsergebnis des Ladens.
   defp init_scope(socket) do
-    eintraege = socket.assigns.entries
+    ranking = socket.assigns.ranking
+    gespeichert = Ranking.scope(ranking)
 
     scope =
-      if eintraege == [] do
-        %{
-          seasons: MapSet.new([socket.assigns.season]),
-          competitions: MapSet.new(),
-          teams: MapSet.new()
-        }
+      if Scope.empty?(gespeichert) do
+        vorgabe(socket)
       else
-        %{
-          seasons: MapSet.new(eintraege, & &1.kit.season),
-          competitions: MapSet.new(),
-          teams: MapSet.new()
-        }
+        gespeichert
       end
 
-    socket |> assign(:scope, scope) |> load_catalog()
+    socket
+    |> assign(:scope, scope)
+    |> merke_scope()
+    |> load_catalog()
+  end
+
+  defp vorgabe(socket) do
+    saisons =
+      case socket.assigns.entries do
+        [] -> [socket.assigns.season]
+        eintraege -> eintraege |> Enum.map(& &1.kit.season) |> Enum.uniq()
+      end
+
+    %Scope{seasons: saisons}
+  end
+
+  # Jede Aenderung sofort an die Rangliste. Sie ist das, was jemand eingestellt
+  # hat — und der Teilen-Link soll sie spaeter mitnehmen koennen.
+  defp merke_scope(socket) do
+    {:ok, ranking} = Rankings.update_scope(socket.assigns.ranking, socket.assigns.scope)
+    assign(socket, :ranking, ranking)
   end
 
   # Alle Saisons, für die es Daten gibt – plus die laufende, damit sie auch
@@ -98,17 +121,12 @@ defmodule KitrankWeb.Ranking.EditLive do
   defp load_catalog(socket) do
     scope = socket.assigns.scope
 
-    catalog =
-      Kits.list_kits_for_scope(%{
-        seasons: MapSet.to_list(scope.seasons),
-        competition_ids: MapSet.to_list(scope.competitions),
-        team_ids: MapSet.to_list(scope.teams)
-      })
+    catalog = Kits.list_kits_for_scope(scope)
 
     # Bei mehreren Saisons nach Saison gruppieren, sonst nach Liga. Wer die
     # Trikots eines Vereins über Jahre sortiert, denkt in Jahren – wer eine
     # Saison rankt, in Ligen.
-    mehrere_saisons? = MapSet.size(scope.seasons) != 1
+    mehrere_saisons? = length(scope.seasons) != 1
 
     gruppen =
       if mehrere_saisons? do
@@ -121,7 +139,14 @@ defmodule KitrankWeb.Ranking.EditLive do
         |> Enum.sort_by(fn {_name, [%{competition: c} | _]} -> {c.tier, c.name} end)
       end
 
-    assign(socket, catalog: catalog, groups: gruppen, multi_season?: mehrere_saisons?)
+    assign(socket,
+      catalog: catalog,
+      groups: gruppen,
+      multi_season?: mehrere_saisons?,
+      # Die Typ-Achse zeigt, was es in der gewaehlten Saison ueberhaupt gibt –
+      # ein Knopf fuer „Sonder" ohne ein einziges Sondertrikot taete nichts.
+      all_kit_types: Kits.list_kit_types(socket.assigns.season)
+    )
   end
 
   ## Duell
@@ -157,21 +182,19 @@ defmodule KitrankWeb.Ranking.EditLive do
   # schickt; im Browser kam eine leere Zeichenkette an.
   def handle_event("toggle_filter", %{"axis" => axis, "item" => item}, socket) do
     achse = achse(axis)
-    wert = if achse == :seasons, do: item, else: String.to_integer(item)
+    wert = if achse in [:seasons, :kit_types], do: item, else: String.to_integer(item)
 
     scope =
-      Map.update!(socket.assigns.scope, achse, fn menge ->
-        if MapSet.member?(menge, wert),
-          do: MapSet.delete(menge, wert),
-          else: MapSet.put(menge, wert)
+      Map.update!(socket.assigns.scope, achse, fn werte ->
+        if wert in werte, do: List.delete(werte, wert), else: werte ++ [wert]
       end)
 
-    {:noreply, socket |> assign(:scope, scope) |> load_catalog()}
+    {:noreply, socket |> assign(:scope, scope) |> merke_scope() |> load_catalog()}
   end
 
   def handle_event("clear_filter", %{"axis" => axis}, socket) do
-    scope = Map.put(socket.assigns.scope, achse(axis), MapSet.new())
-    {:noreply, socket |> assign(:scope, scope) |> load_catalog()}
+    scope = Map.put(socket.assigns.scope, achse(axis), [])
+    {:noreply, socket |> assign(:scope, scope) |> merke_scope() |> load_catalog()}
   end
 
   ## Schnellauswahl – wirkt nur auf den gewählten Ausschnitt
@@ -383,6 +406,7 @@ defmodule KitrankWeb.Ranking.EditLive do
           all_seasons={@all_seasons}
           all_competitions={@all_competitions}
           all_teams={@all_teams}
+          all_kit_types={@all_kit_types}
           multi_season?={@multi_season?}
         />
 
@@ -431,6 +455,7 @@ defmodule KitrankWeb.Ranking.EditLive do
   attr :all_seasons, :list, required: true
   attr :all_competitions, :list, required: true
   attr :all_teams, :list, required: true
+  attr :all_kit_types, :list, required: true
   attr :multi_season?, :boolean, required: true
 
   defp selection(assigns) do
@@ -442,12 +467,25 @@ defmodule KitrankWeb.Ranking.EditLive do
         <:chip :for={season <- @all_seasons} value={season} label={season} />
       </.filter_row>
 
-      <.filter_row axis="competitions" label="Liga" chosen={@scope.competitions}>
+      <.filter_row axis="competitions" label="Liga" chosen={@scope.competition_ids}>
         <:chip :for={c <- @all_competitions} value={c.id} label={c.name} />
       </.filter_row>
 
-      <.filter_row axis="teams" label="Verein" chosen={@scope.teams}>
+      <.filter_row axis="teams" label="Verein" chosen={@scope.team_ids}>
         <:chip :for={t <- @all_teams} value={t.id} label={t.short_code} title={t.name} />
+      </.filter_row>
+
+      <%!-- Die vierte Achse. Ohne sie liess sich „alle Auswärtstrikots dieser
+            vier Vereine" gar nicht ausdruecken — es gab fuer Typen nur eine
+            Schnellauswahl zum Massen-Anhaken, und die aendert die Auswahl,
+            nicht den Ausschnitt. --%>
+      <.filter_row
+        :if={@all_kit_types != []}
+        axis="kit_types"
+        label="Trikot"
+        chosen={@scope.kit_types}
+      >
+        <:chip :for={typ <- @all_kit_types} value={typ} label={KitLabel.label(typ)} />
       </.filter_row>
 
       <div :if={@catalog != []} class="border-t border-line pt-4">
@@ -535,11 +573,11 @@ defmodule KitrankWeb.Ranking.EditLive do
         type="button"
         phx-click="clear_filter"
         phx-value-axis={@axis}
-        aria-pressed={to_string(MapSet.size(@chosen) == 0)}
+        aria-pressed={to_string(@chosen == [])}
         class={[
           "rounded-full border px-3 py-1 text-xs transition",
-          MapSet.size(@chosen) == 0 && "border-transparent bg-ink text-chalk",
-          MapSet.size(@chosen) > 0 && "border-line text-soft hover:border-ink hover:text-ink"
+          @chosen == [] && "border-transparent bg-ink text-chalk",
+          @chosen != [] && "border-line text-soft hover:border-ink hover:text-ink"
         ]}
       >{gettext("Alle")}</button>
 
@@ -550,11 +588,11 @@ defmodule KitrankWeb.Ranking.EditLive do
         phx-value-axis={@axis}
         phx-value-item={chip.value}
         title={Map.get(chip, :title)}
-        aria-pressed={to_string(MapSet.member?(@chosen, chip.value))}
+        aria-pressed={to_string(chip.value in @chosen)}
         class={[
           "rounded-full border px-3 py-1 text-xs transition",
-          MapSet.member?(@chosen, chip.value) && "border-transparent bg-ink text-chalk",
-          !MapSet.member?(@chosen, chip.value) &&
+          chip.value in @chosen && "border-transparent bg-ink text-chalk",
+          chip.value not in @chosen &&
             "border-line text-soft hover:border-ink hover:text-ink"
         ]}
       >
@@ -696,8 +734,9 @@ defmodule KitrankWeb.Ranking.EditLive do
 
   # "all" nimmt alles aus den vorgewaehlten Ligen, sonst nur den Kit-Typ.
   defp achse("seasons"), do: :seasons
-  defp achse("competitions"), do: :competitions
-  defp achse("teams"), do: :teams
+  defp achse("competitions"), do: :competition_ids
+  defp achse("teams"), do: :team_ids
+  defp achse("kit_types"), do: :kit_types
 
   defp scoped_kit_ids(socket, "all"), do: Enum.map(socket.assigns.catalog, & &1.kit.id)
 
@@ -736,26 +775,27 @@ defmodule KitrankWeb.Ranking.EditLive do
 
   # Kurzform des Ausschnitts fuer die Zeile ueber der Schnellauswahl.
   defp scope_label(scope, all_teams) do
-    teile = [
+    [
       saison_teil(scope.seasons),
-      if(MapSet.size(scope.teams) > 0, do: team_teil(scope.teams, all_teams))
+      if(scope.team_ids != [], do: team_teil(scope.team_ids, all_teams)),
+      if(scope.kit_types != [], do: typ_teil(scope.kit_types))
     ]
-
-    teile |> Enum.reject(&is_nil/1) |> Enum.join(", ")
+    |> Enum.reject(&is_nil/1)
+    |> Enum.join(", ")
   end
 
   defp saison_teil(seasons) do
-    case MapSet.size(seasons) do
-      0 -> "alle Saisons"
-      1 -> MapSet.to_list(seasons) |> hd()
-      n -> "#{n} Saisons"
+    case seasons do
+      [] -> gettext("alle Saisons")
+      [eine] -> eine
+      viele -> gettext("%{anzahl} Saisons", anzahl: length(viele))
     end
   end
 
-  defp team_teil(teams, all_teams) do
+  defp team_teil(team_ids, all_teams) do
     namen =
       all_teams
-      |> Enum.filter(&MapSet.member?(teams, &1.id))
+      |> Enum.filter(&(&1.id in team_ids))
       |> Enum.map(& &1.short_code)
 
     case namen do
@@ -763,6 +803,8 @@ defmodule KitrankWeb.Ranking.EditLive do
       viele -> gettext("%{anzahl} Vereine", anzahl: length(viele))
     end
   end
+
+  defp typ_teil(kit_types), do: Enum.map_join(kit_types, "/", &KitLabel.label/1)
 
   attr :type, :string, required: true
   attr :label, :string, required: true

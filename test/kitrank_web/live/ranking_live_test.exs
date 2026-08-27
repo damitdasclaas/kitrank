@@ -307,6 +307,90 @@ defmodule KitrankWeb.RankingLiveTest do
     end
   end
 
+  describe "Ausschnitt: Trikot-Typ" do
+    setup do
+      %{teams: [a, b]} = league(team_count: 2, kit_types: ["home", "away", "third"])
+      %{ranking: ranking_with([]), a: a, b: b}
+    end
+
+    defp typ(view, kit_type) do
+      view
+      |> element(~s{button[phx-value-axis="kit_types"][phx-value-item="#{kit_type}"]})
+      |> render_click()
+    end
+
+    test "die vierte Achse steht da", %{conn: conn, ranking: r} do
+      {:ok, _view, html} = live(conn, ~p"/rankings/#{r.edit_token}/auswahl")
+
+      assert html =~ ~s(phx-value-axis="kit_types")
+      assert html =~ ~s(phx-value-item="home")
+      assert html =~ ~s(phx-value-item="third")
+    end
+
+    test "grenzt die Auswahl auf einen Typ ein", %{conn: conn, ranking: r} do
+      {:ok, view, html} = live(conn, ~p"/rankings/#{r.edit_token}/auswahl")
+      assert html =~ "6 Trikots"
+
+      assert typ(view, "away") =~ "2 Trikots"
+    end
+
+    test "zwei Typen heißen 'einer davon'", %{conn: conn, ranking: r} do
+      {:ok, view, _html} = live(conn, ~p"/rankings/#{r.edit_token}/auswahl")
+
+      typ(view, "away")
+
+      assert typ(view, "third") =~ "4 Trikots"
+    end
+
+    test "greift zusammen mit der Vereins-Achse", %{conn: conn, ranking: r, a: a} do
+      # Genau der Fall, der vorher nicht ausdrueckbar war: „Auswaertstrikot von
+      # diesem einen Verein".
+      {:ok, view, _html} = live(conn, ~p"/rankings/#{r.edit_token}/auswahl")
+
+      typ(view, "away")
+
+      html =
+        view
+        |> element(~s{button[phx-value-axis="teams"][phx-value-item="#{a.id}"]})
+        |> render_click()
+
+      assert html =~ "1 Trikots"
+    end
+
+    test "der Ausschnitt übersteht das Schließen des Tabs", %{conn: conn, ranking: r, a: a} do
+      {:ok, view, _html} = live(conn, ~p"/rankings/#{r.edit_token}/auswahl")
+
+      typ(view, "away")
+
+      view
+      |> element(~s{button[phx-value-axis="teams"][phx-value-item="#{a.id}"]})
+      |> render_click()
+
+      # Neu geladen – die Einstellungen stehen noch.
+      {:ok, _view, html} = live(conn, ~p"/rankings/#{r.edit_token}/auswahl")
+
+      assert html =~ "1 Trikots"
+
+      frisch = Rankings.get_ranking_by_edit_token(r.edit_token)
+      scope = Rankings.Ranking.scope(frisch)
+      assert scope.kit_types == ["away"]
+      assert scope.team_ids == [a.id]
+    end
+
+    test "'Alle' hebt die Typ-Achse wieder auf", %{conn: conn, ranking: r} do
+      {:ok, view, _html} = live(conn, ~p"/rankings/#{r.edit_token}/auswahl")
+
+      typ(view, "away")
+
+      html =
+        view
+        |> element(~s{button[phx-click="clear_filter"][phx-value-axis="kit_types"]})
+        |> render_click()
+
+      assert html =~ "6 Trikots"
+    end
+  end
+
   describe "Über mehrere Saisons" do
     setup do
       competition = competition_fixture(name: "Bundesliga", tier: 1)

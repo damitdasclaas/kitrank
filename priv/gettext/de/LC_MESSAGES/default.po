@@ -52,7 +52,7 @@ msgstr ""
 msgid "Admin"
 msgstr ""
 
-#: lib/kitrank_web/live/ranking/edit_live.ex:544
+#: lib/kitrank_web/live/ranking/edit_live.ex:582
 #, elixir-autogen, elixir-format
 msgid "Alle"
 msgstr ""
@@ -83,7 +83,7 @@ msgstr ""
 msgid "Aufdecken"
 msgstr ""
 
-#: lib/kitrank_web/live/ranking/edit_live.ex:939
+#: lib/kitrank_web/live/ranking/edit_live.ex:981
 #, elixir-autogen, elixir-format
 msgid "Aus der Liste nehmen"
 msgstr ""
@@ -130,7 +130,7 @@ msgstr ""
 msgid "Code kopieren"
 msgstr ""
 
-#: lib/kitrank_web/live/ranking/edit_live.ex:968
+#: lib/kitrank_web/live/ranking/edit_live.ex:1010
 #, elixir-autogen, elixir-format
 msgid "Dafür braucht es zwei"
 msgstr ""
@@ -155,7 +155,7 @@ msgstr ""
 msgid "Das war's — ihr seid durch."
 msgstr ""
 
-#: lib/kitrank_web/live/ranking/edit_live.ex:983
+#: lib/kitrank_web/live/ranking/edit_live.ex:1025
 #, elixir-autogen, elixir-format
 msgid "Dein Entwurf steht"
 msgstr ""
@@ -196,7 +196,7 @@ msgstr ""
 #: lib/kitrank_web/live/overview_live.ex:1297
 #: lib/kitrank_web/live/overview_live.ex:1361
 #: lib/kitrank_web/live/ranking/components.ex:281
-#: lib/kitrank_web/live/ranking/edit_live.ex:1139
+#: lib/kitrank_web/live/ranking/edit_live.ex:1181
 #, elixir-autogen, elixir-format
 msgid "Detail"
 msgstr ""
@@ -284,12 +284,12 @@ msgstr ""
 msgid "Einen Platz nach unten"
 msgstr ""
 
-#: lib/kitrank_web/live/ranking/edit_live.ex:982
+#: lib/kitrank_web/live/ranking/edit_live.ex:1024
 #, elixir-autogen, elixir-format
 msgid "Fertig"
 msgstr ""
 
-#: lib/kitrank_web/live/ranking/edit_live.ex:485
+#: lib/kitrank_web/live/ranking/edit_live.ex:523
 #, elixir-autogen, elixir-format
 msgid "Für diese Kombination gibt es keine Trikots. Nimm eine Einschränkung heraus."
 msgstr ""
@@ -330,12 +330,12 @@ msgstr ""
 msgid "Hier entlang"
 msgstr ""
 
-#: lib/kitrank_web/live/ranking/edit_live.ex:896
+#: lib/kitrank_web/live/ranking/edit_live.ex:938
 #, elixir-autogen, elixir-format
 msgid "Höchstens 500 Zeichen. Wird laufend gespeichert und steht später im Reveal."
 msgstr ""
 
-#: lib/kitrank_web/live/ranking/edit_live.ex:921
+#: lib/kitrank_web/live/ranking/edit_live.ex:963
 #, elixir-autogen, elixir-format
 msgid "Höher"
 msgstr ""
@@ -360,7 +360,7 @@ msgstr ""
 msgid "In diesem Browser gemerkt"
 msgstr ""
 
-#: lib/kitrank_web/live/ranking/edit_live.ex:1051
+#: lib/kitrank_web/live/ranking/edit_live.ex:1093
 #, elixir-autogen, elixir-format
 msgid "Jede Antwort wird gespeichert — abbrechen kostet nichts."
 msgstr ""
@@ -432,7 +432,7 @@ msgstr ""
 msgid "Name der Rangliste"
 msgstr ""
 
-#: lib/kitrank_web/live/ranking/edit_live.ex:483
+#: lib/kitrank_web/live/ranking/edit_live.ex:521
 #, elixir-autogen, elixir-format
 msgid "Nichts im Ausschnitt"
 msgstr ""
@@ -447,7 +447,7 @@ msgstr ""
 msgid "Noch keine Rangliste?"
 msgstr ""
 
-#: lib/kitrank_web/live/ranking/edit_live.ex:622
+#: lib/kitrank_web/live/ranking/edit_live.ex:660
 #, elixir-autogen, elixir-format
 msgid "Noch nichts ausgewählt"
 msgstr ""
@@ -462,12 +462,12 @@ msgstr ""
 msgid "Noch niemand. Gib den Code"
 msgstr ""
 
-#: lib/kitrank_web/live/ranking/edit_live.ex:1000
+#: lib/kitrank_web/live/ranking/edit_live.ex:1042
 #, elixir-autogen, elixir-format
 msgid "Nochmal durchgehen"
 msgstr ""
 
-#: lib/kitrank_web/live/ranking/edit_live.ex:884
+#: lib/kitrank_web/live/ranking/edit_live.ex:926
 #, elixir-autogen, elixir-format
 msgid "Notiz"
 msgstr ""
@@ -482,7 +482,7 @@ msgstr ""
 msgid "Nur in diesem Browser. Auf einem anderen Gerät brauchst du den Bearbeiten-Link."
 msgstr ""
 
-#: lib/kitrank_web/live/ranking/edit_live.ex:658
+#: lib/kitrank_web/live/ranking/edit_live.ex:696
 #, elixir-autogen, elixir-format
 msgid "Oder nochmal vergleichen lassen"
 msgstr ""
@@ -559,7 +559,7 @@ msgstr ""
 msgid "Saison"
 msgstr ""
 
-#: lib/kitrank_web/live/ranking/edit_live.ex:455
+#: lib/kitrank_web/live/ranking/edit_live.ex:493
 #, elixir-autogen, elixir-format
 msgid "Schnell auswählen"
 msgstr ""
@@ -600,7 +600,7 @@ msgstr ""
 msgid "Steuerung geben"
 msgstr ""
 
-#: lib/kitrank_web/live/ranking/edit_live.ex:624
+#: lib/kitrank_web/live/ranking/edit_live.ex:662
 #, elixir-autogen, elixir-format
 msgid "Such dir erst ein paar Trikots aus, dann kannst du sie hier in eine Reihenfolge bringen."
 msgstr ""
@@ -622,7 +622,7 @@ msgstr ""
 msgid "Teilen-Link"
 msgstr ""
 
-#: lib/kitrank_web/live/ranking/edit_live.ex:932
+#: lib/kitrank_web/live/ranking/edit_live.ex:974
 #, elixir-autogen, elixir-format
 msgid "Tiefer"
 msgstr ""
@@ -654,9 +654,9 @@ msgstr ""
 msgid "Trikotbilder werden von den Vereinsshops verlinkt, nicht kopiert. Fehlt ein Bild, zeichnet KitRank das Trikot in den Vereinsfarben."
 msgstr ""
 
-#: lib/kitrank_web/live/ranking/edit_live.ex:57
-#: lib/kitrank_web/live/ranking/edit_live.ex:631
-#: lib/kitrank_web/live/ranking/edit_live.ex:975
+#: lib/kitrank_web/live/ranking/edit_live.ex:59
+#: lib/kitrank_web/live/ranking/edit_live.ex:669
+#: lib/kitrank_web/live/ranking/edit_live.ex:1017
 #: lib/kitrank_web/live/ranking/new_live.ex:140
 #, elixir-autogen, elixir-format
 msgid "Trikots auswählen"
@@ -695,7 +695,7 @@ msgstr ""
 msgid "Vergleichen lassen"
 msgstr ""
 
-#: lib/kitrank_web/live/ranking/edit_live.ex:1061
+#: lib/kitrank_web/live/ranking/edit_live.ex:1103
 #, elixir-autogen, elixir-format
 msgid "Von vorn anfangen"
 msgstr ""
@@ -710,7 +710,7 @@ msgstr ""
 msgid "Vorheriges Bild"
 msgstr ""
 
-#: lib/kitrank_web/live/ranking/edit_live.ex:892
+#: lib/kitrank_web/live/ranking/edit_live.ex:934
 #, elixir-autogen, elixir-format
 msgid "Warum steht es genau hier? Was stört, was gefällt?"
 msgstr ""
@@ -720,7 +720,7 @@ msgstr ""
 msgid "Was gesagt wurde"
 msgstr ""
 
-#: lib/kitrank_web/live/ranking/edit_live.ex:1019
+#: lib/kitrank_web/live/ranking/edit_live.ex:1061
 #: lib/kitrank_web/live/reveal/components.ex:373
 #, elixir-autogen, elixir-format
 msgid "Welches gefällt dir besser?"
@@ -756,12 +756,12 @@ msgstr ""
 msgid "Wie viele macht ihr mit?"
 msgstr ""
 
-#: lib/kitrank_web/live/ranking/edit_live.ex:439
+#: lib/kitrank_web/live/ranking/edit_live.ex:464
 #, elixir-autogen, elixir-format
 msgid "Worüber rankst du?"
 msgstr ""
 
-#: lib/kitrank_web/live/ranking/edit_live.ex:970
+#: lib/kitrank_web/live/ranking/edit_live.ex:1012
 #, elixir-autogen, elixir-format
 msgid "Wähl erst ein paar Trikots aus, dann lassen sie sich gegeneinander stellen."
 msgstr ""
@@ -772,7 +772,7 @@ msgid "Zum Umsortieren ziehen"
 msgstr ""
 
 #: lib/kitrank_web/live/overview_live.ex:1143
-#: lib/kitrank_web/live/ranking/edit_live.ex:907
+#: lib/kitrank_web/live/ranking/edit_live.ex:949
 #: lib/kitrank_web/live/ranking/show_live.ex:181
 #, elixir-autogen, elixir-format
 msgid "Zum Vereinsshop"
@@ -783,8 +783,8 @@ msgstr ""
 msgid "Zum nächsten Teilnehmer wischen."
 msgstr ""
 
-#: lib/kitrank_web/live/ranking/edit_live.ex:995
-#: lib/kitrank_web/live/ranking/edit_live.ex:1055
+#: lib/kitrank_web/live/ranking/edit_live.ex:1037
+#: lib/kitrank_web/live/ranking/edit_live.ex:1097
 #, elixir-autogen, elixir-format
 msgid "Zur Rangliste"
 msgstr ""
@@ -1078,12 +1078,12 @@ msgid "Schließen"
 msgstr ""
 
 #: lib/kitrank_web/live/overview_live.ex:776
-#: lib/kitrank_web/live/ranking/edit_live.ex:763
+#: lib/kitrank_web/live/ranking/edit_live.ex:803
 #, elixir-autogen, elixir-format
 msgid "%{anzahl} Vereine"
 msgstr ""
 
-#: lib/kitrank_web/live/ranking/edit_live.ex:789
+#: lib/kitrank_web/live/ranking/edit_live.ex:831
 #, elixir-autogen, elixir-format
 msgid "%{name} abwählen"
 msgstr ""
@@ -1113,7 +1113,7 @@ msgid "%{verein} %{trikot} groß ansehen"
 msgstr ""
 
 #: lib/kitrank_web/live/ranking/components.ex:248
-#: lib/kitrank_web/live/ranking/edit_live.ex:1133
+#: lib/kitrank_web/live/ranking/edit_live.ex:1175
 #, elixir-autogen, elixir-format
 msgid "%{verein} %{trikot} im Detail"
 msgstr ""
@@ -1124,7 +1124,7 @@ msgid "%{verein} %{trikot} vergleichen"
 msgstr ""
 
 #: lib/kitrank_web/components/kit_components.ex:109
-#: lib/kitrank_web/live/ranking/edit_live.ex:824
+#: lib/kitrank_web/live/ranking/edit_live.ex:866
 #, elixir-autogen, elixir-format
 msgid "%{verein} – %{trikot}"
 msgstr ""
@@ -1134,12 +1134,12 @@ msgstr ""
 msgid "%{verein} — alle Trikots"
 msgstr ""
 
-#: lib/kitrank_web/live/ranking/edit_live.ex:500
+#: lib/kitrank_web/live/ranking/edit_live.ex:538
 #, elixir-autogen, elixir-format
 msgid "Alle abwählen"
 msgstr ""
 
-#: lib/kitrank_web/live/ranking/edit_live.ex:501
+#: lib/kitrank_web/live/ranking/edit_live.ex:539
 #, elixir-autogen, elixir-format
 msgid "Alle auswählen"
 msgstr ""
@@ -1164,17 +1164,17 @@ msgstr ""
 msgid "Der Raum ließ sich nicht anlegen. Nochmal?"
 msgstr ""
 
-#: lib/kitrank_web/live/ranking/edit_live.ex:687
+#: lib/kitrank_web/live/ranking/edit_live.ex:725
 #, elixir-autogen, elixir-format
 msgid "Die Liste hat sich zwischendurch geändert — neuer Anlauf."
 msgstr ""
 
-#: lib/kitrank_web/live/ranking/edit_live.ex:234
+#: lib/kitrank_web/live/ranking/edit_live.ex:257
 #, elixir-autogen, elixir-format
 msgid "Die Liste hat sich zwischendurch geändert. Hier ist der aktuelle Stand."
 msgstr ""
 
-#: lib/kitrank_web/live/ranking/edit_live.ex:341
+#: lib/kitrank_web/live/ranking/edit_live.ex:364
 #, elixir-autogen, elixir-format
 msgid "Die Notiz ist zu lang – höchstens 500 Zeichen."
 msgstr ""
@@ -1242,13 +1242,13 @@ msgstr ""
 msgid "Nächster Platz"
 msgstr ""
 
-#: lib/kitrank_web/live/ranking/edit_live.ex:28
+#: lib/kitrank_web/live/ranking/edit_live.ex:30
 #: lib/kitrank_web/live/ranking/show_live.ex:21
 #, elixir-autogen, elixir-format
 msgid "Rangliste nicht gefunden"
 msgstr ""
 
-#: lib/kitrank_web/live/ranking/edit_live.ex:59
+#: lib/kitrank_web/live/ranking/edit_live.ex:61
 #, elixir-autogen, elixir-format
 msgid "Rangliste sortieren"
 msgstr ""
@@ -1263,7 +1263,7 @@ msgstr ""
 msgid "Raum wird geöffnet …"
 msgstr ""
 
-#: lib/kitrank_web/live/ranking/edit_live.ex:58
+#: lib/kitrank_web/live/ranking/edit_live.ex:60
 #, elixir-autogen, elixir-format
 msgid "Trikots vergleichen"
 msgstr ""
@@ -1303,7 +1303,7 @@ msgstr ""
 msgid "%{abstand} Plätze auseinander"
 msgstr ""
 
-#: lib/kitrank_web/live/ranking/edit_live.ex:492
+#: lib/kitrank_web/live/ranking/edit_live.ex:530
 #, elixir-autogen, elixir-format, fuzzy
 msgid "%{anzahl} Trikots"
 msgstr ""
@@ -1313,7 +1313,7 @@ msgstr ""
 msgid "%{anzahl} Trikots nebeneinander. Die Zeilen liegen auf einer Höhe, damit sich Verein, Typ und Shop direkt gegenüberstehen."
 msgstr ""
 
-#: lib/kitrank_web/live/ranking/edit_live.ex:457
+#: lib/kitrank_web/live/ranking/edit_live.ex:495
 #, elixir-autogen, elixir-format
 msgid "%{anzahl} Trikots · %{ausschnitt}"
 msgstr ""
@@ -1350,17 +1350,17 @@ msgstr ""
 msgid "%{spanne} Plätze Unterschied"
 msgstr ""
 
-#: lib/kitrank_web/live/ranking/edit_live.ex:985
+#: lib/kitrank_web/live/ranking/edit_live.ex:1027
 #, elixir-autogen, elixir-format
 msgid "%{trikots} Trikots in %{vergleiche} Vergleichen sortiert. Feinschliff und Notizen machst du im nächsten Schritt."
 msgstr ""
 
-#: lib/kitrank_web/live/ranking/edit_live.ex:1021
+#: lib/kitrank_web/live/ranking/edit_live.ex:1063
 #, elixir-autogen, elixir-format
 msgid "%{vergleiche} Vergleiche · noch etwa %{rest}"
 msgstr ""
 
-#: lib/kitrank_web/live/ranking/edit_live.ex:790
+#: lib/kitrank_web/live/ranking/edit_live.ex:832
 #, elixir-autogen, elixir-format
 msgid "Alle %{name}"
 msgstr ""
@@ -1382,7 +1382,7 @@ msgstr ""
 msgid "Platz %{nr}"
 msgstr ""
 
-#: lib/kitrank_web/live/ranking/edit_live.ex:868
+#: lib/kitrank_web/live/ranking/edit_live.ex:910
 #, elixir-autogen, elixir-format
 msgid "Platz %{platz} von %{gesamt}"
 msgstr ""
@@ -1409,7 +1409,7 @@ msgstr ""
 msgid "Saison %{saison} · %{anzahl} Trikots"
 msgstr ""
 
-#: lib/kitrank_web/live/ranking/edit_live.ex:1014
+#: lib/kitrank_web/live/ranking/edit_live.ex:1056
 #, elixir-autogen, elixir-format
 msgid "Trikot %{nr} von %{gesamt}"
 msgstr ""
@@ -1457,7 +1457,7 @@ msgstr[1] ""
 msgid "Platz von %{verein} %{trikot}"
 msgstr ""
 
-#: lib/kitrank_web/live/ranking/edit_live.ex:651
+#: lib/kitrank_web/live/ranking/edit_live.ex:689
 #, elixir-autogen, elixir-format
 msgid "Ziehen am Griff sortiert um, die Pfeile gehen ohne Maus — und die Platzziffer lässt sich überschreiben: Zahl eintippen, Enter. Alles speichert sofort."
 msgstr ""
@@ -1467,7 +1467,7 @@ msgstr ""
 msgid "%{verein}: %{trikot} zeigen"
 msgstr ""
 
-#: lib/kitrank_web/live/ranking/edit_live.ex:870
+#: lib/kitrank_web/live/ranking/edit_live.ex:912
 #, elixir-autogen, elixir-format
 msgid "Noch im Vergleich"
 msgstr ""
@@ -1477,7 +1477,7 @@ msgstr ""
 msgid "Trikot"
 msgstr ""
 
-#: lib/kitrank_web/live/ranking/edit_live.ex:1085
+#: lib/kitrank_web/live/ranking/edit_live.ex:1127
 #, elixir-autogen, elixir-format, fuzzy
 msgid "%{verein} %{trikot} wählen"
 msgstr ""
@@ -1573,4 +1573,14 @@ msgstr ""
 #: lib/kitrank_web/live/sports_live.ex:41
 #, elixir-autogen, elixir-format, fuzzy
 msgid "eine eigene Rangliste"
+msgstr ""
+
+#: lib/kitrank_web/live/ranking/edit_live.ex:791
+#, elixir-autogen, elixir-format, fuzzy
+msgid "%{anzahl} Saisons"
+msgstr ""
+
+#: lib/kitrank_web/live/ranking/edit_live.ex:789
+#, elixir-autogen, elixir-format
+msgid "alle Saisons"
 msgstr ""

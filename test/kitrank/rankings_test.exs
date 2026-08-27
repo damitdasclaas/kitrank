@@ -138,6 +138,66 @@ defmodule Kitrank.RankingsTest do
     end
   end
 
+  describe "Ausschnitt" do
+    setup do
+      %{teams: [a, b], kits: kits} = league_fixture(team_count: 2, kit_types: ["home", "away"])
+      {:ok, ranking} = Rankings.create_ranking(%{display_name: "Test"})
+      %{ranking: ranking, a: a, b: b, kits: kits}
+    end
+
+    test "eine frische Rangliste schränkt nichts ein", %{ranking: ranking} do
+      # Leer heisst „alles" – und fuer Ranglisten von vor der Speicherung ist
+      # das der ehrlichste Ersatz fuer „wir wissen es nicht mehr".
+      assert Kitrank.Kits.Scope.empty?(Rankings.Ranking.scope(ranking))
+    end
+
+    test "der Ausschnitt übersteht einen Neustart", %{ranking: ranking, a: a} do
+      # Vorher war er fluechtig: beim Laden aus den Eintraegen erraten, Tab zu,
+      # Einstellungen weg.
+      {:ok, _} =
+        Rankings.update_scope(ranking, %{
+          seasons: [Kitrank.Kits.current_season()],
+          team_ids: [a.id],
+          kit_types: ["away"]
+        })
+
+      frisch = Rankings.get_ranking_by_edit_token(ranking.edit_token)
+      scope = Rankings.Ranking.scope(frisch)
+
+      assert scope.seasons == [Kitrank.Kits.current_season()]
+      assert scope.team_ids == [a.id]
+      assert scope.kit_types == ["away"]
+    end
+
+    test "die Trikot-Typ-Achse grenzt wirklich ein", %{ranking: ranking} do
+      # Die Luecke, die dabei aufgefallen ist: „alle Auswaertstrikots dieser
+      # vier Vereine" liess sich vorher gar nicht ausdruecken.
+      alle = Rankings.kits_in_scope(ranking)
+
+      {:ok, ranking} = Rankings.update_scope(ranking, %{kit_types: ["away"]})
+      nur_auswaerts = Rankings.kits_in_scope(ranking)
+
+      assert length(alle) == 4
+      assert length(nur_auswaerts) == 2
+      assert Enum.all?(nur_auswaerts, &(&1.kit.kit_type == "away"))
+    end
+
+    test "Verein und Typ greifen zusammen", %{ranking: ranking, a: a} do
+      {:ok, ranking} = Rankings.update_scope(ranking, %{team_ids: [a.id], kit_types: ["away"]})
+
+      assert [%{kit: kit}] = Rankings.kits_in_scope(ranking)
+      assert kit.team_id == a.id
+      assert kit.kit_type == "away"
+    end
+
+    test "ein erfundener Trikot-Typ wird abgelehnt", %{ranking: ranking} do
+      assert {:error, changeset} =
+               Rankings.update_ranking(ranking, %{scope_kit_types: ["throwback"]})
+
+      assert %{scope_kit_types: _} = errors_on(changeset)
+    end
+  end
+
   describe "move_to/3" do
     setup do
       %{kits: [a, b, c] = kits} = league_fixture(team_count: 3, kit_types: ["home"])

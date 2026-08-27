@@ -10,7 +10,7 @@ defmodule Kitrank.Kits do
   import Ecto.Query, warn: false
 
   alias Kitrank.Repo
-  alias Kitrank.Kits.{Competition, Kit, Season, Sport, Team, TeamSeason}
+  alias Kitrank.Kits.{Competition, Kit, Scope, Season, Sport, Team, TeamSeason}
 
   # Sortiert Trikots nach fachlicher Reihenfolge statt alphabetisch, damit "away"
   # nicht vor "home" landet. Als Makro, weil es in mehreren Queries auftaucht.
@@ -157,8 +157,12 @@ defmodule Kitrank.Kits do
   Gibt `[%{kit:, competition:}]` zurück – die Liga steht dabei, weil sie
   saisonabhängig ist und sich nicht am Trikot ablesen lässt. Sortiert nach
   Saison (neueste zuerst), dann Liga, Verein und Kit-Typ.
+
+  Nimmt einen `Kitrank.Kits.Scope` oder alles, woraus sich einer bauen lässt.
   """
-  def list_kits_for_scope(scope \\ %{}) do
+  def list_kits_for_scope(scope \\ %Scope{}) do
+    scope = Scope.new(scope)
+
     from(k in Kit,
       join: t in assoc(k, :team),
       as: :team,
@@ -172,12 +176,25 @@ defmodule Kitrank.Kits do
     |> order_by([k], desc: k.season)
     |> nach_liga()
     |> order_by([k, team: t], asc: t.name, asc: kit_type_order(k))
-    |> scope_by(:season, Map.get(scope, :seasons, []))
-    |> scope_by(:competition_id, Map.get(scope, :competition_ids, []))
-    |> scope_by(:team_id, Map.get(scope, :team_ids, []))
+    |> for_scope(scope)
     |> Repo.all()
   end
 
+  @doc """
+  Schränkt eine Trikot-Abfrage auf einen Ausschnitt ein.
+
+  Erwartet die Bindungen von `list_kits_for_scope/1`: Trikot zuerst, dann
+  Verein, dann Saison-Zuordnung.
+  """
+  def for_scope(query, %Scope{} = scope) do
+    query
+    |> scope_by(:season, scope.seasons)
+    |> scope_by(:competition_id, scope.competition_ids)
+    |> scope_by(:team_id, scope.team_ids)
+    |> scope_by(:kit_type, scope.kit_types)
+  end
+
+  # Eine leere Liste schraenkt nicht ein.
   defp scope_by(query, _field, []), do: query
   defp scope_by(query, :season, values), do: from([k] in query, where: k.season in ^values)
 
@@ -185,6 +202,7 @@ defmodule Kitrank.Kits do
     do: from([k, _t, ts] in query, where: ts.competition_id in ^values)
 
   defp scope_by(query, :team_id, values), do: from([k] in query, where: k.team_id in ^values)
+  defp scope_by(query, :kit_type, values), do: from([k] in query, where: k.kit_type in ^values)
 
   @doc """
   Trikots für die Admin-Liste, mit Liga und optional darauf gefiltert.

@@ -124,6 +124,27 @@ defmodule Kitrank.Rankings do
     count
   end
 
+  @doc """
+  Speichert den Ausschnitt, mit dem gerade gearbeitet wird.
+
+  Bei jeder Änderung, nicht erst am Ende: der Ausschnitt ist das, was jemand
+  eingestellt hat, und das soll einen geschlossenen Tab überleben.
+  """
+  def update_scope(%Ranking{} = ranking, scope) do
+    ranking |> Ranking.scope_changeset(scope) |> Repo.update()
+  end
+
+  @doc """
+  Die Trikots, um die es in dieser Rangliste geht.
+
+  Ein leerer Ausschnitt heißt „alles" — für Ranglisten von vor der
+  Ausschnitt-Speicherung ist das der ehrlichste Ersatz für „wir wissen es
+  nicht mehr".
+  """
+  def kits_in_scope(%Ranking{} = ranking) do
+    ranking |> Ranking.scope() |> Kits.list_kits_for_scope()
+  end
+
   @doc "Nimmt ein Trikot wieder aus der Rangliste – identifiziert über das Trikot."
   def remove_kit(%Ranking{} = ranking, kit_id) do
     case Repo.get_by(RankingEntry, ranking_id: ranking.id, kit_id: kit_id) do

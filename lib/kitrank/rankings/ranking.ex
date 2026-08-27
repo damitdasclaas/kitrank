@@ -18,9 +18,47 @@ defmodule Kitrank.Rankings.Ranking do
     field :share_slug, :string
     field :display_name, :string
 
+    # Womit die Liste gebaut wurde. Vier Spalten und kein JSON, damit man in
+    # SQL nachsehen kann, ohne erst etwas auszupacken – und weil reveal_rooms
+    # es genauso hält.
+    field :scope_seasons, {:array, :string}, default: []
+    field :scope_competition_ids, {:array, :integer}, default: []
+    field :scope_team_ids, {:array, :integer}, default: []
+    field :scope_kit_types, {:array, :string}, default: []
+
     has_many :entries, Kitrank.Rankings.RankingEntry, preload_order: [asc: :position]
 
     timestamps(type: :utc_datetime)
+  end
+
+  @scope_felder [:scope_seasons, :scope_competition_ids, :scope_team_ids, :scope_kit_types]
+
+  @doc """
+  Der gespeicherte Ausschnitt als `Kitrank.Kits.Scope`.
+
+  Vor dieser Änderung gab es ihn nur im Speicher der offenen Sitzung. Für alte
+  Ranglisten sind die Spalten leer — und ein leerer Ausschnitt heißt „alles",
+  was der ehrlichste Ersatz für „wir wissen es nicht mehr" ist.
+  """
+  def scope(%__MODULE__{} = ranking) do
+    %Kitrank.Kits.Scope{
+      seasons: ranking.scope_seasons,
+      competition_ids: ranking.scope_competition_ids,
+      team_ids: ranking.scope_team_ids,
+      kit_types: ranking.scope_kit_types
+    }
+  end
+
+  @doc "Changeset, der nur den Ausschnitt setzt."
+  def scope_changeset(%__MODULE__{} = ranking, scope) do
+    scope = Kitrank.Kits.Scope.new(scope)
+
+    change(ranking,
+      scope_seasons: scope.seasons,
+      scope_competition_ids: scope.competition_ids,
+      scope_team_ids: scope.team_ids,
+      scope_kit_types: scope.kit_types
+    )
   end
 
   @doc """
@@ -42,8 +80,9 @@ defmodule Kitrank.Rankings.Ranking do
   @doc "Changeset für alles, was der Besitzer später ändern darf."
   def changeset(ranking, attrs) do
     ranking
-    |> cast(attrs, [:display_name])
+    |> cast(attrs, [:display_name | @scope_felder])
     |> validate_display_name()
+    |> validate_subset(:scope_kit_types, Kitrank.Kits.Kit.kit_types())
   end
 
   defp validate_display_name(changeset) do

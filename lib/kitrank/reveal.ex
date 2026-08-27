@@ -14,7 +14,7 @@ defmodule Kitrank.Reveal do
   import Ecto.Query, warn: false
 
   alias Kitrank.Kits
-  alias Kitrank.Kits.{Kit, TeamSeason}
+  alias Kitrank.Kits.Scope
   alias Kitrank.Repo
   alias Kitrank.Rankings
   alias Kitrank.Rankings.Ranking
@@ -26,29 +26,30 @@ defmodule Kitrank.Reveal do
   ## Ausschnitt des Raums
 
   @doc """
+  Der Ausschnitt des Raums als `Kitrank.Kits.Scope`.
+
+  Der Raum führt ihn als drei Spalten – `season` (Einzahl), `competition_ids`,
+  `kit_types` –, weil es diese Spalten gab, bevor es den gemeinsamen Begriff
+  gab. Hier wird daraus einer.
+  """
+  def scope(%Room{} = room) do
+    %Scope{
+      seasons: [room.season],
+      competition_ids: room.competition_ids,
+      kit_types: room.kit_types
+    }
+  end
+
+  @doc """
   Die Trikots, um die es in diesem Raum geht – Saison, Ligen und Kit-Typen wie
   beim Anlegen festgelegt.
   """
   def scope_kit_ids(%Room{} = room) do
-    from(k in Kit,
-      join: ts in TeamSeason,
-      on: ts.team_id == k.team_id and ts.season == k.season,
-      where: k.season == ^room.season,
-      select: k.id
-    )
-    |> restrict(:competition_id, room.competition_ids)
-    |> restrict(:kit_type, room.kit_types)
-    |> Repo.all()
-    |> MapSet.new()
+    room
+    |> scope()
+    |> Kits.list_kits_for_scope()
+    |> MapSet.new(& &1.kit.id)
   end
-
-  # Eine leere Liste schraenkt nicht ein.
-  defp restrict(query, _field, []), do: query
-
-  defp restrict(query, :competition_id, ids),
-    do: from([k, ts] in query, where: ts.competition_id in ^ids)
-
-  defp restrict(query, :kit_type, types), do: from(k in query, where: k.kit_type in ^types)
 
   @doc "Wie viele Trikots der Ausschnitt umfasst."
   def scope_size(%Room{} = room), do: room |> scope_kit_ids() |> MapSet.size()
@@ -275,7 +276,8 @@ defmodule Kitrank.Reveal do
   defp sortiert_nach_uebersicht(%Room{} = room, kit_ids) do
     erlaubt = MapSet.new(kit_ids)
 
-    %{seasons: [room.season], competition_ids: room.competition_ids}
+    room
+    |> scope()
     |> Kits.list_kits_for_scope()
     |> Enum.map(& &1.kit.id)
     |> Enum.filter(&MapSet.member?(erlaubt, &1))

@@ -112,7 +112,26 @@ unkritisch.
 
 ---
 
-## 3. Ranglisten-Ausschnitt speichern
+## 3. Ranglisten-Ausschnitt speichern — **fertig**
+
+**So gebaut:** `Kitrank.Kits.Scope` als gemeinsamer Begriff mit vier Achsen —
+Saisons, Ligen, Vereine, Trikot-Typen; jede leere Liste heißt „keine
+Einschränkung". Vier Spalten `scope_*` an `rankings`, geschrieben bei jeder
+Änderung statt erst am Ende. Das Reveal baut seinen Ausschnitt jetzt aus
+denselben Bausteinen und hat seine eigene Abfrage verloren.
+
+**Die Typ-Achse ist dazugekommen** — vorher ließ sich „alle Auswärtstrikots
+dieser vier Vereine" gar nicht ausdrücken.
+
+**Eine Entscheidung:** ein leerer Ausschnitt heißt „alles", auch für alte
+Ranglisten, deren Einstellungen es nie gab. Das ist der ehrlichste Ersatz für
+„wir wissen es nicht mehr". Eine frische Liste startet dagegen bei der
+laufenden Saison — aber als gespeicherte Entscheidung, nicht als
+Zufallsergebnis des Ladens.
+
+Der Rest dieses Abschnitts ist die ursprüngliche Überlegung.
+
+---
 
 Heute ist der Ausschnitt flüchtig (`init_scope`). Es gibt nichts zu teilen,
 weil es nichts gibt.
@@ -203,8 +222,7 @@ wird — sonst baut man eine Anmeldung ohne Anlass.
 
 1. ~~**Sportart-Routing**~~ — fertig.
 2. ~~**Trikot-Kategorien pro Sportart**~~ — fertig.
-3. **Ausschnitt speichern + Typ-Achse** — Grundlage für 5, repariert nebenbei,
-   dass Einstellungen heute verloren gehen.
+3. ~~**Ausschnitt speichern + Typ-Achse**~~ — fertig.
 4. **Multi-Select** — unabhängig, kann auch vorgezogen werden.
 5. **Geteilter Link mit Gate** — zuletzt, hier sitzen die Produktfragen.
 6. **Konten** — erst wenn 5 den Anlass geliefert hat.
