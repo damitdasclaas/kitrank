@@ -1,17 +1,19 @@
 {
   "_hinweis": "Stammdaten der NFL. Einspielen mit 'mix kitrank.import priv/data/nfl_2026_27.json' bzw. auf dem Server '/app/bin/kitrank eval \"Kitrank.Release.import_teams(\\\"data/nfl_2026_27.json\\\")\"'. Eine Datei beschreibt genau eine Sportart: der Import raeumt nur innerhalb seiner eigenen Sportart auf, der Fussball-Import laesst diese Zuordnungen also in Ruhe und umgekehrt. Steht die Liga schon in der Datenbank, muessen 'sport.slug', 'name' und 'country' hier genau so heissen wie dort — sonst legt der Import eine zweite daneben.",
+  "_kategorien": "Die NFL kennt Heim und Auswaerts als feste Kategorien; alles weitere ist ein Alternate mit Namen — „Alternate Weiss\", „Throwback 1994\". Ein Ausweichtrikot wie im Fussball gibt es nicht, deshalb steht 'third' nicht in kit_types.",
   "_farben": "primary_color faerbt die Kachel-Buehne (13-15 % Farbe auf Weiss). Wo die offizielle Farbliste mit Schwarz beginnt, steht hier die naechste Farbe derselben Liste: Schwarz ergibt einen Grauton, in dem sich die Vereine nicht mehr unterscheiden lassen. Betrifft Ravens (Purple), Bengals (Orange), Steelers (Gold), Texans (Battle Red), Jaguars (Teal) und Panthers (Panther Blue). Tennessee Titans: Rebrand vom 12./13. Maerz 2026 — Titans Blue (#4B92DB) ist seither die Hauptfarbe, Navy nur noch Nebenfarbe.",
   "_shops": "Jeder Verein verweist auf seinen eigenen Fanshop. Keine Affiliate-Links — KitRank verdient an keinem Kauf mit (siehe Fusszeile der App).",
   "season": "2026/27",
   "sport": {
     "name": "American Football",
-    "slug": "american-football"
+    "slug": "american-football",
+    "kit_types": [
+      "home",
+      "away",
+      "special"
+    ],
+    "special_label": "Alternate"
   },
-  "kit_types": [
-    "home",
-    "away",
-    "third"
-  ],
   "competitions": [
     {
       "name": "NFL",

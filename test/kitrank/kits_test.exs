@@ -4,6 +4,8 @@ defmodule Kitrank.KitsTest do
   import Kitrank.KitsFixtures
 
   alias Kitrank.Kits
+  alias Kitrank.Kits.Sport
+  alias KitrankWeb.KitLabel
 
   describe "teams" do
     test "normalisiert das Kürzel auf Großbuchstaben" do
@@ -237,6 +239,145 @@ defmodule Kitrank.KitsTest do
                })
 
       assert changeset.errors[:model_image_urls]
+    end
+  end
+
+  describe "Trikot-Kategorien je Sportart" do
+    test "eine neue Sportart kennt alle Kategorien" do
+      # Der bisherige globale Satz als Vorgabe: bestehende Daten verhalten sich
+      # nach der Migration wie vorher.
+      {:ok, sport} = Kits.create_sport(%{name: "Handball", slug: "handball-vorgabe"})
+
+      assert sport.kit_types == ~w(home away third special)
+    end
+
+    test "die NFL kennt kein Ausweichtrikot" do
+      {:ok, sport} =
+        Kits.create_sport(%{
+          name: "American Football",
+          slug: "nfl-kategorien",
+          kit_types: ["home", "away", "special"]
+        })
+
+      assert Sport.kit_types(sport) == ["home", "away", "special"]
+      refute "third" in Sport.kit_types(sport)
+    end
+
+    test "leere Datensaetze legt der Import nur fuer die einmaligen an" do
+      # Von Heim/Auswaerts/Ausweich gibt es genau eins je Verein und Saison.
+      # Ein Sondertrikot braucht einen Namen – ein leeres, namenloses gaebe es
+      # gar nicht.
+      {:ok, sport} =
+        Kits.create_sport(%{
+          name: "American Football",
+          slug: "nfl-einzeln",
+          kit_types: ["home", "away", "special"]
+        })
+
+      assert Sport.einzelne_kit_types(sport) == ["home", "away"]
+    end
+
+    test "eine erfundene Kategorie wird abgelehnt" do
+      assert {:error, changeset} =
+               Kits.create_sport(%{name: "X", slug: "x-erfunden", kit_types: ["throwback"]})
+
+      assert %{kit_types: _} = errors_on(changeset)
+    end
+
+    test "ohne Kategorie geht es nicht" do
+      assert {:error, changeset} =
+               Kits.create_sport(%{name: "X", slug: "x-leer", kit_types: []})
+
+      assert %{kit_types: _} = errors_on(changeset)
+    end
+
+    test "Sondertrikots koennen je Sportart anders heissen" do
+      {:ok, nfl} =
+        Kits.create_sport(%{
+          name: "American Football",
+          slug: "nfl-beschriftung",
+          kit_types: ["home", "away", "special"],
+          special_label: "Alternate"
+        })
+
+      {:ok, fussball} = Kits.create_sport(%{name: "Fußball", slug: "fussball-beschriftung"})
+
+      assert KitLabel.label(nfl, "special") == "Alternate"
+      # Ohne eigene Angabe bleibt es bei der uebersetzten Vorgabe.
+      assert KitLabel.label(fussball, "special") == KitLabel.label("special")
+      # Alles andere heisst ueberall gleich.
+      assert KitLabel.label(nfl, "home") == KitLabel.label("home")
+    end
+  end
+
+  describe "Trikots ohne Kategorie in ihrer Sportart" do
+    setup do
+      {:ok, sport} =
+        Kits.create_sport(%{
+          name: "American Football",
+          slug: "nfl-verwaist",
+          kit_types: ["home", "away", "special"]
+        })
+
+      competition = competition_fixture(sport_id: sport.id, name: "NFL")
+      season = Kits.current_season()
+
+      %{teams: [team]} =
+        league_fixture(competition: competition, season: season, team_count: 1, kit_types: [])
+
+      %{sport: sport, team: team, season: season}
+    end
+
+    test "findet ein leeres Trikot einer abgelegten Kategorie", %{team: team, season: season} do
+      kit_fixture(team_id: team.id, season: season, kit_type: "third")
+
+      assert %{loeschbar: [eintrag], belegt: []} = Kits.orphan_kits(season)
+      assert eintrag.kit.kit_type == "third"
+    end
+
+    test "eine Kategorie, die die Sportart kennt, bleibt unangetastet", %{
+      team: team,
+      season: season
+    } do
+      kit_fixture(team_id: team.id, season: season, kit_type: "home")
+
+      assert %{loeschbar: [], belegt: []} = Kits.orphan_kits(season)
+    end
+
+    test "ein Trikot mit Bild wird gemeldet, nicht geloescht", %{team: team, season: season} do
+      kit_fixture(
+        team_id: team.id,
+        season: season,
+        kit_type: "third",
+        cutout_url: "https://example.com/x.jpg"
+      )
+
+      assert %{loeschbar: [], belegt: [_]} = Kits.orphan_kits(season)
+      assert %{geloescht: 0} = Kits.remove_orphan_kits(season)
+    end
+
+    test "ein Trikot in einer Rangliste wird gemeldet, nicht geloescht", %{
+      team: team,
+      season: season
+    } do
+      # Der Fremdschluessel steht auf delete_all – loeschen wuerde es still aus
+      # fremden Ranglisten entfernen.
+      kit = kit_fixture(team_id: team.id, season: season, kit_type: "third")
+      {:ok, ranking} = Kitrank.Rankings.create_ranking(%{display_name: "Test"})
+      {:ok, _} = Kitrank.Rankings.add_kit(ranking, kit.id)
+
+      assert %{loeschbar: [], belegt: [eintrag]} = Kits.orphan_kits(season)
+      assert eintrag.eintraege == 1
+
+      assert %{geloescht: 0} = Kits.remove_orphan_kits(season)
+      assert Kits.get_kit!(kit.id)
+    end
+
+    test "loescht, was wirklich niemand braucht", %{team: team, season: season} do
+      kit = kit_fixture(team_id: team.id, season: season, kit_type: "third")
+
+      assert %{geloescht: 1} = Kits.remove_orphan_kits(season)
+      assert_raise Ecto.NoResultsError, fn -> Kits.get_kit!(kit.id) end
     end
   end
 

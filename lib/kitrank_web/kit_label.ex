@@ -15,6 +15,23 @@ defmodule KitrankWeb.KitLabel do
 
   alias Kitrank.Kits.Kit
 
+  @doc """
+  Bezeichnung eines Trikot-Typs in der Sprache des Betrachters — je Sportart.
+
+  Nur eine Kategorie heißt wirklich anders: „Sondertrikot" im Fußball,
+  „Alternate" in der NFL. Das steht als Freitext an der Sportart und nicht als
+  Klausel hier, weil eine Klausel am Slug hinge — und der Slug ist Daten, die
+  im Admin geändert werden dürfen. Eine Umbenennung würde die Beschriftung
+  still auf die Vorgabe zurückfallen lassen, ohne dass jemand es merkt.
+
+  Ohne eigene Angabe bleibt es bei der übersetzten Vorgabe.
+  """
+  def label(%Kitrank.Kits.Sport{special_label: eigen}, "special")
+      when is_binary(eigen),
+      do: eigen
+
+  def label(%Kitrank.Kits.Sport{}, kit_type), do: label(kit_type)
+
   @doc "Bezeichnung eines Trikot-Typs in der Sprache des Betrachters."
   def label("home"), do: gettext("Heim")
   def label("away"), do: gettext("Auswärts")
@@ -29,11 +46,20 @@ defmodule KitrankWeb.KitLabel do
   jeder Liste mehrfach dasselbe "Sonder". Bei Heim, Auswärts und Ausweich ist
   der Name überflüssig, dort bleibt es beim Typ.
   """
-  def display(%Kit{kit_type: kit_type, name: name}) when is_binary(name) do
-    if String.trim(name) == "", do: label(kit_type), else: "#{label(kit_type)} · #{name}"
+  def display(kit_or_sport \\ nil, kit)
+
+  def display(nil, %Kit{} = kit), do: display_with(&label/1, kit)
+
+  def display(%Kitrank.Kits.Sport{} = sport, %Kit{} = kit),
+    do: display_with(&label(sport, &1), kit)
+
+  defp display_with(beschriftung, %Kit{kit_type: kit_type, name: name}) when is_binary(name) do
+    if String.trim(name) == "",
+      do: beschriftung.(kit_type),
+      else: "#{beschriftung.(kit_type)} · #{name}"
   end
 
-  def display(%Kit{kit_type: kit_type}), do: label(kit_type)
+  defp display_with(beschriftung, %Kit{kit_type: kit_type}), do: beschriftung.(kit_type)
 
   @doc """
   Rolle eines Bildes an einer Position.

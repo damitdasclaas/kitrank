@@ -3,7 +3,14 @@
   "season": "2026/27",
   "sport": {
     "name": "Fußball",
-    "slug": "football"
+    "slug": "football",
+    "kit_types": [
+      "home",
+      "away",
+      "third",
+      "special"
+    ],
+    "special_label": null
   },
   "competitions": [
     {
@@ -236,10 +243,5 @@
         }
       ]
     }
-  ],
-  "kit_types": [
-    "home",
-    "away",
-    "third"
   ]
 }

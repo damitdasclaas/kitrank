@@ -112,6 +112,78 @@ defmodule KitrankWeb.SportsLiveTest do
     end
   end
 
+  describe "Kategorien je Sportart" do
+    setup do
+      {:ok, nfl} =
+        Kits.create_sport(%{
+          name: "American Football",
+          slug: "nfl-filter",
+          kit_types: ["home", "away", "special"],
+          special_label: "Alternate"
+        })
+
+      competition = competition_fixture(sport_id: nfl.id, name: "NFL")
+      season = Kits.current_season()
+
+      %{teams: [team]} =
+        league_fixture(
+          competition: competition,
+          season: season,
+          team_count: 1,
+          kit_types: ["home", "away"]
+        )
+
+      %{nfl: nfl, team: team, season: season}
+    end
+
+    test "der Schalter bietet kein Ausweichtrikot an", %{conn: conn, nfl: nfl} do
+      {:ok, _view, html} = live(conn, ~p"/#{nfl.slug}")
+
+      assert html =~ ~s(phx-value-type="home" data-role="show-all-kits")
+      assert html =~ ~s(phx-value-type="away" data-role="show-all-kits")
+      refute html =~ ~s(phx-value-type="third")
+    end
+
+    test "und nennt Sondertrikots so, wie die Sportart sie nennt", %{
+      conn: conn,
+      nfl: nfl,
+      team: team,
+      season: season
+    } do
+      kit_fixture(team_id: team.id, season: season, kit_type: "special", name: "Throwback 1994")
+
+      {:ok, _view, html} = live(conn, ~p"/#{nfl.slug}")
+
+      assert html =~ "Alternate"
+      refute html =~ "Sondertrikot"
+    end
+
+    test "im Fußball bleibt es bei der übersetzten Vorgabe", %{conn: conn} do
+      %{sport: fussball, teams: [team]} = sportart_mit("Fußball", "fussball-filter", ["home"])
+      kit_fixture(team_id: team.id, season: Kits.current_season(), kit_type: "special", name: "X")
+
+      {:ok, _view, html} = live(conn, ~p"/#{fussball.slug}")
+
+      assert html =~ "Sonder"
+      refute html =~ "Alternate"
+    end
+
+    defp sportart_mit(name, slug, kit_types) do
+      sport = sport_fixture(name: name, slug: slug)
+      competition = competition_fixture(sport_id: sport.id, name: "#{name}-Liga")
+
+      %{teams: teams} =
+        league_fixture(
+          competition: competition,
+          season: Kits.current_season(),
+          team_count: 1,
+          kit_types: kit_types
+        )
+
+      %{sport: sport, teams: teams}
+    end
+  end
+
   describe "Der Vergleich reicht über Sportarten hinaus" do
     setup do
       %{sport: fussball, kits: [f_kit | _], teams: [f_team | _]} =

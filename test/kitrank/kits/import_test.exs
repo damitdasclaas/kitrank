@@ -22,7 +22,11 @@ defmodule Kitrank.Kits.ImportTest do
   defp saison_daten(season, bl1, bl2 \\ []) do
     %{
       "season" => season,
-      "sport" => %{"name" => "Fußball", "slug" => "football"},
+      "sport" => %{
+        "name" => "Fußball",
+        "slug" => "football",
+        "kit_types" => ["home", "away", "third", "special"]
+      },
       "competitions" => [
         %{"name" => "Bundesliga", "country" => "DE", "tier" => 1, "teams" => bl1},
         %{"name" => "2. Bundesliga", "country" => "DE", "tier" => 2, "teams" => bl2}
@@ -141,7 +145,15 @@ defmodule Kitrank.Kits.ImportTest do
 
     test "lässt die Vereine selbst und ihre Trikots stehen" do
       hsv = Enum.find(Kits.list_teams(), &(&1.short_code == "HSV"))
-      kit_fixture(team_id: hsv.id, season: "2026/27", kit_type: "home")
+
+      # Ein von Hand gepflegtes Trikot – Heim/Auswaerts/Ausweich legt der
+      # Import selbst an, ein Sondertrikot nie.
+      kit_fixture(
+        team_id: hsv.id,
+        season: "2026/27",
+        kit_type: "special",
+        name: "Jubiläum"
+      )
 
       pfad = datei(saison_daten("2026/27", [verein("FC Bayern", "FCB")]))
       {:ok, _} = Import.run(pfad)
@@ -271,7 +283,12 @@ defmodule Kitrank.Kits.ImportTest do
     defp nfl_daten(season, teams) do
       %{
         "season" => season,
-        "sport" => %{"name" => "American Football", "slug" => "american-football"},
+        "sport" => %{
+          "name" => "American Football",
+          "slug" => "american-football",
+          "kit_types" => ["home", "away", "special"],
+          "special_label" => "Alternate"
+        },
         "competitions" => [
           %{"name" => "NFL", "country" => "US", "tier" => 1, "teams" => teams}
         ]

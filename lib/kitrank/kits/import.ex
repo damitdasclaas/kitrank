@@ -12,10 +12,15 @@ defmodule Kitrank.Kits.Import do
   sehen bei jedem Verein anders aus und brauchen ein Auge — die pflegst du über
   `/admin`.
 
-  Die leeren **Trikot-Datensätze** legt der Import dagegen an (`kit_types` in
-  der Datei). Ohne sie hätte ein frisch importierter Verein gar kein Trikot,
-  und die Übersicht könnte auch nichts zeichnen — die gezeichnete Darstellung
-  ist der Ersatz für ein Trikot ohne Bild, nicht für einen Verein ohne Trikot.
+  Die leeren **Trikot-Datensätze** legt der Import dagegen an — für die
+  Kategorien, von denen es genau eine je Verein und Saison gibt (`kit_types`
+  am Sportart-Block). Ohne sie hätte ein frisch importierter Verein gar kein
+  Trikot, und die Übersicht könnte auch nichts zeichnen — die gezeichnete
+  Darstellung ist der Ersatz für ein Trikot ohne Bild, nicht für einen Verein
+  ohne Trikot.
+
+  Sondertrikots gehören nicht dazu: von denen gibt es beliebig viele, und sie
+  brauchen einen Namen. Ein leeres, namenloses Sondertrikot gäbe es nicht.
 
   Der Import ist idempotent: mehrfaches Ausführen legt nichts doppelt an und
   überschreibt nur, was sich geändert hat.
@@ -29,7 +34,7 @@ defmodule Kitrank.Kits.Import do
   import Ecto.Query, only: [from: 2]
 
   alias Kitrank.Kits
-  alias Kitrank.Kits.{Competition, Kit, Team, TeamSeason}
+  alias Kitrank.Kits.{Competition, Kit, Sport, Team, TeamSeason}
   alias Kitrank.Repo
 
   @default_file "data/teams_2026_27.json"
@@ -89,9 +94,13 @@ defmodule Kitrank.Kits.Import do
     end
   end
 
-  defp import_data(%{"season" => season, "sport" => sport, "competitions" => competitions} = data) do
+  defp import_data(%{"season" => season, "sport" => sport, "competitions" => competitions}) do
     sport = upsert_sport(sport)
-    kit_types = Map.get(data, "kit_types", [])
+
+    # Welche leeren Trikots angelegt werden, sagt jetzt die Sportart und nicht
+    # mehr ein eigener Schluessel oben in der Datei: es ist dieselbe Auskunft,
+    # und zwei Orte dafuer laufen auseinander.
+    kit_types = Sport.einzelne_kit_types(sport)
 
     bericht =
       Enum.reduce(competitions, blank_report(season), fn attrs, bericht ->
@@ -150,10 +159,13 @@ defmodule Kitrank.Kits.Import do
     Map.update!(bericht, schluessel, &Map.update!(&1, status, fn n -> n + 1 end))
   end
 
+  # Anders als frueher wird die Sportart auch aktualisiert: `kit_types` und
+  # `special_label` stehen jetzt darin, und die aendern sich — beim Rebrand
+  # einer Liga genauso wie beim ersten Einspielen einer neuen Sportart.
   defp upsert_sport(%{"slug" => slug} = attrs) do
     case Kits.get_sport_by_slug(slug) do
       nil -> insert!(Kits.create_sport(attrs))
-      sport -> sport
+      sport -> insert!(Kits.update_sport(sport, attrs))
     end
   end
 

@@ -279,6 +279,119 @@ defmodule Kitrank.Kits do
     |> Enum.group_by(& &1.team_id)
   end
 
+  @doc """
+  Trikots, deren Kategorie ihre Sportart gar nicht kennt.
+
+  Entsteht, wenn eine Sportart eine Kategorie ablegt: die NFL hatte 32
+  Ausweichtrikots, weil der Import sie anfangs für alle Sportarten gleich
+  anlegte.
+
+  Gibt `%{loeschbar: [...], belegt: [...]}` zurück. **Löschbar** heißt: kein
+  Bild, kein Shop-Link, kein Name, und in keiner Rangliste. Alles andere ist
+  **belegt** und wird nur gemeldet — der Fremdschlüssel auf `ranking_entries`
+  steht auf `delete_all`, ein Trikot mit Einträgen zu löschen würde es still
+  aus fremden Ranglisten entfernen.
+  """
+  def orphan_kits(season \\ current_season()) do
+    from(k in Kit,
+      join: t in assoc(k, :team),
+      join: ts in TeamSeason,
+      on: ts.team_id == k.team_id and ts.season == k.season,
+      join: c in assoc(ts, :competition),
+      join: s in assoc(c, :sport),
+      left_join: e in Kitrank.Rankings.RankingEntry,
+      on: e.kit_id == k.id,
+      where: k.season == ^season,
+      where: fragment("NOT (? = ANY(?))", k.kit_type, s.kit_types),
+      group_by: [k.id, t.id, s.id],
+      select: %{
+        kit: k,
+        team: t,
+        sport: s,
+        eintraege: count(e.id)
+      }
+    )
+    |> Repo.all()
+    |> Enum.group_by(fn eintrag ->
+      if verwaist?(eintrag), do: :loeschbar, else: :belegt
+    end)
+    |> then(&%{loeschbar: Map.get(&1, :loeschbar, []), belegt: Map.get(&1, :belegt, [])})
+  end
+
+  defp verwaist?(%{kit: kit, eintraege: 0}) do
+    is_nil(kit.cutout_url) and kit.model_image_urls in [nil, []] and
+      is_nil(kit.source_shop_url) and is_nil(kit.name)
+  end
+
+  defp verwaist?(_), do: false
+
+  @doc """
+  Löscht, was `orphan_kits/1` als löschbar meldet, und gibt den Bericht zurück.
+  """
+  def remove_orphan_kits(season \\ current_season()) do
+    bericht = orphan_kits(season)
+    ids = Enum.map(bericht.loeschbar, & &1.kit.id)
+
+    {geloescht, _} = Repo.delete_all(from k in Kit, where: k.id in ^ids)
+
+    Map.put(bericht, :geloescht, geloescht)
+  end
+
+  @doc """
+  Der Aufräum-Bericht als lesbarer Text — für die Konsole und den Server.
+
+  `loeschen: true` löscht dabei wirklich; ohne sagt es nur, was passieren
+  würde.
+  """
+  def aufraeum_bericht(opts \\ []) do
+    season = Keyword.get(opts, :season, current_season())
+
+    bericht =
+      if Keyword.get(opts, :loeschen, false),
+        do: remove_orphan_kits(season),
+        else: Map.put(orphan_kits(season), :geloescht, 0)
+
+    zeilen =
+      for eintrag <- bericht.loeschbar ++ bericht.belegt do
+        marke = if eintrag in bericht.belegt, do: "BELEGT ", else: "       "
+
+        "  #{marke}#{eintrag.sport.slug} · #{eintrag.team.short_code} · " <>
+          "#{eintrag.kit.kit_type}" <>
+          if(eintrag.eintraege > 0, do: " (#{eintrag.eintraege} Ranglisten-Einträge)", else: "")
+      end
+
+    """
+
+    Saison #{season}
+      Ohne Kategorie in ihrer Sportart: #{length(bericht.loeschbar) + length(bericht.belegt)}
+      Davon löschbar:                   #{length(bericht.loeschbar)}
+      Davon belegt (bleibt stehen):     #{length(bericht.belegt)}
+      Gelöscht:                         #{bericht.geloescht}
+    #{Enum.join(zeilen, "\n")}
+    """
+  end
+
+  @doc """
+  Die Sportart eines Vereins in einer Saison — über seine Liga.
+
+  `nil`, wenn der Verein in dieser Saison keiner Liga zugeordnet ist. Am
+  Verein selbst hängt die Sportart bewusst nicht: sie ergibt sich aus der
+  Liga, und die kann von Saison zu Saison eine andere sein.
+  """
+  def sport_for_team(nil, _season), do: nil
+  def sport_for_team(_team_id, nil), do: nil
+
+  def sport_for_team(team_id, season) do
+    from(ts in TeamSeason,
+      join: c in assoc(ts, :competition),
+      join: s in assoc(c, :sport),
+      where: ts.team_id == ^team_id and ts.season == ^season,
+      select: s,
+      limit: 1
+    )
+    |> Repo.one()
+  end
+
   ## Sports
 
   def list_sports, do: Repo.all(from s in Sport, order_by: s.name)

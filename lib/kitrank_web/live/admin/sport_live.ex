@@ -8,6 +8,8 @@ defmodule KitrankWeb.Admin.SportLive do
   import KitrankWeb.Admin.Components
 
   alias Kitrank.Kits
+  alias Kitrank.Kits.Kit
+  alias KitrankWeb.KitLabel
   alias Kitrank.Kits.Sport
 
   @impl true
@@ -88,7 +90,14 @@ defmodule KitrankWeb.Admin.SportLive do
       >
         <.admin_table rows={@sports} empty_text="Noch keine Sportart angelegt.">
           <:col :let={sport} label="Name">{sport.name}</:col>
-          <:col :let={sport} label="Kürzel" class="font-mono text-xs">{sport.slug}</:col>
+          <:col :let={sport} label="Kürzel" class="font-mono text-xs">
+            /{sport.slug}
+          </:col>
+          <:col :let={sport} label="Trikot-Kategorien" class="text-soft">
+            <span class="font-mono text-xs">
+              {Enum.map_join(sport.kit_types, ", ", &KitLabel.label(sport, &1))}
+            </span>
+          </:col>
           <:actions :let={sport}>
             <.edit_link navigate={~p"/admin/sportarten/#{sport.id}"} />
             <.delete_button id={sport.id} confirm={"#{sport.name} wirklich löschen?"} />
@@ -110,6 +119,34 @@ defmodule KitrankWeb.Admin.SportLive do
               placeholder="football"
               phx-debounce="300"
             />
+            <p class="text-xs text-soft">
+              Wird zur Adresse der Übersicht: /football. Ein paar Kürzel sind
+              vergeben, weil es dort schon Seiten gibt — die Meldung sagt welche.
+            </p>
+
+            <.input
+              field={@form[:kit_types]}
+              type="select"
+              multiple
+              label="Trikot-Kategorien"
+              options={Enum.map(Kit.kit_types(), &{KitLabel.label(&1), &1})}
+            />
+            <p class="text-xs text-soft">
+              Was diese Sportart kennt. Fußball hat Heim, Auswärts, Ausweich und
+              Sondertrikots; die NFL kein Ausweichtrikot. Von Heim, Auswärts und
+              Ausweich gibt es je Verein und Saison genau eins, von Sondertrikots
+              beliebig viele — die brauchen dafür einen Namen.
+            </p>
+
+            <.input
+              field={@form[:special_label]}
+              label="Sondertrikots heißen hier"
+              placeholder="Sondertrikot"
+            />
+            <p class="text-xs text-soft">
+              Leer lassen für die übersetzte Vorgabe. In der NFL steht hier
+              „Alternate".
+            </p>
           </div>
           <.form_actions close_path={~p"/admin/sportarten"} />
         </.form>

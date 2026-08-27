@@ -515,6 +515,7 @@ defmodule KitrankWeb.OverviewLive do
           >
             <.team_tile
               :for={{team, kits} <- teams}
+              sport={@sport}
               team={team}
               kits={kits}
               compare_ids={@compare_ids}
@@ -535,6 +536,7 @@ defmodule KitrankWeb.OverviewLive do
 
       <.team_modal
         :if={@live_action == :team && @open_team}
+        sport={@sport}
         entry={@open_team}
         season={@season}
         compare_ids={@compare_ids}
@@ -631,9 +633,9 @@ defmodule KitrankWeb.OverviewLive do
                 (kit_type != @kit_view || @tile_kit != %{}) && "text-soft hover:text-ink"
               ]}
               aria-pressed={to_string(kit_type == @kit_view && @tile_kit == %{})}
-              title={KitLabel.label(kit_type)}
+              title={KitLabel.label(@sport, kit_type)}
             >
-              {KitLabel.label(kit_type)}
+              {KitLabel.label(@sport, kit_type)}
             </button>
           </div>
         </div>
@@ -780,6 +782,7 @@ defmodule KitrankWeb.OverviewLive do
 
   ## Team-Kachel
 
+  attr :sport, :map, required: true, doc: "fuer die Kategorie-Namen dieser Sportart"
   attr :team, :map, required: true
   attr :kits, :list, required: true
   attr :compare_ids, :list, required: true
@@ -841,12 +844,12 @@ defmodule KitrankWeb.OverviewLive do
               do:
                 gettext("%{verein} %{trikot} aus dem Vergleich nehmen",
                   verein: @team.name,
-                  trikot: KitLabel.display(@lead_kit)
+                  trikot: KitLabel.display(@sport, @lead_kit)
                 ),
               else:
                 gettext("%{verein} %{trikot} vergleichen",
                   verein: @team.name,
-                  trikot: KitLabel.display(@lead_kit)
+                  trikot: KitLabel.display(@sport, @lead_kit)
                 )
           }
         >
@@ -879,7 +882,7 @@ defmodule KitrankWeb.OverviewLive do
             aria-label={
               gettext("%{verein}: %{trikot} zeigen",
                 verein: @team.name,
-                trikot: KitLabel.label(kit.kit_type)
+                trikot: KitLabel.label(@sport, kit.kit_type)
               )
             }
             class="rounded-[3px] transition hover:opacity-80"
@@ -1005,6 +1008,7 @@ defmodule KitrankWeb.OverviewLive do
 
   ## Team-Modal
 
+  attr :sport, :map, required: true
   attr :entry, :map, required: true
   attr :season, :string, required: true
   attr :compare_ids, :list, required: true
@@ -1063,6 +1067,7 @@ defmodule KitrankWeb.OverviewLive do
       <div class="grid grid-cols-2 gap-px bg-line lg:grid-cols-3">
         <.kit_panel
           :for={kit <- @entry.kits}
+          sport={@sport}
           kit={kit}
           team={@entry.team}
           color={@color}
@@ -1074,6 +1079,7 @@ defmodule KitrankWeb.OverviewLive do
     """
   end
 
+  attr :sport, :map, required: true
   attr :kit, :map, required: true
   attr :team, :map, required: true
   attr :color, :string, required: true
@@ -1099,7 +1105,7 @@ defmodule KitrankWeb.OverviewLive do
         aria-label={
           gettext("%{verein} %{trikot} groß ansehen",
             verein: @team.name,
-            trikot: KitLabel.display(@kit)
+            trikot: KitLabel.display(@sport, @kit)
           )
         }
       >
@@ -1126,7 +1132,7 @@ defmodule KitrankWeb.OverviewLive do
 
       <div class="flex flex-col items-start gap-2 border-t border-line px-4 py-3 sm:flex-row sm:items-center">
         <div class="min-w-0">
-          <p class="text-sm font-medium">{KitLabel.display(@kit)}</p>
+          <p class="text-sm font-medium">{KitLabel.display(@sport, @kit)}</p>
           <a
             :if={@kit.source_shop_url}
             href={@kit.source_shop_url}
@@ -1163,7 +1169,15 @@ defmodule KitrankWeb.OverviewLive do
 
   ## Vergleichs-Modal
 
-  attr :sport, :map, required: true, doc: "wohin das Schliessen zurueckfuehrt"
+  attr :sport, :map,
+    required: true,
+    doc: """
+    Wohin das Schliessen zurueckfuehrt. Die Trikot-Kategorien werden hier
+    bewusst **nicht** damit beschriftet: im Vergleich koennen Trikots aus
+    anderen Sportarten stehen, und ein NFL-Alternate als „Sondertrikot" zu
+    bezeichnen, weil man gerade von der Fussball-Seite kam, waere falsch.
+    """
+
   attr :compare_ids, :list, required: true
   attr :kits_by_id, :map, required: true
   attr :season, :string, required: true

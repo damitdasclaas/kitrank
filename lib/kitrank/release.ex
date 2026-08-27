@@ -48,6 +48,19 @@ defmodule Kitrank.Release do
   end
 
   @doc """
+  Meldet Trikots, deren Kategorie ihre Sportart nicht kennt — und löscht sie
+  auf Wunsch.
+
+      /app/bin/kitrank eval 'Kitrank.Release.aufraeumen()'
+      /app/bin/kitrank eval 'Kitrank.Release.aufraeumen(loeschen: true)'
+  """
+  def aufraeumen(opts \\ []) do
+    start_app()
+    IO.puts(Kitrank.Kits.aufraeum_bericht(opts))
+    :ok
+  end
+
+  @doc """
   Holt die kleinen Bildvarianten für bestehende Trikots nach.
 
       /app/bin/kitrank eval "Kitrank.Release.thumbs(write: true)"

@@ -23,7 +23,7 @@ das Modell darauf nicht ausgelegt war:
 
 ---
 
-## 1. Sportart-Routing — *in Arbeit*
+## 1. Sportart-Routing — **fertig**
 
 Startseite wird eine Sportart-Auswahl, die Übersicht hängt darunter:
 
@@ -56,7 +56,29 @@ der Roadmap als Lücke der Konkurrenz gegenüber stehen.
 
 ---
 
-## 2. Trikot-Kategorien pro Sportart
+## 2. Trikot-Kategorien pro Sportart — **fertig**
+
+**So gebaut:** `sports.kit_types` (Array) und `sports.special_label`. Die
+globale Liste in `Kit.kit_types/0` bleibt der erlaubte Wertebereich; die
+Sportart bestimmt, was angeboten und wie es benannt wird.
+
+**Eine Entscheidung anders als geplant:** die Beschriftung von Sondertrikots
+steht als Freitext an der Sportart, nicht als Gettext-Klausel je Sportart. Eine
+Klausel hinge am Slug — und der ist Daten, die im Admin geändert werden dürfen.
+Eine Umbenennung würde die Beschriftung still auf die Vorgabe zurückfallen
+lassen, ohne dass jemand es merkt. Preis dafür: „Alternate" steht auch auf der
+englischen Seite so da, was hier passt, weil der Begriff in beiden Sprachen
+derselbe ist.
+
+**Dazugekommen:** `mix kitrank.aufraeumen` meldet und löscht Trikots, deren
+Kategorie ihre Sportart abgelegt hat. Gelöscht wird nur, was kein Bild, keinen
+Shop-Link, keinen Namen und keine Ranglisten-Einträge hat — der Fremdschlüssel
+steht auf `delete_all`, ein Trikot mit Einträgen zu löschen würde es still aus
+fremden Ranglisten entfernen.
+
+Der Rest dieses Abschnitts ist die ursprüngliche Überlegung.
+
+---
 
 Das Datenmodell kann es im Kern schon: seit `allow_multiple_special_kits` gibt
 es von Heim/Auswärts/Ausweich genau eins pro Verein und Saison, von `special`
@@ -179,9 +201,8 @@ wird — sonst baut man eine Anmeldung ohne Anlass.
 
 ## Reihenfolge
 
-1. **Sportart-Routing** — Fundament. Macht die sportartabhängigen Filter erst
-   sinnvoll und verkleinert die Vereinsliste.
-2. **Trikot-Kategorien pro Sportart** — braucht die Sportart-Spalte aus 1.
+1. ~~**Sportart-Routing**~~ — fertig.
+2. ~~**Trikot-Kategorien pro Sportart**~~ — fertig.
 3. **Ausschnitt speichern + Typ-Achse** — Grundlage für 5, repariert nebenbei,
    dass Einstellungen heute verloren gehen.
 4. **Multi-Select** — unabhängig, kann auch vorgezogen werden.

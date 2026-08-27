@@ -14,6 +14,7 @@ defmodule KitrankWeb.Admin.KitLive do
   alias Kitrank.Kits
   alias Kitrank.Kits.Kit
   alias Kitrank.Kits.ProductImages
+  alias Kitrank.Kits.Sport
 
   # Der Abruf haengt am Netz und an fremden Shops. Damit Tests den ganzen Weg
   # gehen koennen – Link eingeben, Bilder anklicken, speichern – ist er
@@ -338,6 +339,9 @@ defmodule KitrankWeb.Admin.KitLive do
     socket
     |> assign(kit: kit, form: to_form(changeset), preview: preview, preview_team: team)
     |> assign(:image_lines, Enum.join(preview.model_image_urls || [], "\n"))
+    # Der Verein bestimmt die Sportart und die die Kategorien – also hier neu
+    # und nicht nur beim Laden der Liste.
+    |> then(&assign(&1, :type_options, type_options(&1)))
   end
 
   defp find_team(socket, team_id) do
@@ -359,8 +363,32 @@ defmodule KitrankWeb.Admin.KitLive do
       seasons: Enum.uniq([socket.assigns.season, Kits.current_season()] ++ Kits.list_seasons()),
       teams: teams,
       team_options: Enum.map(teams, &{"#{&1.name} (#{&1.short_code})", &1.id}),
-      type_options: Enum.map(Kit.kit_types(), &{KitLabel.label(&1), &1})
+      type_options: type_options(socket)
     )
+  end
+
+  # Angeboten wird, was die Sportart des gewaehlten Vereins kennt: die NFL hat
+  # kein Ausweichtrikot, und ein Feld, das eins anbietet, laedt zu einem
+  # Datensatz ein, den niemand haben will.
+  #
+  # Ohne Verein oder ohne Liga-Zuordnung bleibt es beim vollen Satz — sonst
+  # waere das Formular leer, bevor man ueberhaupt etwas gewaehlt hat.
+  defp type_options(socket) do
+    # Auf der Liste gibt es kein Formular und damit keine Vorschau – dort
+    # zaehlt der volle Satz.
+    sport =
+      case socket.assigns[:preview] do
+        nil ->
+          nil
+
+        preview ->
+          Kits.sport_for_team(preview.team_id, preview.season || socket.assigns.season)
+      end
+
+    case sport do
+      nil -> Enum.map(Kit.kit_types(), &{KitLabel.label(&1), &1})
+      sport -> Enum.map(Sport.kit_types(sport), &{KitLabel.label(sport, &1), &1})
+    end
   end
 
   # Mehrere Adressen in einem Feld: Zeilenumbrueche, Kommas und Leerzeichen
