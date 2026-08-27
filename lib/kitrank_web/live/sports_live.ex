@@ -13,6 +13,7 @@ defmodule KitrankWeb.SportsLive do
   use KitrankWeb, :live_view
 
   alias Kitrank.Kits
+  alias Kitrank.Reveal
 
   @impl true
   def mount(_params, _session, socket) do
@@ -21,8 +22,34 @@ defmodule KitrankWeb.SportsLive do
 
     {:ok,
      socket
-     |> assign(page_title: gettext("Übersicht"), season: season)
+     |> assign(page_title: gettext("Übersicht"), season: season, code_error: nil)
      |> assign(:sports, Kits.list_sports_for_season(season))}
+  end
+
+  @doc """
+  Mit einem Raumcode direkt in den Raum.
+
+  Der haeufigere Reveal-Fall ist nicht „ich starte einen Raum", sondern „ich
+  habe einen Code im Chat bekommen". Der Weg dafuer war Hero → /reveal/new →
+  Feld; jetzt ist er ein Feld.
+
+  Beigetreten wird weiterhin erst im Raum — hier wird nur nachgeschlagen und
+  weitergeleitet. Das ist keine zweite Beitreten-Logik, sondern derselbe
+  Sprung, den /reveal/new auch macht.
+  """
+  @impl true
+  def handle_event("join_reveal", %{"room_code" => code}, socket) do
+    case Reveal.fetch_room(code) do
+      {:ok, room} ->
+        {:noreply, push_navigate(socket, to: ~p"/reveal/#{room.room_code}")}
+
+      {:error, :expired} ->
+        {:noreply, assign(socket, :code_error, gettext("Dieser Raum ist abgelaufen."))}
+
+      {:error, :not_found} ->
+        {:noreply,
+         assign(socket, :code_error, gettext("Diesen Code kennen wir nicht. Vertippt?"))}
+    end
   end
 
   @impl true
@@ -61,13 +88,38 @@ defmodule KitrankWeb.SportsLive do
                 "Jede:r baut seine eigene Liste. Dann dreht ihr Platz für Platz um, alle Geräte gleichzeitig — und seht, wo ihr euch einig seid und wo überhaupt nicht."
               )}
             </p>
-            <.link
-              navigate={~p"/reveal/new"}
-              data-role="reveal-hero"
-              class="mt-5 inline-block rounded-md bg-chalk px-5 py-2.5 text-sm font-semibold text-ink transition hover:opacity-90"
-            >
-              {gettext("Reveal starten oder beitreten")}
-            </.link>
+            <%!-- Der Code zuerst, das Erstellen als Nebensatz: die meisten
+                  kommen mit einem Code aus einer Nachricht, nicht mit der
+                  Absicht, einen Raum aufzumachen. --%>
+            <form phx-submit="join_reveal" id="reveal-code" class="mt-5 flex gap-2">
+              <label for="room_code" class="sr-only">{gettext("Raumcode")}</label>
+              <input
+                type="text"
+                id="room_code"
+                name="room_code"
+                maxlength="5"
+                autocomplete="off"
+                autocapitalize="characters"
+                placeholder={gettext("ABC23")}
+                class="w-28 rounded-md border border-chalk/25 bg-chalk/10 px-3 py-2 text-center font-mono text-sm uppercase tracking-[0.15em] text-chalk placeholder:text-chalk/35 focus:border-chalk focus:outline-none"
+              />
+              <button
+                type="submit"
+                data-role="reveal-join"
+                class="rounded-md bg-chalk px-4 py-2 text-sm font-semibold text-ink transition hover:opacity-90"
+              >{gettext("Beitreten")}</button>
+            </form>
+
+            <p :if={@code_error} class="mt-2 text-xs text-red-300">{@code_error}</p>
+
+            <p class="mt-3 text-xs text-chalk/60">
+              {gettext("Noch kein Raum?")}
+              <.link
+                navigate={~p"/reveal/new"}
+                data-role="reveal-hero"
+                class="text-chalk underline underline-offset-4"
+              >{gettext("Einen aufmachen")}</.link>.
+            </p>
           </div>
         </div>
 
@@ -113,15 +165,24 @@ defmodule KitrankWeb.SportsLive do
         </p>
       </div>
 
-      <%!-- Ein Streifen aus den Vereinsfarben statt eines Symbols: die App hat
+      <%!-- Ein Strich je Verein, in Vereinsfarbe. Kein Symbol: die App hat
             keine Logos und will keine, und die Farben sind das, woran man eine
-            Liga erkennt. --%>
-      <div :if={@entry.colors != []} class="mt-6 flex h-1.5 gap-0.5 overflow-hidden rounded-full">
-        <span
-          :for={farbe <- @entry.colors}
-          class="flex-1"
-          style={"background-color: #{farbe}"}
-        />
+            Liga erkennt. So viele Striche wie Vereine — der Streifen sagt
+            damit dasselbe wie die Zahl darueber, nur sichtbar. --%>
+      <div
+        :if={@entry.colors != []}
+        class="mt-6 flex h-1.5 gap-px overflow-hidden rounded-full"
+        role="img"
+        aria-label={
+          ngettext(
+            "Ein Strich je Verein: %{anzahl}",
+            "Ein Strich je Verein: %{anzahl}",
+            @entry.team_count,
+            anzahl: @entry.team_count
+          )
+        }
+      >
+        <span :for={farbe <- @entry.colors} class="flex-1" style={"background-color: #{farbe}"} />
       </div>
 
       <span class="mt-4 font-mono text-[11px] text-soft transition group-hover:text-ink">

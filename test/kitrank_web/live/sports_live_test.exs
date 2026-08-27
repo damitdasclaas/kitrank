@@ -85,6 +85,49 @@ defmodule KitrankWeb.SportsLiveTest do
       assert html =~ ~s(href="/reveal/new")
     end
 
+    test "der Raumcode geht direkt aus dem Hero", %{conn: conn} do
+      # Der haeufigere Fall ist „ich habe einen Code im Chat bekommen", nicht
+      # „ich mache einen Raum auf".
+      {:ok, room} =
+        Kitrank.Reveal.create_room(%{
+          season: Kits.current_season(),
+          competition_ids: [],
+          kit_types: []
+        })
+
+      {:ok, view, html} = live(conn, ~p"/")
+      assert html =~ ~s(id="reveal-code")
+
+      assert {:error, {:live_redirect, %{to: ziel}}} =
+               view |> form("#reveal-code", %{"room_code" => room.room_code}) |> render_submit()
+
+      assert ziel == "/reveal/#{room.room_code}"
+    end
+
+    test "ein Code in Kleinbuchstaben geht genauso", %{conn: conn} do
+      {:ok, room} =
+        Kitrank.Reveal.create_room(%{
+          season: Kits.current_season(),
+          competition_ids: [],
+          kit_types: []
+        })
+
+      {:ok, view, _html} = live(conn, ~p"/")
+
+      assert {:error, {:live_redirect, _}} =
+               view
+               |> form("#reveal-code", %{"room_code" => String.downcase(room.room_code)})
+               |> render_submit()
+    end
+
+    test "ein erfundener Code sagt das, statt still nichts zu tun", %{conn: conn} do
+      {:ok, view, _html} = live(conn, ~p"/")
+
+      html = view |> form("#reveal-code", %{"room_code" => "XXXXX"}) |> render_submit()
+
+      assert html =~ "Vertippt"
+    end
+
     test "und nicht mehr in der Kopfzeile", %{conn: conn} do
       %{sport: sport} = sportart("Fußball", "fussball-hero")
 

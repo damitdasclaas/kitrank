@@ -433,15 +433,20 @@ defmodule Kitrank.Kits do
         sport: s,
         competition_count: count(c.id, :distinct),
         team_count: count(ts.team_id, :distinct),
-        # Ein paar Vereinsfarben fuer die Kachel. In derselben Abfrage, weil
-        # eine zweite Runde fuer einen Zierstreifen nicht lohnt – und die
-        # Uebersicht dafuer zu laden erst recht nicht: die zieht alle Trikots.
-        colors: fragment("array_agg(DISTINCT ?)", t.primary_color)
+        # Eine Farbe je Verein, in Vereins-Reihenfolge. In derselben Abfrage,
+        # weil eine zweite Runde dafuer nicht lohnt – und die Uebersicht dafuer
+        # zu laden erst recht nicht: die zieht alle Trikots.
+        #
+        # Bewusst ohne DISTINCT: das sortiert die Hex-Werte alphabetisch, und
+        # eine gekuerzte Liste bestuende dann nur aus den niedrigsten – alles,
+        # was mit #0 anfaengt, also Dunkelblau und Petrol. Der Streifen sah
+        # dadurch in jeder Sportart gleich aus und zeigte nichts.
+        colors: fragment("array_agg(? ORDER BY ?)", t.primary_color, t.name)
       }
     )
     |> Repo.all()
     |> Enum.map(fn eintrag ->
-      %{eintrag | colors: eintrag.colors |> Enum.reject(&is_nil/1) |> Enum.take(12)}
+      %{eintrag | colors: Enum.reject(eintrag.colors, &is_nil/1)}
     end)
   end
 

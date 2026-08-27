@@ -28,6 +28,7 @@ msgid "/r/AbCd1234"
 msgstr ""
 
 #: lib/kitrank_web/live/reveal/new_live.ex:155
+#: lib/kitrank_web/live/sports_live.ex:103
 #, elixir-autogen, elixir-format
 msgid "ABC23"
 msgstr ""
@@ -74,7 +75,7 @@ msgid "Alle treten mit dem Teilen-Link ihrer Rangliste bei — nicht mit dem Bea
 msgstr ""
 
 #: lib/kitrank_web/live/ranking/components.ex:98
-#: lib/kitrank_web/live/sports_live.ex:128
+#: lib/kitrank_web/live/sports_live.ex:189
 #, elixir-autogen, elixir-format
 msgid "Ansehen"
 msgstr ""
@@ -122,6 +123,7 @@ msgstr ""
 
 #: lib/kitrank_web/live/reveal/components.ex:98
 #: lib/kitrank_web/live/reveal/new_live.ex:164
+#: lib/kitrank_web/live/sports_live.ex:110
 #, elixir-autogen, elixir-format
 msgid "Beitreten"
 msgstr ""
@@ -542,6 +544,7 @@ msgstr ""
 #: lib/kitrank_web/live/reveal/components.ex:28
 #: lib/kitrank_web/live/reveal/new_live.ex:146
 #: lib/kitrank_web/live/reveal/new_live.ex:309
+#: lib/kitrank_web/live/sports_live.ex:95
 #, elixir-autogen, elixir-format
 msgid "Raumcode"
 msgstr ""
@@ -641,7 +644,7 @@ msgid "Toms Rangliste"
 msgstr ""
 
 #: lib/kitrank_web/live/overview_live.ex:483
-#: lib/kitrank_web/live/sports_live.ex:82
+#: lib/kitrank_web/live/sports_live.ex:134
 #, elixir-autogen, elixir-format
 msgid "Trag Ligen, Teams und Trikots im Admin ein — dann füllt sich diese Seite."
 msgstr ""
@@ -1007,7 +1010,7 @@ msgstr ""
 #: lib/kitrank_web/live/overview_live.ex:593
 #: lib/kitrank_web/live/overview_live.ex:1204
 #: lib/kitrank_web/live/ranking/new_live.ex:76
-#: lib/kitrank_web/live/sports_live.ex:40
+#: lib/kitrank_web/live/sports_live.ex:67
 #, elixir-autogen, elixir-format
 msgid "Saison %{jahr}"
 msgstr ""
@@ -1029,7 +1032,7 @@ msgid "Verschickte Mails liegen im"
 msgstr ""
 
 #: lib/kitrank_web/live/overview_live.ex:603
-#: lib/kitrank_web/live/sports_live.ex:42
+#: lib/kitrank_web/live/sports_live.ex:69
 #, elixir-autogen, elixir-format
 msgid "Welches Trikot ist das schönste?"
 msgstr ""
@@ -1182,6 +1185,7 @@ msgid "Diese Rangliste ist schon dabei."
 msgstr ""
 
 #: lib/kitrank_web/live/reveal/new_live.ex:63
+#: lib/kitrank_web/live/sports_live.ex:51
 #, elixir-autogen, elixir-format
 msgid "Diesen Code kennen wir nicht. Vertippt?"
 msgstr ""
@@ -1200,6 +1204,7 @@ msgstr ""
 #: lib/kitrank_web/live/reveal/room_live.ex:30
 #: lib/kitrank_web/live/reveal/room_live.ex:279
 #: lib/kitrank_web/live/reveal/room_live.ex:340
+#: lib/kitrank_web/live/sports_live.ex:47
 #, elixir-autogen, elixir-format
 msgid "Dieser Raum ist abgelaufen."
 msgstr ""
@@ -1368,7 +1373,7 @@ msgid "Für %{verein} sind in %{saison} noch keine Trikots hinterlegt."
 msgstr ""
 
 #: lib/kitrank_web/live/overview_live.ex:480
-#: lib/kitrank_web/live/sports_live.ex:79
+#: lib/kitrank_web/live/sports_live.ex:131
 #, elixir-autogen, elixir-format
 msgid "Noch keine Trikots für %{saison}"
 msgstr ""
@@ -1417,7 +1422,7 @@ msgid "noch %{anzahl} möglich"
 msgstr ""
 
 #: lib/kitrank_web/live/overview_live.ex:404
-#: lib/kitrank_web/live/sports_live.ex:24
+#: lib/kitrank_web/live/sports_live.ex:25
 #, elixir-autogen, elixir-format
 msgid "Übersicht"
 msgstr ""
@@ -1480,7 +1485,7 @@ msgid "%{verein} %{trikot} wählen"
 msgstr ""
 
 #: lib/kitrank_web/live/overview_live.ex:714
-#: lib/kitrank_web/live/sports_live.ex:110
+#: lib/kitrank_web/live/sports_live.ex:162
 #, elixir-autogen, elixir-format
 msgid "%{anzahl} Verein"
 msgid_plural "%{anzahl} Vereine"
@@ -1550,7 +1555,7 @@ msgstr ""
 msgid "und steht in keiner Verbindung zu den genannten Ligen, Verbänden oder Vereinen. Vereins- und Liganamen dienen allein dazu, die Trikots zu benennen; die Marken gehören ihren Inhabern."
 msgstr ""
 
-#: lib/kitrank_web/live/sports_live.ex:106
+#: lib/kitrank_web/live/sports_live.ex:158
 #, elixir-autogen, elixir-format
 msgid "%{anzahl} Liga"
 msgid_plural "%{anzahl} Ligen"
@@ -1562,7 +1567,7 @@ msgstr[1] ""
 msgid "Sportarten"
 msgstr ""
 
-#: lib/kitrank_web/live/sports_live.ex:47
+#: lib/kitrank_web/live/sports_live.ex:74
 #, elixir-autogen, elixir-format
 msgid "eine eigene Rangliste"
 msgstr ""
@@ -1734,27 +1739,39 @@ msgstr ""
 msgid "Mit einem Konto findest du deine Listen überall wieder."
 msgstr ""
 
-#: lib/kitrank_web/live/sports_live.ex:60
+#: lib/kitrank_web/live/sports_live.ex:87
 #, elixir-autogen, elixir-format
 msgid "Jede:r baut seine eigene Liste. Dann dreht ihr Platz für Platz um, alle Geräte gleichzeitig — und seht, wo ihr euch einig seid und wo überhaupt nicht."
 msgstr ""
 
-#: lib/kitrank_web/live/sports_live.ex:69
-#, elixir-autogen, elixir-format
-msgid "Reveal starten oder beitreten"
-msgstr ""
-
-#: lib/kitrank_web/live/sports_live.ex:45
+#: lib/kitrank_web/live/sports_live.ex:72
 #, elixir-autogen, elixir-format
 msgid "Such dir unten eine Sportart aus — oder bau gleich"
 msgstr ""
 
-#: lib/kitrank_web/live/sports_live.ex:55
+#: lib/kitrank_web/live/sports_live.ex:82
 #, elixir-autogen, elixir-format
 msgid "Zu mehreren"
 msgstr ""
 
-#: lib/kitrank_web/live/sports_live.ex:57
+#: lib/kitrank_web/live/sports_live.ex:84
 #, elixir-autogen, elixir-format
 msgid "Zusammen aufdecken"
+msgstr ""
+
+#: lib/kitrank_web/live/sports_live.ex:177
+#, elixir-autogen, elixir-format
+msgid "Ein Strich je Verein: %{anzahl}"
+msgid_plural "Ein Strich je Verein: %{anzahl}"
+msgstr[0] ""
+msgstr[1] ""
+
+#: lib/kitrank_web/live/sports_live.ex:121
+#, elixir-autogen, elixir-format
+msgid "Einen aufmachen"
+msgstr ""
+
+#: lib/kitrank_web/live/sports_live.ex:116
+#, elixir-autogen, elixir-format
+msgid "Noch kein Raum?"
 msgstr ""
