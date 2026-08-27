@@ -63,7 +63,7 @@ defmodule Kitrank.Kits do
   Gibt eine Liste `{competition, [{team, [kit]}]}` zurück. Ligen ohne Teams in
   dieser Saison fallen raus.
   """
-  def overview(season \\ current_season()) do
+  def overview(season \\ current_season(), sport \\ nil) do
     team_seasons =
       from(ts in TeamSeason,
         where: ts.season == ^season,
@@ -73,6 +73,7 @@ defmodule Kitrank.Kits do
         as: :competition,
         preload: [team: t, competition: c]
       )
+      |> nur_sportart(sport)
       |> nach_liga()
       |> order_by([team: t], asc: t.name)
       |> Repo.all()
@@ -85,6 +86,42 @@ defmodule Kitrank.Kits do
       teams = Enum.map(group, fn ts -> {ts.team, Map.get(kits_by_team, ts.team_id, [])} end)
       {competition, teams}
     end)
+  end
+
+  # Ohne Sportart bleibt es bei allem – so bedient dieselbe Abfrage die
+  # Sportart-Seite und alles, was sportartuebergreifend fragt.
+  defp nur_sportart(query, nil), do: query
+
+  defp nur_sportart(query, %Sport{id: id}),
+    do: from([competition: c] in query, where: c.sport_id == ^id)
+
+  @doc """
+  Bestimmte Trikots einer Saison, samt Verein und Liga, als Map über die ID.
+
+  Für den Direktvergleich: der ist **sportartübergreifend**, das Raster
+  darunter nicht. Ein Bundesliga-Trikot gegen ein NFL-Trikot zu stellen ist
+  eine der wenigen Sachen, die diese App kann — dafür dürfen die verglichenen
+  Trikots nicht aus der sportartgefilterten Übersicht kommen, sondern werden
+  direkt über ihre IDs geholt.
+
+  IDs, die es in dieser Saison nicht gibt, fehlen im Ergebnis. Ein geteilter
+  Link aus der Vorsaison endet damit nicht mit leeren Karten, sondern mit
+  weniger.
+  """
+  def kits_by_ids([], _season), do: %{}
+
+  def kits_by_ids(ids, season) do
+    from(k in Kit,
+      join: t in assoc(k, :team),
+      join: ts in TeamSeason,
+      on: ts.team_id == k.team_id and ts.season == k.season,
+      join: c in assoc(ts, :competition),
+      where: k.id in ^ids and k.season == ^season,
+      preload: [team: t],
+      select: %{kit: k, team: t, competition: c}
+    )
+    |> Repo.all()
+    |> Map.new(&{&1.kit.id, &1})
   end
 
   @doc """
@@ -245,6 +282,38 @@ defmodule Kitrank.Kits do
   ## Sports
 
   def list_sports, do: Repo.all(from s in Sport, order_by: s.name)
+
+  @doc """
+  Die Sportarten, die in einer Saison überhaupt Vereine haben — mit Liga- und
+  Vereinszahl, in derselben Reihenfolge wie überall sonst.
+
+  Grundlage der Startseite. Eine Sportart ohne Vereine wäre dort eine Kachel,
+  die auf eine leere Seite führt.
+  """
+  def list_sports_for_season(season \\ current_season()) do
+    from(s in Sport,
+      join: c in assoc(s, :competitions),
+      join: ts in TeamSeason,
+      on: ts.competition_id == c.id and ts.season == ^season,
+      join: t in assoc(ts, :team),
+      group_by: s.id,
+      order_by: s.id,
+      select: %{
+        sport: s,
+        competition_count: count(c.id, :distinct),
+        team_count: count(ts.team_id, :distinct),
+        # Ein paar Vereinsfarben fuer die Kachel. In derselben Abfrage, weil
+        # eine zweite Runde fuer einen Zierstreifen nicht lohnt – und die
+        # Uebersicht dafuer zu laden erst recht nicht: die zieht alle Trikots.
+        colors: fragment("array_agg(DISTINCT ?)", t.primary_color)
+      }
+    )
+    |> Repo.all()
+    |> Enum.map(fn eintrag ->
+      %{eintrag | colors: eintrag.colors |> Enum.reject(&is_nil/1) |> Enum.take(12)}
+    end)
+  end
+
   def get_sport!(id), do: Repo.get!(Sport, id)
   def get_sport_by_slug(slug), do: Repo.get_by(Sport, slug: slug)
 

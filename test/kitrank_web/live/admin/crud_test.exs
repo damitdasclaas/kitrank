@@ -134,8 +134,15 @@ defmodule KitrankWeb.Admin.CrudTest do
 
   describe "Trikots" do
     setup do
-      %{teams: [team], season: season} = league_fixture(team_count: 1, kit_types: [])
-      %{team: team, season: season}
+      # Die Sportart mitfuehren: die Uebersicht haengt unter /:sport, und der
+      # Test unten prueft, dass ein angelegtes Trikot dort ankommt.
+      sport = sport_fixture(name: "Testsport", slug: "admin-trikots-test")
+      competition = competition_fixture(sport_id: sport.id)
+
+      %{teams: [team], season: season} =
+        league_fixture(competition: competition, team_count: 1, kit_types: [])
+
+      %{team: team, season: season, sport: sport}
     end
 
     test "anlegen mit Bildern, eine URL pro Zeile", %{conn: conn, team: team, season: season} do
@@ -217,7 +224,8 @@ defmodule KitrankWeb.Admin.CrudTest do
     test "ein angelegtes Trikot steht danach in der Übersicht", %{
       conn: conn,
       team: team,
-      season: season
+      season: season,
+      sport: sport
     } do
       {:ok, view, _html} = live(conn, ~p"/admin/trikots/neu")
 
@@ -225,10 +233,7 @@ defmodule KitrankWeb.Admin.CrudTest do
       |> form("#kit-form", kit: %{team_id: team.id, season: season, kit_type: "home"})
       |> render_submit()
 
-      # Ligen starten auf der Uebersicht zugeklappt – der Verein steht in der
-      # Kachel, also erst aufklappen.
-      {:ok, view, _html} = live(conn, ~p"/")
-      html = view |> element(~s{button[phx-click="toggle_league"]}) |> render_click()
+      {:ok, _view, html} = live(conn, "/#{sport.slug}")
 
       assert html =~ team.name
     end

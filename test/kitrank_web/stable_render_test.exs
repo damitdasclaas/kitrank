@@ -19,9 +19,18 @@ defmodule KitrankWeb.StableRenderTest do
 
   alias Kitrank.Kits
 
+  # Eine Sportart fuer das ganze Modul – die Uebersicht haengt unter /:sport.
+  # Fester Slug, aber je Modul ein anderer: zwei async-Tests mit demselben Wert
+  # auf einer eindeutigen Spalte wuerden sich gegenseitig blockieren.
+  @sport_slug "render-test"
+
+  defp sportart_liga do
+    competition_fixture(sport_id: sport_fixture(name: "Testsport", slug: @sport_slug).id)
+  end
+
   setup do
     %{teams: [team | _], season: season} =
-      league_fixture(season: Kits.current_season(), team_count: 2)
+      league_fixture(competition: sportart_liga(), season: Kits.current_season(), team_count: 2)
 
     # Eines mit Bild, eines ohne – die Silhouette hatte dasselbe Problem in
     # ihren Gradient-IDs.
@@ -45,7 +54,7 @@ defmodule KitrankWeb.StableRenderTest do
   end
 
   test "die Übersicht rendert zweimal identische IDs", %{conn: conn} do
-    {:ok, view, _html} = live(conn, ~p"/")
+    {:ok, view, _html} = live(conn, "/#{@sport_slug}")
 
     erst = ids(render(view))
     dann = ids(render(view))
@@ -60,9 +69,7 @@ defmodule KitrankWeb.StableRenderTest do
   end
 
   test "auch nach einem Ereignis", %{conn: conn} do
-    {:ok, view, _html} = live(conn, ~p"/")
-    # Ligen starten zugeklappt; die IDs, um die es geht, stehen in den Kacheln.
-    view |> element(~s{button[phx-click="toggle_league"]}) |> render_click()
+    {:ok, view, _html} = live(conn, "/#{@sport_slug}")
 
     vorher = ids(render(view))
 
@@ -80,7 +87,7 @@ defmodule KitrankWeb.StableRenderTest do
   end
 
   test "die Vereinsansicht rendert zweimal identische IDs", %{conn: conn, team: team} do
-    {:ok, view, _html} = live(conn, ~p"/teams/#{team.id}")
+    {:ok, view, _html} = live(conn, "/#{@sport_slug}/teams/#{team.id}")
 
     assert ids(render(view)) == ids(render(view))
   end
@@ -89,14 +96,14 @@ defmodule KitrankWeb.StableRenderTest do
     # Die Ursache selbst, nicht nur die Wirkung: eine ID pro Bild braucht es
     # nur für ein phx-hook am <img>, und genau das war der Fehler. Der Rückfall
     # hängt jetzt an einem Zuhörer am Container.
-    {:ok, _view, html} = live(conn, ~p"/")
+    {:ok, _view, html} = live(conn, "/#{@sport_slug}")
 
     refute html =~ ~r/<img[^>]+id="/,
            "ein phx-hook am <img> braucht eine ID – das war der Auslöser"
   end
 
   test "der Rückfall hängt an einem festen Container", %{conn: conn} do
-    {:ok, _view, html} = live(conn, ~p"/")
+    {:ok, _view, html} = live(conn, "/#{@sport_slug}")
 
     assert html =~ ~s(id="inhalt")
     assert html =~ ~s(phx-hook="ImageFallback")

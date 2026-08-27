@@ -25,11 +25,19 @@ defmodule KitrankWeb.OverviewLive do
   @max_compare 3
 
   @impl true
-  def mount(_params, _session, socket) do
-    seasons = Kits.list_seasons()
-    season = List.first(seasons) || Kits.current_season()
+  def mount(%{"sport" => slug}, _session, socket) do
+    case Kits.get_sport_by_slug(slug) do
+      nil ->
+        # Ein Slug, den es nicht gibt – die Route faengt alles ab, was davor
+        # nicht gepasst hat, also landet hier auch jeder Tippfehler.
+        raise KitrankWeb.NotFoundError, "Sportart #{slug} gibt es nicht"
 
-    {:ok, socket |> assign(seasons: seasons) |> load_season(season)}
+      sport ->
+        seasons = Kits.list_seasons()
+        season = List.first(seasons) || Kits.current_season()
+
+        {:ok, socket |> assign(seasons: seasons, sport: sport) |> load_season(season)}
+    end
   end
 
   @impl true
@@ -55,7 +63,7 @@ defmodule KitrankWeb.OverviewLive do
      socket
      |> load_season(season)
      |> assign(:tile_kit, %{})
-     |> push_patch(to: ~p"/")}
+     |> push_patch(to: index_path(socket.assigns.sport, []))}
   end
 
   def handle_event("toggle_league", %{"id" => id}, socket) do
@@ -139,7 +147,7 @@ defmodule KitrankWeb.OverviewLive do
   def handle_event("zoom", %{"id" => id}, socket) do
     id = String.to_integer(id)
 
-    case Map.get(socket.assigns.kits_by_id, id) do
+    case trikot(socket.assigns, id) do
       nil ->
         {:noreply, socket}
 
@@ -176,7 +184,7 @@ defmodule KitrankWeb.OverviewLive do
   defp step_zoom(%{assigns: %{zoom: nil}} = socket, _delta), do: socket
 
   defp step_zoom(%{assigns: %{zoom: zoom}} = socket, delta) do
-    entry = socket.assigns.kits_by_id[zoom.kit_id]
+    entry = trikot(socket.assigns, zoom.kit_id)
     count = entry.kit |> kit_images() |> length()
 
     if count <= 1 do
@@ -197,7 +205,7 @@ defmodule KitrankWeb.OverviewLive do
   ## Assigns
 
   defp load_season(socket, season) do
-    overview = Kits.overview(season)
+    overview = Kits.overview(season, socket.assigns.sport)
 
     kits_by_id =
       for {competition, teams} <- overview,
@@ -224,6 +232,7 @@ defmodule KitrankWeb.OverviewLive do
     |> assign_new(:image_choice, fn -> %{} end)
     |> assign_new(:zoom, fn -> nil end)
     |> assign_new(:compare_ids, fn -> [] end)
+    |> assign_new(:compare_kits, fn -> %{} end)
     |> assign_new(:back, fn -> nil end)
     |> assign_new(:kit_view, fn -> "home" end)
     |> assign_new(:tile_kit, fn -> %{} end)
@@ -232,7 +241,7 @@ defmodule KitrankWeb.OverviewLive do
     |> assign_new(:sort_dir, fn -> :asc end)
     |> assign_visible()
     |> assign_new(:open_team, fn -> nil end)
-    |> close_leagues()
+    |> open_first_league()
   end
 
   # Was das Raster tatsaechlich zeigt: die geladene Uebersicht, durch Suche und
@@ -320,14 +329,22 @@ defmodule KitrankWeb.OverviewLive do
     Enum.filter(Kit.kit_types(), &MapSet.member?(vorhanden, &1))
   end
 
-  # Beim Laden und nach einem Saisonwechsel ist keine Liga offen: mit drei
-  # Ligen ueber zwei Sportarten ist die oberste keine gute Vorauswahl mehr, und
-  # 18 aufgeklappte Kacheln schieben die anderen Ligen unter den Bildschirmrand.
-  # Zu sehen ist erst die Liste der Ligen — was man will, klappt man auf.
+  # Die oberste Liga der Sportart ist offen. Zugeklappt starten mussten sie,
+  # solange hier alle Sportarten auf einer Seite standen — mit einer Sportart
+  # sind es zwei bis drei Ligen, und dann ist ein leeres Raster nur eine
+  # Huerde.
   #
   # Offen ist weiterhin hoechstens eine; ein Klick auf eine andere klappt die
   # vorige zu. Waehrend einer Suche gilt das nicht, siehe league_open?/3.
-  defp close_leagues(socket), do: assign(socket, :open_league, nil)
+  defp open_first_league(socket) do
+    erste =
+      case socket.assigns.overview do
+        [{competition, _teams} | _] -> competition.id
+        [] -> nil
+      end
+
+    assign(socket, :open_league, erste)
+  end
 
   # Nimmt nur IDs an, die es in dieser Saison wirklich gibt – ein geteilter Link
   # aus der Vorsaison soll nicht mit leeren Karten enden, sondern mit weniger.
@@ -343,10 +360,24 @@ defmodule KitrankWeb.OverviewLive do
         end
       end)
       |> Enum.uniq()
-      |> Enum.filter(&Map.has_key?(socket.assigns.kits_by_id, &1))
       |> Enum.take(@max_compare)
 
-    assign(socket, :compare_ids, ids)
+    # Nachgeschlagen wird ueber die IDs, nicht im Raster: der Vergleich reicht
+    # ueber Sportarten hinaus, das Raster darunter nicht. Was es in dieser
+    # Saison nicht gibt, faellt dabei von allein weg.
+    gewaehlt = Kits.kits_by_ids(ids, socket.assigns.season)
+
+    assign(socket,
+      compare_ids: Enum.filter(ids, &Map.has_key?(gewaehlt, &1)),
+      compare_kits: gewaehlt
+    )
+  end
+
+  # Ein Trikot nachschlagen – erst im Raster dieser Sportart, dann unter den
+  # verglichenen. Die Lupe muss auch ein Trikot zeigen koennen, das aus einer
+  # anderen Sportart in den Vergleich gelegt wurde.
+  defp trikot(assigns, id) do
+    Map.get(assigns.kits_by_id, id) || Map.get(assigns.compare_kits, id)
   end
 
   # Woher das Detail aufgerufen wurde. Ohne diese Spur landet man beim
@@ -378,32 +409,43 @@ defmodule KitrankWeb.OverviewLive do
 
   defp patch_compare(socket, ids) do
     push_patch(socket,
-      to: path_for(socket.assigns.live_action, socket.assigns.open_team, ids, socket.assigns.back)
+      to:
+        path_for(
+          socket.assigns.sport,
+          socket.assigns.live_action,
+          socket.assigns.open_team,
+          ids,
+          socket.assigns.back
+        )
     )
   end
 
   ## Pfade – die Auswahl reist über alle Ansichten mit
 
-  defp path_for(action, open_team, ids, back \\ nil) do
+  defp path_for(sport, action, open_team, ids, back \\ nil) do
     query = if ids == [], do: %{}, else: %{"trikots" => Enum.join(ids, ",")}
     query = if back, do: Map.put(query, "zurueck", back), else: query
 
     case {action, open_team} do
-      {:team, %{team: team}} -> ~p"/teams/#{team.id}?#{query}"
-      {:compare, _} -> ~p"/vergleich?#{query}"
-      _ -> ~p"/?#{query}"
+      {:team, %{team: team}} -> ~p"/#{sport.slug}/teams/#{team.id}?#{query}"
+      {:compare, _} -> ~p"/#{sport.slug}/vergleich?#{query}"
+      _ -> ~p"/#{sport.slug}?#{query}"
     end
   end
 
-  defp index_path(ids), do: path_for(:index, nil, ids)
-  defp compare_path(ids), do: path_for(:compare, nil, ids)
-  defp team_path(team, ids, back \\ nil), do: path_for(:team, %{team: team}, ids, back)
+  defp index_path(sport, ids), do: path_for(sport, :index, nil, ids)
+  defp compare_path(sport, ids), do: path_for(sport, :compare, nil, ids)
+
+  defp team_path(sport, team, ids, back \\ nil),
+    do: path_for(sport, :team, %{team: team}, ids, back)
 
   # Der Weg zurueck aus dem Detail: in den Vergleich, wenn es von dort kam.
   # Steht dort inzwischen nur noch ein Trikot, waere der Vergleich leer – dann
   # doch die Uebersicht.
-  defp close_detail_path("vergleich", ids) when length(ids) >= 2, do: compare_path(ids)
-  defp close_detail_path(_back, ids), do: index_path(ids)
+  defp close_detail_path(sport, "vergleich", ids) when length(ids) >= 2,
+    do: compare_path(sport, ids)
+
+  defp close_detail_path(sport, _back, ids), do: index_path(sport, ids)
 
   ## Render
 
@@ -413,6 +455,7 @@ defmodule KitrankWeb.OverviewLive do
     <Layouts.app flash={@flash} current_scope={@current_scope}>
       <div class="mx-auto max-w-[1500px] px-4 pb-32 pt-10 sm:px-6 lg:px-8">
         <.page_intro
+          sport={@sport}
           season={@season}
           seasons={@seasons}
           kit_count={@kit_count}
@@ -476,7 +519,7 @@ defmodule KitrankWeb.OverviewLive do
               kits={kits}
               compare_ids={@compare_ids}
               shown={Map.get(@tile_kit, team.id, @kit_view)}
-              href={team_path(team, @compare_ids)}
+              href={team_path(@sport, team, @compare_ids)}
             />
           </div>
         </section>
@@ -485,9 +528,9 @@ defmodule KitrankWeb.OverviewLive do
       <.compare_tray
         :if={@compare_ids != []}
         compare_ids={@compare_ids}
-        kits_by_id={@kits_by_id}
-        compare_path={compare_path(@compare_ids)}
-        clear_path={index_path([])}
+        kits_by_id={@compare_kits}
+        compare_path={compare_path(@sport, @compare_ids)}
+        clear_path={index_path(@sport, [])}
       />
 
       <.team_modal
@@ -496,26 +539,27 @@ defmodule KitrankWeb.OverviewLive do
         season={@season}
         compare_ids={@compare_ids}
         image_choice={@image_choice}
-        close_path={close_detail_path(@back, @compare_ids)}
+        close_path={close_detail_path(@sport, @back, @compare_ids)}
         zoomed?={@zoom != nil}
       />
 
       <.compare_modal
         :if={@live_action == :compare}
+        sport={@sport}
         compare_ids={@compare_ids}
-        kits_by_id={@kits_by_id}
+        kits_by_id={@compare_kits}
         season={@season}
-        close_path={index_path(@compare_ids)}
+        close_path={index_path(@sport, @compare_ids)}
         zoomed?={@zoom != nil}
       />
 
       <.kit_lightbox
         :if={@zoom}
-        kit={@kits_by_id[@zoom.kit_id].kit}
-        team={@kits_by_id[@zoom.kit_id].team}
-        images={kit_images(@kits_by_id[@zoom.kit_id].kit)}
+        kit={trikot(assigns, @zoom.kit_id).kit}
+        team={trikot(assigns, @zoom.kit_id).team}
+        images={kit_images(trikot(assigns, @zoom.kit_id).kit)}
         index={@zoom.index}
-        label={KitLabel.display(@kits_by_id[@zoom.kit_id].kit)}
+        label={KitLabel.display(trikot(assigns, @zoom.kit_id).kit)}
       />
     </Layouts.app>
     """
@@ -523,6 +567,7 @@ defmodule KitrankWeb.OverviewLive do
 
   ## Seitenkopf
 
+  attr :sport, :map, required: true
   attr :season, :string, required: true
   attr :seasons, :list, required: true
   attr :kit_count, :integer, required: true
@@ -535,7 +580,16 @@ defmodule KitrankWeb.OverviewLive do
     ~H"""
     <div class="flex flex-col gap-6 border-b border-line pb-8 md:flex-row md:items-end md:justify-between">
       <div>
-        <p class="kr-eyebrow">{gettext("Saison %{jahr}", jahr: @season)}</p>
+        <%!-- Der Weg zurueck zur Sportart-Auswahl. Als Brotkrume und nicht als
+              Knopf: die Sportart ist der Ort, an dem man gerade ist, nicht
+              eine Einstellung, die man wechselt. --%>
+        <p class="kr-eyebrow flex flex-wrap items-center gap-2">
+          <.link navigate={~p"/"} class="transition hover:text-ink">{gettext("Sportarten")}</.link>
+          <span aria-hidden="true">/</span>
+          <span class="!text-ink">{@sport.name}</span>
+          <span aria-hidden="true">·</span>
+          <span>{gettext("Saison %{jahr}", jahr: @season)}</span>
+        </p>
         <%!-- Die Frage, um die es geht – und nicht der Name der Ligen, die
               gerade in der Datenbank stehen.
 
@@ -1109,6 +1163,7 @@ defmodule KitrankWeb.OverviewLive do
 
   ## Vergleichs-Modal
 
+  attr :sport, :map, required: true, doc: "wohin das Schliessen zurueckfuehrt"
   attr :compare_ids, :list, required: true
   attr :kits_by_id, :map, required: true
   attr :season, :string, required: true
@@ -1150,7 +1205,7 @@ defmodule KitrankWeb.OverviewLive do
           </p>
         </div>
 
-        <.compare_columns :if={@entries != []} entries={@entries} />
+        <.compare_columns :if={@entries != []} sport={@sport} entries={@entries} />
 
         <div :if={@entries != []} class="hidden overflow-x-auto px-6 py-6 sm:block">
           <div
@@ -1222,7 +1277,7 @@ defmodule KitrankWeb.OverviewLive do
             <div class="pt-4"></div>
             <div :for={entry <- @entries} class="flex gap-2 pt-4">
               <.link
-                patch={team_path(entry.team, @compare_ids, "vergleich")}
+                patch={team_path(@sport, entry.team, @compare_ids, "vergleich")}
                 data-role="compare-detail"
                 class="flex-1 rounded-md border border-line px-3 py-2 text-center font-mono text-[11px] text-soft transition hover:border-ink hover:text-ink"
               >{gettext("Detail")}</.link>
@@ -1240,6 +1295,7 @@ defmodule KitrankWeb.OverviewLive do
     """
   end
 
+  attr :sport, :map, required: true
   attr :entries, :list, required: true
 
   # Die Handy-Fassung des Vergleichs. Kein zweites Layout aus Bequemlichkeit:
@@ -1285,7 +1341,7 @@ defmodule KitrankWeb.OverviewLive do
         <p class="truncate text-[11px] text-soft">{entry.competition.name}</p>
 
         <.link
-          patch={team_path(entry.team, Enum.map(@entries, & &1.kit.id), "vergleich")}
+          patch={team_path(@sport, entry.team, Enum.map(@entries, & &1.kit.id), "vergleich")}
           data-role="compare-detail-mobile"
           class="mt-2 rounded-md border border-line px-2 py-1.5 text-center font-mono text-[11px] text-soft transition hover:border-ink hover:text-ink"
         >{gettext("Detail")}</.link>

@@ -19,9 +19,18 @@ defmodule KitrankWeb.ImageContainmentTest do
 
   alias Kitrank.Kits
 
+  # Eine Sportart fuer das ganze Modul – die Uebersicht haengt unter /:sport.
+  # Fester Slug, aber je Modul ein anderer: zwei async-Tests mit demselben Wert
+  # auf einer eindeutigen Spalte wuerden sich gegenseitig blockieren.
+  @sport_slug "containment-test"
+
+  defp sportart_liga do
+    competition_fixture(sport_id: sport_fixture(name: "Testsport", slug: @sport_slug).id)
+  end
+
   setup %{conn: conn} do
     %{teams: [team | _], season: season} =
-      league_fixture(season: Kits.current_season(), team_count: 2)
+      league_fixture(competition: sportart_liga(), season: Kits.current_season(), team_count: 2)
 
     # Ohne Bild zeichnet kit_figure die Silhouette – dann gibt es kein <img>,
     # an dem sich etwas prüfen liesse.
@@ -30,10 +39,7 @@ defmodule KitrankWeb.ImageContainmentTest do
         Kits.update_kit(kit, %{"cutout_url" => "https://cdn.shopify.com/s/files/#{kit.id}.jpg"})
     end
 
-    # Ligen starten zugeklappt – ohne Aufklappen gibt es kein <img>, an dem
-    # sich etwas pruefen liesse.
-    {:ok, view, _html} = live(conn, ~p"/")
-    html = view |> element(~s{button[phx-click="toggle_league"]}) |> render_click()
+    {:ok, view, html} = live(conn, "/#{@sport_slug}")
 
     %{view: view, html: html, team: team}
   end

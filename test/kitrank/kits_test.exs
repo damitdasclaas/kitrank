@@ -240,6 +240,24 @@ defmodule Kitrank.KitsTest do
     end
   end
 
+  describe "Sportart-Slugs" do
+    test "ein Slug, der schon ein Pfad ist, wird abgelehnt" do
+      # /:sport steht ganz unten im Router und faengt alles ab, was davor nicht
+      # gepasst hat. Eine Sportart namens "reveal" waere unerreichbar, und
+      # niemand saehe warum.
+      for slug <- Kitrank.Kits.Sport.reservierte_slugs() do
+        assert {:error, changeset} = Kits.create_sport(%{name: "Test", slug: slug})
+        assert %{slug: [msg]} = errors_on(changeset)
+        assert msg =~ "Pfad der Anwendung"
+      end
+    end
+
+    test "ein freier Slug geht durch" do
+      assert {:ok, %{slug: "basketball"}} =
+               Kits.create_sport(%{name: "Basketball", slug: "basketball"})
+    end
+  end
+
   describe "overview/1" do
     test "gruppiert nach Liga, sortiert nach tier und liefert Trikots in fachlicher Reihenfolge" do
       season = "2026/27"

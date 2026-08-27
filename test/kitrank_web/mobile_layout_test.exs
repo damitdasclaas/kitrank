@@ -20,16 +20,25 @@ defmodule KitrankWeb.MobileLayoutTest do
   alias Kitrank.Kits
   alias Kitrank.Rankings
 
+  # Eine Sportart fuer das ganze Modul – die Uebersicht haengt unter /:sport.
+  # Fester Slug, aber je Modul ein anderer: zwei async-Tests mit demselben Wert
+  # auf einer eindeutigen Spalte wuerden sich gegenseitig blockieren.
+  @sport_slug "mobil-test"
+
+  defp sportart_liga do
+    competition_fixture(sport_id: sport_fixture(name: "Testsport", slug: @sport_slug).id)
+  end
+
   setup do
     %{teams: [team], season: season} =
-      league_fixture(season: Kits.current_season(), team_count: 1)
+      league_fixture(competition: sportart_liga(), season: Kits.current_season(), team_count: 1)
 
     %{team: team, season: season}
   end
 
   describe "Detail eines Vereins" do
     test "zeigt schon auf dem Handy zwei Spalten", %{conn: conn, team: team} do
-      {:ok, _view, html} = live(conn, ~p"/teams/#{team.id}")
+      {:ok, _view, html} = live(conn, "/#{@sport_slug}/teams/#{team.id}")
 
       assert html =~ "grid grid-cols-2 gap-px bg-line lg:grid-cols-3"
 
@@ -38,7 +47,7 @@ defmodule KitrankWeb.MobileLayoutTest do
     end
 
     test "das Polster der Bildfläche wächst erst mit dem Bildschirm", %{conn: conn, team: team} do
-      {:ok, _view, html} = live(conn, ~p"/teams/#{team.id}")
+      {:ok, _view, html} = live(conn, "/#{@sport_slug}/teams/#{team.id}")
 
       assert html =~ "justify-center overflow-hidden p-4 sm:p-8"
     end
@@ -46,7 +55,7 @@ defmodule KitrankWeb.MobileLayoutTest do
     test "die Fußzeile der Kachel bricht auf dem Handy um", %{conn: conn, team: team} do
       # Bei zwei Spalten sind es 183 px – Beschriftung und Knopf passen dort
       # nicht nebeneinander.
-      {:ok, _view, html} = live(conn, ~p"/teams/#{team.id}")
+      {:ok, _view, html} = live(conn, "/#{@sport_slug}/teams/#{team.id}")
 
       assert html =~ "flex flex-col items-start gap-2 border-t border-line px-4 py-3 sm:flex-row"
     end
@@ -104,7 +113,7 @@ defmodule KitrankWeb.MobileLayoutTest do
       #
       # Der Theme-Umschalter ist die entbehrlichste der fünf Gruppen: ohne ihn
       # folgt die Darstellung der Systemeinstellung.
-      {:ok, _view, html} = live(conn, ~p"/")
+      {:ok, _view, html} = live(conn, "/#{@sport_slug}")
 
       assert html =~ ~r/class="card relative hidden[^"]*\bsm:flex\b/
     end
@@ -112,7 +121,7 @@ defmodule KitrankWeb.MobileLayoutTest do
     test "sie bricht nicht um, sondern lässt schrumpfen", %{conn: conn} do
       # Eine umbrechende Kopfzeile wäre höher als h-14 und würde unter der
       # Sticky-Leiste hängen.
-      {:ok, _view, html} = live(conn, ~p"/")
+      {:ok, _view, html} = live(conn, "/#{@sport_slug}")
 
       kopf = Regex.run(~r/<header.*?<\/header>/s, html) |> hd()
 
@@ -122,7 +131,7 @@ defmodule KitrankWeb.MobileLayoutTest do
     end
 
     test "auf dem Handy engere Abstände als am Rechner", %{conn: conn} do
-      {:ok, _view, html} = live(conn, ~p"/")
+      {:ok, _view, html} = live(conn, "/#{@sport_slug}")
 
       assert html =~ "gap-3 px-4 sm:gap-4"
     end

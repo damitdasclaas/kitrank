@@ -14,8 +14,17 @@ defmodule KitrankWeb.LocaleTest do
 
   alias Kitrank.Kits
 
+  # Eine Sportart fuer das ganze Modul – die Uebersicht haengt unter /:sport.
+  # Fester Slug, aber je Modul ein anderer: zwei async-Tests mit demselben Wert
+  # auf einer eindeutigen Spalte wuerden sich gegenseitig blockieren.
+  @sport_slug "sprache-test"
+
+  defp sportart_liga do
+    competition_fixture(sport_id: sport_fixture(name: "Testsport", slug: @sport_slug).id)
+  end
+
   setup do
-    league_fixture(season: Kits.current_season(), team_count: 1)
+    league_fixture(competition: sportart_liga(), season: Kits.current_season(), team_count: 1)
     :ok
   end
 
@@ -83,7 +92,7 @@ defmodule KitrankWeb.LocaleTest do
       # stimmt nur der erste Durchgang.
       conn = init_test_session(conn, %{locale: "en"})
 
-      {:ok, view, html} = live(conn, ~p"/")
+      {:ok, view, html} = live(conn, "/#{@sport_slug}")
 
       assert html =~ "Which kit is the best looking?"
       assert render(view) =~ "Which kit is the best looking?"
@@ -95,9 +104,7 @@ defmodule KitrankWeb.LocaleTest do
       # selben LiveView-Prozess, darf die Sprache also nicht verlieren –
       # ein Test, der nur mount prüft, würde das nicht merken.
       conn = init_test_session(conn, %{locale: "en"})
-      {:ok, view, _html} = live(conn, ~p"/")
-      # Ligen starten zugeklappt; ohne Kachel gibt es keinen Knopf zum Klicken.
-      view |> element(~s{button[phx-click="toggle_league"]}) |> render_click()
+      {:ok, view, _html} = live(conn, "/#{@sport_slug}")
 
       html = view |> element(~s{button[data-role="tile-compare"]}) |> render_click()
 
@@ -108,7 +115,7 @@ defmodule KitrankWeb.LocaleTest do
     test "Trikot-Bezeichnungen übersetzen mit", %{conn: conn} do
       conn = init_test_session(conn, %{locale: "en"})
 
-      {:ok, _view, html} = live(conn, ~p"/")
+      {:ok, _view, html} = live(conn, "/#{@sport_slug}")
 
       # "Heim" steckt nicht in der Vorlage, sondern kommt aus KitLabel –
       # eine Bezeichnung aus einem Modul ist genau die Sorte Text, die beim

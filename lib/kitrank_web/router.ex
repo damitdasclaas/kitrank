@@ -21,9 +21,6 @@ defmodule KitrankWeb.Router do
   scope "/", KitrankWeb do
     pipe_through :browser
 
-    # Drei Routen, ein LiveView: Raster, Team-Detail als Modal darueber und der
-    # Direktvergleich. Team und Vergleich sind eigene URLs, damit beides
-    # verlinkbar bleibt und der Zurueck-Button tut, was man erwartet.
     get "/sprache/:locale", LocaleController, :update
 
     # Pflichtseiten. Liegen im :browser-Pipeline ohne live_session, weil sie
@@ -33,9 +30,9 @@ defmodule KitrankWeb.Router do
 
     live_session :public,
       on_mount: [{KitrankWeb.UserAuth, :mount_current_scope}, KitrankWeb.Locale] do
-      live "/", OverviewLive, :index
-      live "/teams/:id", OverviewLive, :team
-      live "/vergleich", OverviewLive, :compare
+      # Die Startseite ist die Sportart-Auswahl. Die Uebersicht haengt darunter
+      # (/football) und wird ganz unten deklariert – siehe dort.
+      live "/", SportsLive, :index
 
       # Ranglisten. Kein Login – der Zugriff haengt am Link: /rankings/:token
       # darf aendern, /r/:slug darf lesen. Beide zeigen denselben Datensatz,
@@ -142,5 +139,30 @@ defmodule KitrankWeb.Router do
 
     post "/users/log-in", UserSessionController, :create
     delete "/users/log-out", UserSessionController, :delete
+  end
+
+  ## Uebersicht je Sportart – MUSS ganz unten stehen
+  #
+  # "/:sport" faengt alles ab, was keine der Routen darueber genommen hat.
+  # Deshalb steht dieser Scope als letzter in der Datei, und deshalb sperrt
+  # Kitrank.Kits.Sport die Slugs der bestehenden Pfade: die Reihenfolge
+  # verhindert, dass eine Sportart namens "reveal" das Reveal verschluckt – die
+  # Sperrliste verhindert, dass jemand eine anlegt, die dann unerreichbar waere.
+  #
+  # Drei Routen, ein LiveView: Raster, Team-Detail als Modal darueber und der
+  # Direktvergleich. Team und Vergleich sind eigene URLs, damit beides
+  # verlinkbar bleibt und der Zurueck-Button tut, was man erwartet.
+  #
+  # Der Vergleich steht bewusst unter der Sportart, zeigt aber Trikots aus
+  # allen: die Sportart im Pfad sagt nur, wohin das Schliessen zurueckfuehrt.
+  scope "/", KitrankWeb do
+    pipe_through :browser
+
+    live_session :sport,
+      on_mount: [{KitrankWeb.UserAuth, :mount_current_scope}, KitrankWeb.Locale] do
+      live "/:sport", OverviewLive, :index
+      live "/:sport/teams/:id", OverviewLive, :team
+      live "/:sport/vergleich", OverviewLive, :compare
+    end
   end
 end

@@ -6,40 +6,56 @@ defmodule KitrankWeb.OverviewLiveTest do
 
   alias Kitrank.Kits
 
+  # Eine Sportart fuer das ganze Modul. Die Uebersicht haengt seit dem
+  # Sportart-Routing unter /:sport, und diese Tests pruefen die Uebersicht,
+  # nicht die Trennung der Sportarten – dafuer gibt es das describe ganz unten.
+  #
+  # Fester Slug: Tests eines Moduls laufen nacheinander, und andere Module
+  # nehmen andere Slugs. Zwei async-Tests mit demselben Wert auf einer
+  # eindeutigen Spalte wuerden sich sonst gegenseitig blockieren.
+  @sport_slug "uebersicht-test"
+
+  setup do
+    %{sport: sport_fixture(name: "Testsport", slug: @sport_slug)}
+  end
+
+  defp sport, do: Kits.get_sport_by_slug(@sport_slug)
+
+  # Liga in der Sportart dieses Moduls – sonst stuende sie auf einer anderen
+  # Seite als der, die der Test aufruft.
+  defp liga(attrs \\ []), do: competition_fixture(Keyword.put_new(attrs, :sport_id, sport().id))
+
+  defp uebersicht(conn, query \\ ""), do: live(conn, "/#{@sport_slug}#{query}")
+
   # Alle Tests laufen auf der aktuellen Saison – das ist die, die die Uebersicht
   # ohne Parameter anzeigt.
   defp league(opts) do
+    opts = Keyword.put_new_lazy(opts, :competition, fn -> liga() end)
     league_fixture(Keyword.put_new(opts, :season, Kits.current_season()))
   end
 
-  # Seit alle Ligen zugeklappt starten, sieht ein frisch geladenes Raster keine
-  # Kacheln. Tests, die welche brauchen, klappen erst eine auf.
+  # Eine Liga auf- oder zuklappen. Die oberste ist beim Laden offen, ein Klick
+  # darauf schliesst sie also.
   defp oeffne(view, competition) do
     view
     |> element(~s{button[phx-click="toggle_league"][phx-value-id="#{competition.id}"]})
     |> render_click()
   end
 
-  # Wenn es nur eine Liga gibt, muss der Test sie nicht benennen.
-  defp oeffne(view) do
-    view |> element(~s{button[phx-click="toggle_league"]}) |> render_click()
-  end
-
-  # Raster mit aufgeklappter Liga – der Ausgangspunkt fuer alles, was Kacheln
-  # braucht.
+  # Raster, wie es beim Laden kommt: oberste Liga offen.
   defp geoeffnet(conn) do
-    {:ok, view, _html} = live(conn, ~p"/")
-    {view, oeffne(view)}
+    {:ok, view, html} = uebersicht(conn)
+    {view, html}
   end
 
   describe "Raster" do
     test "zeigt Ligen nach tier und die Teams darunter", %{conn: conn} do
-      erste = competition_fixture(name: "Erste Liga", tier: 1)
-      zweite = competition_fixture(name: "Zweite Liga", tier: 2)
+      erste = liga(name: "Erste Liga", tier: 1)
+      zweite = liga(name: "Zweite Liga", tier: 2)
       league(competition: erste, team_count: 2)
       league(competition: zweite, team_count: 1)
 
-      {:ok, view, html} = live(conn, ~p"/")
+      {:ok, view, html} = uebersicht(conn)
 
       assert html =~ "Erste Liga"
       assert html =~ "Zweite Liga"
@@ -52,7 +68,7 @@ defmodule KitrankWeb.OverviewLiveTest do
       # Der Wettbewerber finanziert sich ueber Affiliate-Links zu Haendlern.
       # Wer an Kaeufen verdient, hat ein Interesse daran, wie das Ranking
       # ausgeht – deshalb steht das Gegenteil hier ausdruecklich.
-      {:ok, _view, html} = live(conn, ~p"/")
+      {:ok, _view, html} = uebersicht(conn)
 
       assert html =~ "Keine Affiliate-Links, keine Provision."
       assert html =~ "verdient an keinem"
@@ -62,9 +78,9 @@ defmodule KitrankWeb.OverviewLiveTest do
       # Die App soll weitere Ligen und Sportarten aufnehmen koennen – ein
       # fester Ligenname in Kopfzeile oder Ueberschrift waere dann als erstes
       # falsch. Die Ligen selbst stehen weiter an ihren Abschnitten.
-      league(competition: competition_fixture(name: "Bundesliga", tier: 1), team_count: 1)
+      league(competition: liga(name: "Bundesliga", tier: 1), team_count: 1)
 
-      {:ok, view, html} = live(conn, ~p"/")
+      {:ok, view, html} = uebersicht(conn)
 
       assert html =~ "Ranken, teilen, streiten"
       refute view |> element("h1") |> render() =~ "Bundesliga"
@@ -72,81 +88,71 @@ defmodule KitrankWeb.OverviewLiveTest do
       assert html =~ "Bundesliga"
     end
 
-    test "alle Ligen sind zunächst zu", %{conn: conn} do
-      erste = competition_fixture(name: "Erste Liga", tier: 1)
-      zweite = competition_fixture(name: "Zweite Liga", tier: 2)
+    test "die oberste Liga ist offen, die anderen zu", %{conn: conn} do
+      erste = liga(name: "Erste Liga", tier: 1)
+      zweite = liga(name: "Zweite Liga", tier: 2)
       %{teams: [a]} = league(competition: erste, team_count: 1)
       %{teams: [b]} = league(competition: zweite, team_count: 1)
 
-      {:ok, view, html} = live(conn, ~p"/")
+      {:ok, view, html} = uebersicht(conn)
 
-      # Zu sehen ist die Liste der Ligen, nicht 18 Kacheln, die alles andere
-      # unter den Bildschirmrand schieben. Geprueft wird ueber die
+      # Seit eine Sportart pro Seite steht, sind es zwei bis drei Ligen – da
+      # ist ein leeres Raster nur eine Huerde. Geprueft wird ueber die
       # Kachel-Links: Namen aus Fixtures koennen Praefixe voneinander sein,
       # dann trifft ein refute versehentlich zu.
       assert html =~ "Erste Liga"
       assert html =~ "Zweite Liga"
-      refute has_element?(view, ~s{a[href="/teams/#{a.id}"]})
-      refute has_element?(view, ~s{a[href="/teams/#{b.id}"]})
-
-      # Aufklappen zeigt sie dann.
-      oeffne(view, erste)
-      assert has_element?(view, ~s{a[href="/teams/#{a.id}"]})
-      refute has_element?(view, ~s{a[href="/teams/#{b.id}"]})
+      assert has_element?(view, ~s{a[href="/#{@sport_slug}/teams/#{a.id}"]})
+      refute has_element?(view, ~s{a[href="/#{@sport_slug}/teams/#{b.id}"]})
     end
 
     test "eine andere Liga aufklappen klappt die vorige zu", %{conn: conn} do
-      erste = competition_fixture(name: "Erste Liga", tier: 1)
-      zweite = competition_fixture(name: "Zweite Liga", tier: 2)
+      erste = liga(name: "Erste Liga", tier: 1)
+      zweite = liga(name: "Zweite Liga", tier: 2)
       %{teams: [a]} = league(competition: erste, team_count: 1)
       %{teams: [b]} = league(competition: zweite, team_count: 1)
 
-      {:ok, view, _html} = live(conn, ~p"/")
+      {:ok, view, _html} = uebersicht(conn)
 
       view
       |> element(~s{button[phx-click="toggle_league"][phx-value-id="#{zweite.id}"]})
       |> render_click()
 
-      assert has_element?(view, ~s{a[href="/teams/#{b.id}"]})
-      refute has_element?(view, ~s{a[href="/teams/#{a.id}"]})
+      assert has_element?(view, ~s{a[href="/#{@sport_slug}/teams/#{b.id}"]})
+      refute has_element?(view, ~s{a[href="/#{@sport_slug}/teams/#{a.id}"]})
     end
 
     test "nochmal auf die offene Liga klappt sie zu", %{conn: conn} do
-      erste = competition_fixture(name: "Erste Liga", tier: 1)
+      erste = liga(name: "Erste Liga", tier: 1)
       %{teams: [a]} = league(competition: erste, team_count: 1)
 
-      {:ok, view, _html} = live(conn, ~p"/")
-      oeffne(view, erste)
-      assert has_element?(view, ~s{a[href="/teams/#{a.id}"]})
+      {:ok, view, _html} = uebersicht(conn)
+      assert has_element?(view, ~s{a[href="/#{@sport_slug}/teams/#{a.id}"]})
 
       html = oeffne(view, erste)
 
-      refute has_element?(view, ~s{a[href="/teams/#{a.id}"]})
+      refute has_element?(view, ~s{a[href="/#{@sport_slug}/teams/#{a.id}"]})
       # Die Ueberschrift bleibt – die Seite wirkt nicht leer.
       assert html =~ "Erste Liga"
     end
 
     test "meldet den Zustand für Screenreader", %{conn: conn} do
-      erste = competition_fixture(name: "Erste Liga", tier: 1)
-      zweite = competition_fixture(name: "Zweite Liga", tier: 2)
+      erste = liga(name: "Erste Liga", tier: 1)
+      zweite = liga(name: "Zweite Liga", tier: 2)
       league(competition: erste, team_count: 1)
       league(competition: zweite, team_count: 1)
 
-      {:ok, view, html} = live(conn, ~p"/")
+      {:ok, _view, html} = uebersicht(conn)
 
-      # Zu Anfang ist keine offen.
-      refute html =~ ~s(aria-expanded="true")
+      assert html =~ ~s(aria-expanded="true")
       assert html =~ ~s(aria-expanded="false")
       assert html =~ ~s(aria-controls="liga-#{erste.id}")
-
-      assert oeffne(view, erste) =~ ~s(aria-expanded="true")
     end
 
     test "zeigt Kürzel und Name jedes Teams", %{conn: conn} do
       %{teams: [team | _]} = league(team_count: 1)
 
-      {:ok, view, _html} = live(conn, ~p"/")
-      html = oeffne(view)
+      {:ok, _view, html} = uebersicht(conn)
 
       assert html =~ team.name
       assert html =~ team.short_code
@@ -155,8 +161,7 @@ defmodule KitrankWeb.OverviewLiveTest do
     test "zeichnet ein Trikot ohne Bild als Silhouette", %{conn: conn} do
       league(team_count: 1, kit_types: ["home"])
 
-      {:ok, view, _html} = live(conn, ~p"/")
-      html = oeffne(view)
+      {:ok, _view, html} = uebersicht(conn)
 
       assert html =~ ~s(viewBox="0 0 100 110")
       assert html =~ "Platzhalter, kein Foto hinterlegt"
@@ -164,7 +169,7 @@ defmodule KitrankWeb.OverviewLiveTest do
 
     test "zeigt stattdessen das Bild, sobald eines hinterlegt ist", %{conn: conn} do
       team = team_fixture()
-      competition = competition_fixture()
+      competition = liga()
 
       {:ok, _} =
         Kits.create_team_season(%{
@@ -179,8 +184,7 @@ defmodule KitrankWeb.OverviewLiveTest do
         cutout_url: "https://example.com/trikot.png"
       )
 
-      {:ok, view, _html} = live(conn, ~p"/")
-      html = oeffne(view)
+      {:ok, _view, html} = uebersicht(conn)
 
       assert html =~ "https://example.com/trikot.png"
     end
@@ -188,7 +192,7 @@ defmodule KitrankWeb.OverviewLiveTest do
     test "weist im Footer darauf hin, dass die App nicht offiziell ist", %{conn: conn} do
       # Kein Rechtsschutz, aber es wirkt gegen den Eindruck einer offiziellen
       # Verbindung – und genau darauf kommt es markenrechtlich an.
-      {:ok, _view, html} = live(conn, ~p"/")
+      {:ok, _view, html} = uebersicht(conn)
 
       assert html =~ "privates Projekt"
       assert html =~ "genannten Ligen, Verbänden oder Vereinen"
@@ -199,7 +203,7 @@ defmodule KitrankWeb.OverviewLiveTest do
     end
 
     test "sagt es, wenn für die Saison noch nichts hinterlegt ist", %{conn: conn} do
-      {:ok, _view, html} = live(conn, ~p"/")
+      {:ok, _view, html} = uebersicht(conn)
 
       assert html =~ "Noch keine Trikots"
     end
@@ -207,7 +211,7 @@ defmodule KitrankWeb.OverviewLiveTest do
 
   describe "Suche" do
     setup do
-      liga = competition_fixture(name: "Erste Liga", tier: 1)
+      liga = liga(name: "Erste Liga", tier: 1)
       andere = competition_fixture(sport_id: liga.sport_id, name: "Zweite Liga", tier: 2)
 
       # Namen fest, Kuerzel aus dem Fixture: short_code ist eindeutig, und zwei
@@ -239,7 +243,7 @@ defmodule KitrankWeb.OverviewLiveTest do
     defp kachel?(html, team), do: String.contains?(html, ">#{team.name}<")
 
     test "findet über den Namen", %{conn: conn, koeln: koeln, dortmund: dortmund} do
-      {:ok, view, _html} = live(conn, ~p"/")
+      {:ok, view, _html} = uebersicht(conn)
 
       html = suche(view, "dortmund")
 
@@ -248,7 +252,7 @@ defmodule KitrankWeb.OverviewLiveTest do
     end
 
     test "findet über das Kürzel", %{conn: conn, dortmund: dortmund, koeln: koeln} do
-      {:ok, view, _html} = live(conn, ~p"/")
+      {:ok, view, _html} = uebersicht(conn)
 
       html = suche(view, String.downcase(dortmund.short_code))
 
@@ -259,7 +263,7 @@ defmodule KitrankWeb.OverviewLiveTest do
     test "achtet nicht auf Umlaute", %{conn: conn, koeln: koeln} do
       # Wer "koln" tippt, meint Köln — auf einer deutschen Tastatur ist der
       # Umlaut da, auf einer anderen nicht.
-      {:ok, view, _html} = live(conn, ~p"/")
+      {:ok, view, _html} = uebersicht(conn)
 
       assert kachel?(suche(view, "koln"), koeln)
       assert kachel?(suche(view, "KÖLN"), koeln)
@@ -273,7 +277,7 @@ defmodule KitrankWeb.OverviewLiveTest do
     } do
       # "Bundesliga" einzutippen und dann keinen einzigen Verein zu sehen
       # waere seltsam.
-      {:ok, view, _html} = live(conn, ~p"/")
+      {:ok, view, _html} = uebersicht(conn)
 
       html = suche(view, "Erste Liga")
 
@@ -285,21 +289,21 @@ defmodule KitrankWeb.OverviewLiveTest do
     test "klappt auch zugeklappte Ligen auf", %{conn: conn, hertha: hertha} do
       # Hertha steht in der zweiten Liga, und die ist beim Laden zu. Ohne das
       # Aufklappen faende die Suche etwas, das man nicht sieht.
-      {:ok, view, html} = live(conn, ~p"/")
+      {:ok, view, html} = uebersicht(conn)
       refute kachel?(html, hertha)
 
       assert kachel?(suche(view, "hertha"), hertha)
     end
 
     test "sagt, wie viele es sind", %{conn: conn} do
-      {:ok, view, _html} = live(conn, ~p"/")
+      {:ok, view, _html} = uebersicht(conn)
 
       assert suche(view, "borussia") =~ "1 Verein"
       assert suche(view, "e") =~ "3 Vereine"
     end
 
     test "sagt es auch, wenn nichts passt", %{conn: conn} do
-      {:ok, view, _html} = live(conn, ~p"/")
+      {:ok, view, _html} = uebersicht(conn)
 
       html = suche(view, "gibtsnicht")
 
@@ -308,24 +312,23 @@ defmodule KitrankWeb.OverviewLiveTest do
     end
 
     test "das Kreuz setzt zurück", %{conn: conn, koeln: koeln} do
-      {:ok, view, _html} = live(conn, ~p"/")
+      {:ok, view, _html} = uebersicht(conn)
 
       html = suche(view, "dortmund")
       refute kachel?(html, koeln)
 
       html = view |> element(~s{[data-role="clear-search"]}) |> render_click()
 
-      # Zurueck im Ausgangszustand: kein Kreuz mehr, und die Ligen sind wieder
-      # zu – die Suche hatte sie nur fuer die Dauer der Suche aufgeklappt.
+      # Zurueck im Ausgangszustand: kein Kreuz mehr, und die oberste Liga steht
+      # wieder offen da.
       refute html =~ ~s(data-role="clear-search")
-      refute kachel?(html, koeln)
-      assert html =~ "Erste Liga"
+      assert kachel?(html, koeln)
     end
   end
 
   describe "Vereine sortieren" do
     setup do
-      liga = competition_fixture(name: "Erste Liga", tier: 1)
+      liga = liga(name: "Erste Liga", tier: 1)
 
       # Kuerzel gleicher Laenge mit gemeinsamem Suffix: der erste Buchstabe
       # bestimmt die Reihenfolge, das Suffix macht sie ueber Tests hinweg
@@ -378,8 +381,7 @@ defmodule KitrankWeb.OverviewLiveTest do
     end
 
     test "steht zunächst alphabetisch", %{conn: conn} do
-      {:ok, view, _html} = live(conn, ~p"/")
-      html = oeffne(view)
+      {:ok, _view, html} = uebersicht(conn)
 
       assert reihenfolge(html) == ["Aachen", "Mainz", "Zwickau"]
     end
@@ -408,7 +410,7 @@ defmodule KitrankWeb.OverviewLiveTest do
     end
 
     test "die aktive Sortierung zeigt ihre Richtung", %{conn: conn} do
-      {:ok, view, html} = live(conn, ~p"/")
+      {:ok, view, html} = uebersicht(conn)
 
       assert html =~ "hero-arrow-up-mini"
       refute html =~ "hero-arrow-down-mini"
@@ -516,7 +518,7 @@ defmodule KitrankWeb.OverviewLiveTest do
     end
 
     test "der Schalter zeigt nur Varianten, die es in der Saison gibt", %{conn: conn} do
-      {:ok, _view, html} = live(conn, ~p"/")
+      {:ok, _view, html} = uebersicht(conn)
 
       assert html =~ ~s(phx-value-type="home" data-role="show-all-kits")
       assert html =~ ~s(phx-value-type="third" data-role="show-all-kits")
@@ -555,7 +557,7 @@ defmodule KitrankWeb.OverviewLiveTest do
 
       html =
         view
-        |> element(~s{a[href="/teams/#{team.id}"]})
+        |> element(~s{a[href="/#{@sport_slug}/teams/#{team.id}"]})
         |> render_click()
 
       assert html =~ team.name
@@ -565,14 +567,14 @@ defmodule KitrankWeb.OverviewLiveTest do
     end
 
     test "ist direkt verlinkbar", %{conn: conn, team: team} do
-      {:ok, _view, html} = live(conn, ~p"/teams/#{team.id}")
+      {:ok, _view, html} = live(conn, "/#{@sport_slug}/teams/#{team.id}")
 
       assert html =~ ~s(aria-modal="true")
       assert html =~ team.name
     end
 
     test "führt unbekannte Team-IDs zurück aufs Raster statt in einen Fehler", %{conn: conn} do
-      {:ok, _view, html} = live(conn, ~p"/teams/999999")
+      {:ok, _view, html} = live(conn, "/#{@sport_slug}/teams/999999")
 
       refute html =~ ~s(aria-modal="true")
     end
@@ -581,7 +583,7 @@ defmodule KitrankWeb.OverviewLiveTest do
   describe "Große Ansicht" do
     setup do
       %{teams: [team], kits: [kit]} =
-        league_fixture(season: Kits.current_season(), team_count: 1, kit_types: ["home"])
+        league(team_count: 1, kit_types: ["home"])
 
       {:ok, kit} =
         Kits.update_kit(kit, %{
@@ -593,7 +595,7 @@ defmodule KitrankWeb.OverviewLiveTest do
     end
 
     test "öffnet sich aus dem Team-Modal", %{conn: conn, team: team, kit: kit} do
-      {:ok, view, _html} = live(conn, ~p"/teams/#{team.id}")
+      {:ok, view, _html} = live(conn, "/#{@sport_slug}/teams/#{team.id}")
 
       html =
         view |> element(~s{button[phx-click="zoom"][phx-value-id="#{kit.id}"]}) |> render_click()
@@ -608,7 +610,7 @@ defmodule KitrankWeb.OverviewLiveTest do
       team: team,
       kit: kit
     } do
-      {:ok, view, _html} = live(conn, ~p"/teams/#{team.id}")
+      {:ok, view, _html} = live(conn, "/#{@sport_slug}/teams/#{team.id}")
 
       # Auf das zweite Bild umschalten, dann vergroessern.
       view
@@ -623,7 +625,7 @@ defmodule KitrankWeb.OverviewLiveTest do
     end
 
     test "blättert vor und zurück und läuft dabei um", %{conn: conn, team: team, kit: kit} do
-      {:ok, view, _html} = live(conn, ~p"/teams/#{team.id}")
+      {:ok, view, _html} = live(conn, "/#{@sport_slug}/teams/#{team.id}")
       view |> element(~s{button[phx-click="zoom"][phx-value-id="#{kit.id}"]}) |> render_click()
 
       html = view |> element(~s{button[phx-value-delta="1"]}) |> render_click()
@@ -645,7 +647,7 @@ defmodule KitrankWeb.OverviewLiveTest do
       team: team,
       kit: kit
     } do
-      {:ok, view, _html} = live(conn, ~p"/teams/#{team.id}")
+      {:ok, view, _html} = live(conn, "/#{@sport_slug}/teams/#{team.id}")
       view |> element(~s{button[phx-click="zoom"][phx-value-id="#{kit.id}"]}) |> render_click()
       view |> element(~s{button[phx-value-delta="1"]}) |> render_click()
 
@@ -663,7 +665,7 @@ defmodule KitrankWeb.OverviewLiveTest do
       team: team,
       kit: kit
     } do
-      {:ok, view, html} = live(conn, ~p"/teams/#{team.id}")
+      {:ok, view, html} = live(conn, "/#{@sport_slug}/teams/#{team.id}")
       # Solange nichts darueber liegt, schliesst Escape das Modal.
       assert html =~ ~s(phx-key="Escape")
 
@@ -681,7 +683,7 @@ defmodule KitrankWeb.OverviewLiveTest do
     end
 
     test "Pfeiltasten blättern", %{conn: conn, team: team, kit: kit} do
-      {:ok, view, _html} = live(conn, ~p"/teams/#{team.id}")
+      {:ok, view, _html} = live(conn, "/#{@sport_slug}/teams/#{team.id}")
       view |> element(~s{button[phx-click="zoom"][phx-value-id="#{kit.id}"]}) |> render_click()
 
       html = view |> element("#kit-lightbox") |> render_keydown(%{"key" => "ArrowRight"})
@@ -693,9 +695,9 @@ defmodule KitrankWeb.OverviewLiveTest do
 
     test "funktioniert auch für Trikots ohne Foto", %{conn: conn} do
       %{teams: [team], kits: [kit]} =
-        league_fixture(season: Kits.current_season(), team_count: 1, kit_types: ["away"])
+        league(team_count: 1, kit_types: ["away"])
 
-      {:ok, view, _html} = live(conn, ~p"/teams/#{team.id}")
+      {:ok, view, _html} = live(conn, "/#{@sport_slug}/teams/#{team.id}")
 
       html =
         view |> element(~s{button[phx-click="zoom"][phx-value-id="#{kit.id}"]}) |> render_click()
@@ -708,9 +710,9 @@ defmodule KitrankWeb.OverviewLiveTest do
 
     test "lässt sich auch aus dem Vergleich öffnen", %{conn: conn, kit: kit} do
       %{kits: [other]} =
-        league_fixture(season: Kits.current_season(), team_count: 1, kit_types: ["home"])
+        league(team_count: 1, kit_types: ["home"])
 
-      {:ok, view, _html} = live(conn, "/vergleich?trikots=#{kit.id},#{other.id}")
+      {:ok, view, _html} = live(conn, "/#{@sport_slug}/vergleich?trikots=#{kit.id},#{other.id}")
 
       # Der Vergleich rendert zwei Layouts – eins fuers Handy, eins ab sm.
       # Beide zeigen dasselbe Trikot, also braucht der Test die Rolle dazu.
@@ -737,23 +739,22 @@ defmodule KitrankWeb.OverviewLiveTest do
       |> element(~s{button[data-role="tile-compare"][phx-value-id="#{a.id}"]})
       |> render_click()
 
-      assert_patched(view, "/?trikots=#{a.id}")
+      assert_patched(view, "/#{@sport_slug}?trikots=#{a.id}")
       assert render(view) =~ "noch eins dazu"
     end
 
     test "nimmt ein bereits gewähltes Trikot wieder heraus", %{conn: conn, a: a} do
-      {:ok, view, _html} = live(conn, "/?trikots=#{a.id}")
+      {:ok, view, _html} = uebersicht(conn, "?trikots=#{a.id}")
 
       view
       |> element(~s{button[data-role="tray-remove"][phx-value-id="#{a.id}"]})
       |> render_click()
 
-      assert_patched(view, "/")
+      assert_patched(view, "/#{@sport_slug}")
     end
 
     test "lässt höchstens drei Trikots zu", %{conn: conn, a: a, b: b, c: c, d: d} do
-      {:ok, view, _html} = live(conn, "/?trikots=#{a.id},#{b.id},#{c.id}")
-      oeffne(view)
+      {:ok, view, _html} = uebersicht(conn, "?trikots=#{a.id},#{b.id},#{c.id}")
 
       html =
         view
@@ -765,18 +766,18 @@ defmodule KitrankWeb.OverviewLiveTest do
     end
 
     test "blendet die Leiste erst ab dem ersten Trikot ein", %{conn: conn, a: a} do
-      {:ok, _view, html} = live(conn, ~p"/")
+      {:ok, _view, html} = uebersicht(conn)
       refute html =~ "Leeren"
 
-      {:ok, _view, html} = live(conn, "/?trikots=#{a.id}")
+      {:ok, _view, html} = uebersicht(conn, "?trikots=#{a.id}")
       assert html =~ "Leeren"
     end
 
     test "bietet das Öffnen erst ab zwei Trikots an", %{conn: conn, a: a, b: b} do
-      {:ok, _view, html} = live(conn, "/?trikots=#{a.id}")
+      {:ok, _view, html} = uebersicht(conn, "?trikots=#{a.id}")
       refute html =~ "Vergleichen ("
 
-      {:ok, _view, html} = live(conn, "/?trikots=#{a.id},#{b.id}")
+      {:ok, _view, html} = uebersicht(conn, "?trikots=#{a.id},#{b.id}")
       assert html =~ "Vergleichen (2)"
     end
 
@@ -794,7 +795,7 @@ defmodule KitrankWeb.OverviewLiveTest do
     end
 
     test "der Vergleich fuellt auf dem Handy den Bildschirm", %{conn: conn, a: a, b: b} do
-      {:ok, _view, html} = live(conn, "/vergleich?trikots=#{a.id},#{b.id}")
+      {:ok, _view, html} = live(conn, "/#{@sport_slug}/vergleich?trikots=#{a.id},#{b.id}")
 
       # Randlos und ueber die volle Hoehe – sonst passen zwei Trikots nicht
       # nebeneinander auf ein 390er Display.
@@ -806,7 +807,7 @@ defmodule KitrankWeb.OverviewLiveTest do
     end
 
     test "beide Trikots stehen auf dem Handy nebeneinander", %{conn: conn, a: a, b: b} do
-      {:ok, _view, html} = live(conn, "/vergleich?trikots=#{a.id},#{b.id}")
+      {:ok, _view, html} = live(conn, "/#{@sport_slug}/vergleich?trikots=#{a.id},#{b.id}")
 
       spalten = Regex.scan(~r/data-role="compare-zoom-mobile"/, html)
 
@@ -816,14 +817,15 @@ defmodule KitrankWeb.OverviewLiveTest do
 
     test "aus dem Vergleich fuehrt ein Weg ins Detail", %{conn: conn, a: a, b: b} do
       team = Kits.get_team!(a.team_id)
-      {:ok, view, html} = live(conn, "/vergleich?trikots=#{a.id},#{b.id}")
+      {:ok, view, html} = live(conn, "/#{@sport_slug}/vergleich?trikots=#{a.id},#{b.id}")
 
-      assert html =~ "/teams/#{team.id}?trikots=#{a.id}%2C#{b.id}&amp;zurueck=vergleich"
+      assert html =~
+               "/#{@sport_slug}/teams/#{team.id}?trikots=#{a.id}%2C#{b.id}&amp;zurueck=vergleich"
 
       # Je Spalte einer – dieser gehoert zu a.
       html =
         view
-        |> element(~s{[data-role="compare-detail"][href^="/teams/#{team.id}?"]})
+        |> element(~s{[data-role="compare-detail"][href^="/#{@sport_slug}/teams/#{team.id}?"]})
         |> render_click()
 
       # Das Detail zeigt, was der Vergleich nicht hat: alle Trikots des
@@ -836,15 +838,15 @@ defmodule KitrankWeb.OverviewLiveTest do
       team = Kits.get_team!(a.team_id)
 
       {:ok, _view, html} =
-        live(conn, "/teams/#{team.id}?trikots=#{a.id},#{b.id}&zurueck=vergleich")
+        live(conn, "/#{@sport_slug}/teams/#{team.id}?trikots=#{a.id},#{b.id}&zurueck=vergleich")
 
-      assert html =~ "/vergleich?trikots=#{a.id}%2C#{b.id}"
+      assert html =~ "/#{@sport_slug}/vergleich?trikots=#{a.id}%2C#{b.id}"
     end
 
     test "ohne diese Spur schliesst das Detail auf die Uebersicht", %{conn: conn, a: a} do
       team = Kits.get_team!(a.team_id)
 
-      {:ok, _view, html} = live(conn, "/teams/#{team.id}?trikots=#{a.id}")
+      {:ok, _view, html} = live(conn, "/#{@sport_slug}/teams/#{team.id}?trikots=#{a.id}")
 
       refute html =~ "/vergleich?"
     end
@@ -856,13 +858,14 @@ defmodule KitrankWeb.OverviewLiveTest do
       # Sonst landet man auf einem Vergleich, der nichts vergleicht.
       team = Kits.get_team!(a.team_id)
 
-      {:ok, _view, html} = live(conn, "/teams/#{team.id}?trikots=#{a.id}&zurueck=vergleich")
+      {:ok, _view, html} =
+        live(conn, "/#{@sport_slug}/teams/#{team.id}?trikots=#{a.id}&zurueck=vergleich")
 
       refute html =~ "/vergleich?"
     end
 
     test "stellt im Modal alle gewählten Trikots gegenüber", %{conn: conn, a: a, b: b} do
-      {:ok, _view, html} = live(conn, "/vergleich?trikots=#{a.id},#{b.id}")
+      {:ok, _view, html} = live(conn, "/#{@sport_slug}/vergleich?trikots=#{a.id},#{b.id}")
 
       assert html =~ "Direktvergleich"
       assert html =~ "Liga"
@@ -875,15 +878,17 @@ defmodule KitrankWeb.OverviewLiveTest do
       a: a,
       b: b
     } do
-      {:ok, view, _html} = live(conn, "/?trikots=#{a.id},#{b.id}")
+      {:ok, view, _html} = uebersicht(conn, "?trikots=#{a.id},#{b.id}")
 
-      view |> element(~s{a[href="/vergleich?trikots=#{a.id}%2C#{b.id}"]}) |> render_click()
+      view
+      |> element(~s{a[href="/#{@sport_slug}/vergleich?trikots=#{a.id}%2C#{b.id}"]})
+      |> render_click()
 
-      assert_patched(view, "/vergleich?trikots=#{a.id}%2C#{b.id}")
+      assert_patched(view, "/#{@sport_slug}/vergleich?trikots=#{a.id}%2C#{b.id}")
     end
 
     test "der geteilte Link überlebt gelöschte oder fremde Trikots", %{conn: conn, a: a} do
-      {:ok, _view, html} = live(conn, "/?trikots=#{a.id},999999,keine-zahl")
+      {:ok, _view, html} = uebersicht(conn, "?trikots=#{a.id},999999,keine-zahl")
 
       # Das gueltige Trikot bleibt, der Rest faellt still weg.
       assert html =~ "Leeren"
@@ -891,11 +896,11 @@ defmodule KitrankWeb.OverviewLiveTest do
     end
 
     test "'Leeren' setzt die Auswahl zurück", %{conn: conn, a: a, b: b} do
-      {:ok, view, _html} = live(conn, "/?trikots=#{a.id},#{b.id}")
+      {:ok, view, _html} = uebersicht(conn, "?trikots=#{a.id},#{b.id}")
 
       view |> element("a", "Leeren") |> render_click()
 
-      assert_patched(view, "/")
+      assert_patched(view, "/#{@sport_slug}")
       refute render(view) =~ "Leeren"
     end
   end

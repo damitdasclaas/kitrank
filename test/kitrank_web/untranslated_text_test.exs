@@ -21,9 +21,18 @@ defmodule KitrankWeb.UntranslatedTextTest do
 
   @umlaute ~r/[äöüßÄÖÜ]/
 
+  # Eine Sportart fuer das ganze Modul – die Uebersicht haengt unter /:sport.
+  # Fester Slug, aber je Modul ein anderer: zwei async-Tests mit demselben Wert
+  # auf einer eindeutigen Spalte wuerden sich gegenseitig blockieren.
+  @sport_slug "text-test"
+
+  defp sportart_liga do
+    competition_fixture(sport_id: sport_fixture(name: "Testsport", slug: @sport_slug).id)
+  end
+
   setup %{conn: conn} do
     %{teams: [team | _], season: season} =
-      league_fixture(season: Kits.current_season(), team_count: 2)
+      league_fixture(competition: sportart_liga(), season: Kits.current_season(), team_count: 2)
 
     {:ok, conn: init_test_session(conn, %{locale: "en"}), team: team, season: season}
   end
@@ -48,17 +57,17 @@ defmodule KitrankWeb.UntranslatedTextTest do
   defp pruefe(html), do: assert(deutsche_reste(html) == [])
 
   test "die Übersicht", %{conn: conn} do
-    {:ok, _view, html} = live(conn, ~p"/")
+    {:ok, _view, html} = live(conn, "/#{@sport_slug}")
     pruefe(html)
   end
 
   test "eine Vereinsseite", %{conn: conn, team: team} do
-    {:ok, _view, html} = live(conn, ~p"/teams/#{team.id}")
+    {:ok, _view, html} = live(conn, "/#{@sport_slug}/teams/#{team.id}")
     pruefe(html)
   end
 
   test "der Vergleich, auch leer", %{conn: conn} do
-    {:ok, _view, html} = live(conn, ~p"/vergleich")
+    {:ok, _view, html} = live(conn, "/#{@sport_slug}/vergleich")
     pruefe(html)
   end
 
@@ -111,7 +120,7 @@ defmodule KitrankWeb.UntranslatedTextTest do
   test "der Wächter greift auch wirklich", %{conn: conn} do
     # Ohne Gegenprobe wäre nicht zu unterscheiden, ob nichts übrig ist oder ob
     # die Prüfung ins Leere greift.
-    {:ok, _view, html} = live(conn, ~p"/")
+    {:ok, _view, html} = live(conn, "/#{@sport_slug}")
 
     assert deutsche_reste(html <> "<p>Trikots auswählen</p>") == ["auswählen"]
   end
