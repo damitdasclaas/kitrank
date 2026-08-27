@@ -46,7 +46,10 @@ defmodule KitrankWeb.Ranking.EditLive do
            detail: nil,
            # Aendert sich nur, wenn eine Notiz von ausserhalb ihres eigenen
            # Feldes gespeichert wird – siehe Kommentar an `entry_row/1`.
-           note_epoch: 0
+           note_epoch: 0,
+           # Kam diese Liste von einer geteilten, gehoert der Weg zurueck dazu:
+           # sonst hat man seine eigene fertig und findet die fremde nicht mehr.
+           derived_from: Rankings.get_derived_from(ranking)
          )
          |> load_entries()
          |> init_scope()}
@@ -65,12 +68,6 @@ defmodule KitrankWeb.Ranking.EditLive do
     {:noreply, socket |> assign(page_title: title) |> ensure_duel()}
   end
 
-  # Der Ausschnitt steht im Socket, nicht in der Datenbank: er sagt nur, worüber
-  # gerade entschieden wird, und gehört nicht zur Rangliste selbst. Beim
-  # Wiederkommen ergibt er sich aus dem, was schon drin ist – wer bisher nur
-  # HSV-Trikots gewählt hat, landet wieder dort.
-  #
-  # Eine leere Menge heißt überall "keine Einschränkung", wie beim Reveal-Raum.
   # Der Ausschnitt steht an der Rangliste. Vorher wurde er beim Laden aus den
   # vorhandenen Eintraegen erraten — Tab zu, Einstellungen weg, und was jemand
   # eingestellt hatte, liess sich nicht wiederherstellen.
@@ -213,6 +210,13 @@ defmodule KitrankWeb.Ranking.EditLive do
     scope = Map.put(socket.assigns.scope, achse(axis), [])
 
     {:noreply, socket |> assign(scope: scope, team_query: "") |> merke_scope() |> load_catalog()}
+  end
+
+  def handle_event("set_share_mode", %{"mode" => mode}, socket) do
+    case Rankings.set_share_mode(socket.assigns.ranking, mode) do
+      {:ok, ranking} -> {:noreply, assign(socket, :ranking, ranking)}
+      {:error, _} -> {:noreply, socket}
+    end
   end
 
   ## Vereine suchen statt alle 68 nebeneinander zu zeigen
@@ -436,6 +440,7 @@ defmodule KitrankWeb.Ranking.EditLive do
           season={@season}
           count={@count}
           compact={@live_action == :duel}
+          derived_from={@derived_from}
         />
 
         <.step_nav
@@ -446,6 +451,7 @@ defmodule KitrankWeb.Ranking.EditLive do
 
         <.selection
           :if={@live_action == :select}
+          ranking={@ranking}
           groups={@groups}
           catalog={@catalog}
           selected={@selected}
@@ -506,28 +512,54 @@ defmodule KitrankWeb.Ranking.EditLive do
   attr :all_kit_types, :list, required: true
   attr :team_query, :string, required: true
   attr :multi_season?, :boolean, required: true
+  attr :ranking, :map, required: true
 
   defp selection(assigns) do
     ~H"""
     <div class="mt-8 space-y-4 rounded-lg border border-line p-5">
       <h2 class="kr-eyebrow">{gettext("Worüber rankst du?")}</h2>
 
-      <.filter_row axis="seasons" label="Saison" chosen={@scope.seasons}>
+      <%!-- Bei einer abgeleiteten Liste steht der Ausschnitt fest. Ihn aendern
+            zu koennen waere der schnellste Weg, den Vergleich zu entwerten,
+            fuer den sie ueberhaupt gebaut wird. --%>
+      <p :if={Ranking.derived?(@ranking)} class="text-sm text-soft">
+        {gettext(
+          "Die Einstellungen kommen von der geteilten Liste — %{ausschnitt}. Genau darum geht es: verglichen wird nur, was mit denselben Einstellungen gebaut wurde.",
+          ausschnitt: scope_label(@scope, @all_teams)
+        )}
+      </p>
+
+      <.filter_row
+        :if={not Ranking.derived?(@ranking)}
+        axis="seasons"
+        label="Saison"
+        chosen={@scope.seasons}
+      >
         <:chip :for={season <- @all_seasons} value={season} label={season} />
       </.filter_row>
 
-      <.filter_row axis="competitions" label="Liga" chosen={@scope.competition_ids}>
+      <.filter_row
+        :if={not Ranking.derived?(@ranking)}
+        axis="competitions"
+        label="Liga"
+        chosen={@scope.competition_ids}
+      >
         <:chip :for={c <- @all_competitions} value={c.id} label={c.name} />
       </.filter_row>
 
-      <.team_picker chosen={@scope.team_ids} all_teams={@all_teams} query={@team_query} />
+      <.team_picker
+        :if={not Ranking.derived?(@ranking)}
+        chosen={@scope.team_ids}
+        all_teams={@all_teams}
+        query={@team_query}
+      />
 
       <%!-- Die vierte Achse. Ohne sie liess sich „alle Auswärtstrikots dieser
             vier Vereine" gar nicht ausdruecken — es gab fuer Typen nur eine
             Schnellauswahl zum Massen-Anhaken, und die aendert die Auswahl,
             nicht den Ausschnitt. --%>
       <.filter_row
-        :if={@all_kit_types != []}
+        :if={@all_kit_types != [] and not Ranking.derived?(@ranking)}
         axis="kit_types"
         label="Trikot"
         chosen={@scope.kit_types}

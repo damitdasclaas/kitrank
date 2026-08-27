@@ -32,6 +32,29 @@ defmodule KitrankWeb.RegistrationGateTest do
     assert html =~ "Konto anlegen"
   end
 
+  test "das Konto-Angebot am Gate zeigt sich nur bei offener Registrierung", %{conn: conn} do
+    # Ein Link auf eine geschlossene Registrierung waere eine Sackgasse — der
+    # Hinweis haengt deshalb am selben Schalter wie die Registrierung selbst.
+    %{kits: kits} =
+      Kitrank.KitsFixtures.league_fixture(
+        season: Kitrank.Kits.current_season(),
+        team_count: 1,
+        kit_types: ["home"]
+      )
+
+    {:ok, ranking} = Kitrank.Rankings.create_ranking(%{display_name: "Geteilt"})
+    Kitrank.Rankings.add_kits(ranking, Enum.map(kits, & &1.id))
+    {:ok, ranking} = Kitrank.Rankings.set_share_mode(ranking, "gated")
+
+    Application.put_env(:kitrank, :registration_open, false)
+    {:ok, view, _html} = live(conn, ~p"/r/#{ranking.share_slug}")
+    refute render_hook(view, "remembered_rankings", %{"tokens" => []}) =~ "Mit einem Konto"
+
+    Application.put_env(:kitrank, :registration_open, true)
+    {:ok, view, _html} = live(conn, ~p"/r/#{ranking.share_slug}")
+    assert render_hook(view, "remembered_rankings", %{"tokens" => []}) =~ "Mit einem Konto"
+  end
+
   test "die Anmeldung ist unabhängig davon immer erreichbar", %{conn: conn} do
     Application.put_env(:kitrank, :registration_open, false)
 

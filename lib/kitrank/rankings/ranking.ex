@@ -26,10 +26,36 @@ defmodule Kitrank.Rankings.Ranking do
     field :scope_team_ids, {:array, :integer}, default: []
     field :scope_kit_types, {:array, :string}, default: []
 
+    # Wie geteilt wird. „gated" heisst: wer den Link oeffnet, muss erst selbst
+    # ranken — mit demselben Ausschnitt.
+    field :share_mode, :string, default: "open"
+
+    # Welche fremde Liste diese hier freischaltet.
+    belongs_to :derived_from, __MODULE__, foreign_key: :derived_from_id
+
     has_many :entries, Kitrank.Rankings.RankingEntry, preload_order: [asc: :position]
 
     timestamps(type: :utc_datetime)
   end
+
+  @share_modes ~w(open gated)
+
+  @doc """
+  Die beiden Arten zu teilen.
+
+    * `"open"` – wer den Link hat, sieht die Liste.
+    * `"gated"` – wer den Link hat, muss erst selbst ranken. Erst danach wird
+      beides gezeigt und verglichen.
+
+  Der zweite Fall erzwingt die Reihenfolge, in der ein Vergleich überhaupt
+  etwas taugt: wer die fremde Liste vorher sieht, rankt nicht mehr unbefangen.
+  """
+  def share_modes, do: @share_modes
+
+  def gated?(%__MODULE__{share_mode: "gated"}), do: true
+  def gated?(%__MODULE__{}), do: false
+
+  def derived?(%__MODULE__{derived_from_id: id}), do: not is_nil(id)
 
   @scope_felder [:scope_seasons, :scope_competition_ids, :scope_team_ids, :scope_kit_types]
 
@@ -80,9 +106,10 @@ defmodule Kitrank.Rankings.Ranking do
   @doc "Changeset für alles, was der Besitzer später ändern darf."
   def changeset(ranking, attrs) do
     ranking
-    |> cast(attrs, [:display_name | @scope_felder])
+    |> cast(attrs, [:display_name, :share_mode | @scope_felder])
     |> validate_display_name()
     |> validate_subset(:scope_kit_types, Kitrank.Kits.Kit.kit_types())
+    |> validate_inclusion(:share_mode, @share_modes)
   end
 
   defp validate_display_name(changeset) do

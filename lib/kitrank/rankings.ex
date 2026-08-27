@@ -145,6 +145,91 @@ defmodule Kitrank.Rankings do
     ranking |> Ranking.scope() |> Kits.list_kits_for_scope()
   end
 
+  ## Teilen mit Gate
+
+  @doc """
+  Legt eine Rangliste an, die auf einer fremden aufsetzt.
+
+  Sie übernimmt deren Ausschnitt — das ist der ganze Punkt: verglichen wird
+  nur, was mit denselben Einstellungen gebaut wurde. Der Ausschnitt lässt sich
+  an einer abgeleiteten Liste deshalb auch nicht ändern.
+  """
+  def create_derived(%Ranking{} = original, attrs \\ %{}) do
+    scope = Ranking.scope(original)
+
+    %Ranking{}
+    |> Ranking.create_changeset(attrs)
+    |> Ecto.Changeset.put_change(:derived_from_id, original.id)
+    |> Ecto.Changeset.put_change(:scope_seasons, scope.seasons)
+    |> Ecto.Changeset.put_change(:scope_competition_ids, scope.competition_ids)
+    |> Ecto.Changeset.put_change(:scope_team_ids, scope.team_ids)
+    |> Ecto.Changeset.put_change(:scope_kit_types, scope.kit_types)
+    |> Repo.insert()
+  end
+
+  @doc """
+  Ob eine Rangliste vollständig ist: jedes Trikot des Ausschnitts hat einen
+  Platz.
+
+  Das ist die Schwelle, ab der eine geteilte Liste mit Gate freigeschaltet
+  wird. Eine halbe Liste zu akzeptieren würde die Regel aushöhlen — man könnte
+  drei Trikots einsortieren und wäre durch.
+  """
+  def complete?(%Ranking{} = ranking) do
+    umfang = ranking |> kits_in_scope() |> length()
+
+    umfang > 0 and count_entries(ranking.id) >= umfang
+  end
+
+  @doc """
+  Sucht unter den Ranglisten dieses Browsers die, die eine fremde freischaltet.
+
+  Gibt `{:passed, eigene}`, `{:building, eigene}` oder `:none` zurück.
+
+  **Das ist eine Höflichkeitsschranke, keine Sicherheitsgrenze.** Ranglisten
+  haben kein Login, der Nachweis kommt aus dem localStorage des Browsers — ein
+  privates Fenster hebt sie auf. Für einen Abend unter Freunden reicht das;
+  wer es dicht will, braucht Konten.
+
+  Geprüft wird trotzdem beides: dass die eigene wirklich von dieser abgeleitet
+  ist, **und** dass ihr Ausschnitt noch derselbe ist. Sonst würde eine
+  nachträglich geänderte Einstellung den Vergleich still entwerten.
+  """
+  def gate_state(%Ranking{} = original, tokens) when is_list(tokens) do
+    eigene =
+      tokens
+      |> Enum.filter(&is_binary/1)
+      |> Enum.map(&get_ranking_by_edit_token/1)
+      |> Enum.filter(&passt_zum_original?(&1, original))
+
+    cond do
+      eigene == [] -> :none
+      fertig = Enum.find(eigene, &complete?/1) -> {:passed, fertig}
+      true -> {:building, hd(eigene)}
+    end
+  end
+
+  defp passt_zum_original?(nil, _original), do: false
+
+  defp passt_zum_original?(%Ranking{} = eigene, %Ranking{} = original) do
+    eigene.derived_from_id == original.id and
+      Kits.Scope.same?(Ranking.scope(eigene), Ranking.scope(original))
+  end
+
+  @doc """
+  Die Rangliste, von der diese abgeleitet ist — oder `nil`.
+
+  Gebraucht fuer den Weg zurueck: wer seine eigene Liste fertig hat, soll die
+  fremde wiederfinden, ohne die Nachricht zu suchen, in der der Link stand.
+  """
+  def get_derived_from(%Ranking{derived_from_id: nil}), do: nil
+  def get_derived_from(%Ranking{derived_from_id: id}), do: Repo.get(Ranking, id)
+
+  @doc "Setzt, wie eine Rangliste geteilt wird."
+  def set_share_mode(%Ranking{} = ranking, mode) do
+    ranking |> Ranking.changeset(%{share_mode: mode}) |> Repo.update()
+  end
+
   @doc "Nimmt ein Trikot wieder aus der Rangliste – identifiziert über das Trikot."
   def remove_kit(%Ranking{} = ranking, kit_id) do
     case Repo.get_by(RankingEntry, ranking_id: ranking.id, kit_id: kit_id) do

@@ -16,6 +16,10 @@ defmodule KitrankWeb.Ranking.Components do
   attr :season, :string, required: true
   attr :count, :integer, required: true
 
+  attr :derived_from, :any,
+    default: nil,
+    doc: "die geteilte Liste, von der diese abgeleitet ist — der Weg zurueck"
+
   attr :compact, :boolean,
     default: false,
     doc: """
@@ -44,6 +48,19 @@ defmodule KitrankWeb.Ranking.Components do
 
       <p class="kr-eyebrow">
         {gettext("Saison %{saison} · %{anzahl} Trikots", saison: @season, anzahl: @count)}
+      </p>
+
+      <%!-- Wer seine eigene Liste fertig hat, soll die fremde wiederfinden,
+            ohne die Nachricht zu suchen, in der der Link stand. --%>
+      <p :if={@derived_from} class="mt-1 text-xs text-soft">
+        {gettext("Gebaut zu")}
+        <.link
+          navigate={~p"/r/#{@derived_from.share_slug}"}
+          data-role="back-to-shared"
+          class="text-ink underline underline-offset-4"
+        >{@derived_from.display_name || gettext("einer geteilten Liste")}</.link>{gettext(
+          " — dorthin zurück, sobald du fertig bist."
+        )}
       </p>
 
       <.form for={@name_form} id="ranking-name" phx-change="save_name" class="mt-2">
@@ -83,6 +100,43 @@ defmodule KitrankWeb.Ranking.Components do
       <p class={["mt-2 text-xs text-soft", @compact && "hidden sm:block"]}>
         {gettext(
           "Der Teilen-Link zeigt immer den aktuellen Stand — du musst nichts erneut verschicken. Die Adresse in deiner Adresszeile ist dagegen geheim: wer sie hat, kann mitändern."
+        )}
+      </p>
+
+      <%!-- Wie geteilt wird. Steht direkt beim Link, weil es die Frage ist,
+            die man sich beim Verschicken stellt. --%>
+      <div class={["mt-4 flex flex-wrap items-center gap-2", @compact && "hidden sm:flex"]}>
+        <span class="kr-eyebrow">{gettext("Wer den Link öffnet")}</span>
+        <div class="flex gap-1 rounded-lg border border-line bg-sunk p-1">
+          <button
+            :for={
+              {modus, label} <- [
+                {"open", gettext("sieht sie")},
+                {"gated", gettext("rankt erst selbst")}
+              ]
+            }
+            type="button"
+            phx-click="set_share_mode"
+            phx-value-mode={modus}
+            data-role="share-mode"
+            aria-pressed={to_string(@ranking.share_mode == modus)}
+            class={[
+              "rounded-md px-3 py-1.5 text-xs transition",
+              @ranking.share_mode == modus && "bg-panel text-ink shadow-sm",
+              @ranking.share_mode != modus && "text-soft hover:text-ink"
+            ]}
+          >
+            {label}
+          </button>
+        </div>
+      </div>
+
+      <p
+        :if={@ranking.share_mode == "gated"}
+        class={["mt-2 text-xs text-soft", @compact && "hidden sm:block"]}
+      >
+        {gettext(
+          "Wer den Link öffnet, bekommt deinen Ausschnitt und muss erst selbst sortieren. Danach seht ihr beide Listen nebeneinander. Gemerkt wird das im Browser des Gegenübers — ein privates Fenster hebt es auf."
         )}
       </p>
     </div>

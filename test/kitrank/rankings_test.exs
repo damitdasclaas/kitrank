@@ -198,6 +198,111 @@ defmodule Kitrank.RankingsTest do
     end
   end
 
+  describe "Teilen mit Gate" do
+    setup do
+      %{teams: [a, _b], kits: kits} = league_fixture(team_count: 2, kit_types: ["home"])
+      {:ok, original} = Rankings.create_ranking(%{display_name: "Toms Liste"})
+
+      {:ok, original} =
+        Rankings.update_scope(original, %{seasons: [Kitrank.Kits.current_season()]})
+
+      %{original: original, kits: kits, a: a}
+    end
+
+    test "eine Rangliste ist zunächst offen", %{original: original} do
+      refute Rankings.Ranking.gated?(original)
+    end
+
+    test "abgeleitet heißt: derselbe Ausschnitt", %{original: original, a: a} do
+      {:ok, original} = Rankings.update_scope(original, %{team_ids: [a.id], kit_types: ["home"]})
+      {:ok, eigene} = Rankings.create_derived(original)
+
+      assert eigene.derived_from_id == original.id
+
+      assert Kitrank.Kits.Scope.same?(
+               Rankings.Ranking.scope(eigene),
+               Rankings.Ranking.scope(original)
+             )
+    end
+
+    test "vollständig heißt: jedes Trikot des Ausschnitts hat einen Platz", %{
+      original: original,
+      kits: kits
+    } do
+      # Eine halbe Liste zu akzeptieren wuerde die Regel aushoehlen.
+      {:ok, eigene} = Rankings.create_derived(original)
+      refute Rankings.complete?(eigene)
+
+      Rankings.add_kit(eigene, hd(kits).id)
+      refute Rankings.complete?(eigene)
+
+      Rankings.add_kits(eigene, Enum.map(kits, & &1.id))
+      assert Rankings.complete?(eigene)
+    end
+
+    test "ohne eigene Liste kommt niemand durch", %{original: original} do
+      assert Rankings.gate_state(original, []) == :none
+      assert Rankings.gate_state(original, ["erfunden"]) == :none
+    end
+
+    test "eine fremde Liste zählt nicht", %{original: original} do
+      # Irgendeine Rangliste im Browser reicht nicht – sie muss von dieser
+      # abgeleitet sein.
+      {:ok, fremde} = Rankings.create_ranking(%{display_name: "Was anderes"})
+
+      assert Rankings.gate_state(original, [fremde.edit_token]) == :none
+    end
+
+    test "eine angefangene meldet sich als angefangen", %{original: original, kits: kits} do
+      {:ok, eigene} = Rankings.create_derived(original)
+      Rankings.add_kit(eigene, hd(kits).id)
+
+      assert {:building, gefunden} = Rankings.gate_state(original, [eigene.edit_token])
+      assert gefunden.id == eigene.id
+    end
+
+    test "eine fertige öffnet das Gate", %{original: original, kits: kits} do
+      {:ok, eigene} = Rankings.create_derived(original)
+      Rankings.add_kits(eigene, Enum.map(kits, & &1.id))
+
+      assert {:passed, gefunden} = Rankings.gate_state(original, [eigene.edit_token])
+      assert gefunden.id == eigene.id
+    end
+
+    test "ein nachträglich geänderter Ausschnitt schließt es wieder", %{
+      original: original,
+      kits: kits,
+      a: a
+    } do
+      # Sonst wuerde eine geaenderte Einstellung den Vergleich still entwerten:
+      # zwei Listen ueber verschiedene Trikots vergleichen sich nicht.
+      {:ok, eigene} = Rankings.create_derived(original)
+      Rankings.add_kits(eigene, Enum.map(kits, & &1.id))
+      assert {:passed, _} = Rankings.gate_state(original, [eigene.edit_token])
+
+      {:ok, _} = Rankings.update_scope(eigene, %{team_ids: [a.id]})
+
+      assert Rankings.gate_state(original, [eigene.edit_token]) == :none
+    end
+
+    test "der Teilen-Modus lässt sich setzen und nur auf gültige Werte", %{original: original} do
+      assert {:ok, %{share_mode: "gated"}} = Rankings.set_share_mode(original, "gated")
+      assert {:ok, %{share_mode: "open"}} = Rankings.set_share_mode(original, "open")
+      assert {:error, changeset} = Rankings.set_share_mode(original, "irgendwas")
+      assert %{share_mode: _} = errors_on(changeset)
+    end
+
+    test "verschwindet das Original, bleibt die eigene Liste", %{original: original} do
+      # Sie gehoert jemand anderem.
+      {:ok, eigene} = Rankings.create_derived(original)
+      {:ok, _} = Rankings.delete_ranking(original)
+
+      frisch = Rankings.get_ranking_by_edit_token(eigene.edit_token)
+      assert frisch
+      assert is_nil(frisch.derived_from_id)
+    end
+  end
+
   describe "move_to/3" do
     setup do
       %{kits: [a, b, c] = kits} = league_fixture(team_count: 3, kit_types: ["home"])

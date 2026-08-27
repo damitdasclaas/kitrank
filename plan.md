@@ -192,7 +192,35 @@ Mit Punkt 1 schrumpft die Liste ohnehin auf eine Sportart.
 
 ---
 
-## 5. Geteilter Link mit Zwang zur eigenen Rangliste
+## 5. Geteilter Link mit Zwang zur eigenen Rangliste — **fertig**
+
+**So gebaut:** `share_mode` (`open` | `gated`) und `derived_from_id` an
+`rankings`. Wer einen Gate-Link öffnet, bekommt einen Bildschirm statt der
+Liste, baut mit einem Klick eine eigene mit **demselben Ausschnitt** und sieht
+danach beides — samt Vergleich.
+
+**Die drei Fragen sind beantwortet:**
+
+* **Wer ist der Empfänger?** Der `RememberedRankings`-Hook meldet die Tokens
+  aus dem localStorage. Geprüft wird beides: dass die eigene Liste wirklich von
+  dieser abgeleitet ist, *und* dass ihr Ausschnitt noch derselbe ist — sonst
+  würde eine nachträglich geänderte Einstellung den Vergleich still entwerten.
+  Bleibt eine **Höflichkeitsschranke**: ein privates Fenster hebt sie auf. Das
+  steht auf dem Bildschirm, nicht im Kleingedruckten.
+* **Wann ist die eigene fertig?** Jedes Trikot des Ausschnitts hat einen Platz.
+  Eine halbe Liste zu akzeptieren würde die Regel aushöhlen.
+* **Doppelt zum Reveal?** Nein — `Reveal.Result.build/2` rechnet über
+  Ranglisten und weiß nichts von Räumen. Zwei Listen sind der kleinste Fall
+  davon, also rechnet dieselbe Auswertung auch hier.
+
+**Dazugekommen:** der Ausschnitt einer abgeleiteten Liste lässt sich nicht
+ändern (das wäre der schnellste Weg, den Vergleich zu entwerten), und von ihr
+führt ein Weg zurück zur geteilten — sonst hat man seine eigene fertig und
+findet die fremde nicht mehr.
+
+Der Rest dieses Abschnitts ist die ursprüngliche Überlegung.
+
+---
 
 `share_mode` an `rankings` (`offen` | `erst selber`), plus `abgeleitet_von`,
 damit das Gate weiß, welche eigene Rangliste die fremde freischaltet.
@@ -213,7 +241,7 @@ damit das Gate weiß, welche eigene Rangliste die fremde freischaltet.
 
 ---
 
-## 6. Konten — vorbereitet, nicht scharf
+## 6. Konten — vorbereitet, nicht scharf *(offen)*
 
 **Die Registrierung ist vollständig gebaut und zu.** Der Schalter ist
 `Application.get_env(:kitrank, :registration_open, false)`, geprüft in
@@ -243,5 +271,12 @@ wird — sonst baut man eine Anmeldung ohne Anlass.
 2. ~~**Trikot-Kategorien pro Sportart**~~ — fertig.
 3. ~~**Ausschnitt speichern + Typ-Achse**~~ — fertig.
 4. ~~**Multi-Select**~~ — fertig.
-5. **Geteilter Link mit Gate** — zuletzt, hier sitzen die Produktfragen.
-6. **Konten** — erst wenn 5 den Anlass geliefert hat.
+5. ~~**Geteilter Link mit Gate**~~ — fertig.
+6. **Konten** — der Anlass ist jetzt da: das Gate hängt am localStorage. Der
+   Hinweis darauf steht schon am Gate und erscheint, sobald
+   `registration_open` umgelegt wird.
+
+---
+
+**Fünf von sechs sind durch.** Bleibt nur noch Punkt 6 — dann kann dieses
+Papier weg.

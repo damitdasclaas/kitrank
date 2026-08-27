@@ -1111,6 +1111,161 @@ defmodule KitrankWeb.RankingLiveTest do
     end
   end
 
+  describe "Teilen mit Gate" do
+    setup do
+      %{kits: kits} = league(team_count: 2, kit_types: ["home"])
+      original = ranking_with(kits)
+      {:ok, original} = Rankings.set_share_mode(original, "gated")
+      %{original: original, kits: kits}
+    end
+
+    defp meldet(view, tokens) do
+      render_hook(view, "remembered_rankings", %{"tokens" => tokens})
+    end
+
+    test "eine offene Liste zeigt sich sofort", %{conn: conn, kits: kits} do
+      offen = ranking_with(kits)
+      {:ok, _view, html} = live(conn, ~p"/r/#{offen.share_slug}")
+
+      refute html =~ "zeigt sich erst"
+      assert html =~ "Rangliste"
+    end
+
+    test "eine Liste mit Gate zeigt erst nichts", %{conn: conn, original: original} do
+      {:ok, view, html} = live(conn, ~p"/r/#{original.share_slug}")
+
+      # Vor der Antwort des Browsers weiss der Server nichts.
+      assert html =~ "Einen Moment"
+
+      html = meldet(view, [])
+      assert html =~ "zeigt sich erst, wenn du selbst gerankt hast"
+      assert html =~ ~s(data-role="start-own")
+    end
+
+    test "und sagt ehrlich, woran die Sperre hängt", %{conn: conn, original: original} do
+      {:ok, view, _html} = live(conn, ~p"/r/#{original.share_slug}")
+
+      assert meldet(view, []) =~ "in diesem Browser"
+    end
+
+    test "der Knopf legt eine abgeleitete Liste an", %{conn: conn, original: original} do
+      {:ok, view, _html} = live(conn, ~p"/r/#{original.share_slug}")
+      meldet(view, [])
+
+      assert {:error, {:live_redirect, %{to: ziel}}} =
+               view |> element(~s{[data-role="start-own"]}) |> render_click()
+
+      assert ziel =~ ~r{^/rankings/[\w-]+/auswahl$}
+
+      abgeleitet = Kitrank.Repo.all(Rankings.Ranking) |> Enum.find(&(&1.derived_from_id != nil))
+      assert abgeleitet
+
+      assert Kitrank.Kits.Scope.same?(
+               Rankings.Ranking.scope(abgeleitet),
+               Rankings.Ranking.scope(original)
+             )
+    end
+
+    test "eine angefangene eigene Liste öffnet noch nichts", %{
+      conn: conn,
+      original: original,
+      kits: kits
+    } do
+      {:ok, eigene} = Rankings.create_derived(original)
+      Rankings.add_kit(eigene, hd(kits).id)
+
+      {:ok, view, _html} = live(conn, ~p"/r/#{original.share_slug}")
+      html = meldet(view, [eigene.edit_token])
+
+      assert html =~ "noch nicht fertig"
+      assert html =~ "Weitermachen"
+    end
+
+    test "eine fertige öffnet das Gate und zeigt den Vergleich", %{
+      conn: conn,
+      original: original,
+      kits: kits
+    } do
+      {:ok, eigene} = Rankings.create_derived(original)
+      Rankings.add_kits(eigene, Enum.map(kits, & &1.id))
+
+      {:ok, view, _html} = live(conn, ~p"/r/#{original.share_slug}")
+      html = meldet(view, [eigene.edit_token])
+
+      refute html =~ "zeigt sich erst"
+      # Der Lohn fuer die Muehe: nicht nur die fremde Liste, sondern der
+      # Vergleich – gerechnet von derselben Auswertung wie im Reveal.
+      assert html =~ "Ihr beide"
+      assert html =~ "habt ihr beide einsortiert"
+      assert html =~ "Deine Liste"
+    end
+
+    test "die Einträge der fremden Liste stehen erst danach da", %{
+      conn: conn,
+      original: original,
+      kits: kits
+    } do
+      verein = Kits.get_team!(hd(kits).team_id)
+
+      {:ok, view, _html} = live(conn, ~p"/r/#{original.share_slug}")
+      gesperrt = meldet(view, [])
+      refute gesperrt =~ verein.name
+
+      {:ok, eigene} = Rankings.create_derived(original)
+      Rankings.add_kits(eigene, Enum.map(kits, & &1.id))
+
+      {:ok, view, _html} = live(conn, ~p"/r/#{original.share_slug}")
+      assert meldet(view, [eigene.edit_token]) =~ verein.name
+    end
+  end
+
+  describe "Abgeleitete Ranglisten" do
+    setup do
+      %{kits: kits} = league(team_count: 2, kit_types: ["home", "away"])
+      original = ranking_with(kits)
+      {:ok, original} = Rankings.update_scope(original, %{kit_types: ["home"]})
+      {:ok, eigene} = Rankings.create_derived(original)
+      %{original: original, eigene: eigene}
+    end
+
+    test "der Ausschnitt lässt sich nicht ändern", %{conn: conn, eigene: eigene} do
+      # Ihn aendern zu koennen waere der schnellste Weg, den Vergleich zu
+      # entwerten, fuer den die Liste ueberhaupt gebaut wird.
+      {:ok, _view, html} = live(conn, ~p"/rankings/#{eigene.edit_token}/auswahl")
+
+      refute html =~ ~s(phx-value-axis="teams")
+      refute html =~ ~s(phx-value-axis="kit_types")
+      refute html =~ ~s(id="verein-picker")
+      assert html =~ "kommen von der geteilten Liste"
+    end
+
+    test "der Weg zurück zur geteilten Liste steht da", %{
+      conn: conn,
+      original: original,
+      eigene: eigene
+    } do
+      # Sonst hat man seine eigene fertig und findet die fremde nicht mehr —
+      # ausser man sucht die Nachricht, in der der Link stand.
+      {:ok, _view, html} = live(conn, ~p"/rankings/#{eigene.edit_token}/edit")
+
+      assert html =~ ~s(data-role="back-to-shared")
+      assert html =~ "/r/#{original.share_slug}"
+    end
+
+    test "eine eigene Liste zeigt keinen solchen Weg", %{conn: conn, original: original} do
+      {:ok, _view, html} = live(conn, ~p"/rankings/#{original.edit_token}/edit")
+
+      refute html =~ ~s(data-role="back-to-shared")
+    end
+
+    test "eine eigene Liste behält ihre Regler", %{conn: conn, original: original} do
+      {:ok, _view, html} = live(conn, ~p"/rankings/#{original.edit_token}/auswahl")
+
+      assert html =~ ~s(id="verein-picker")
+      assert html =~ ~s(phx-value-axis="kit_types")
+    end
+  end
+
   describe "Teilen" do
     setup do
       %{kits: kits} = league(team_count: 2, kit_types: ["home"])
