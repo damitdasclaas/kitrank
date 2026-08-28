@@ -103,6 +103,11 @@ Der Abruf läuft in einem eigenen Prozess (`start_async`) — ein Shop, der zwö
 Sekunden nicht antwortet, würde die Oberfläche sonst so lange einfrieren, und
 ein eingefrorenes Fenster sieht aus wie ein Fehler.
 
+**Welche Kategorien es gibt, sagt die Sportart** (`sports.kit_types`): Fußball
+kennt Heim, Auswärts, Ausweich und Sondertrikots, die NFL kein Ausweichtrikot —
+dort heißen Sondertrikots „Alternate" (`sports.special_label`). Die Struktur ist
+dieselbe, nur die Auswahl nicht.
+
 **Sondertrikots** gibt es pro Team und Saison beliebig viele — Heim, Auswärts
 und Ausweich weiterhin genau eines. Dafür brauchen Sondertrikots einen **Namen**
 („125 Jahre", „Weihnachten"): ohne ihn stünde in jeder Liste mehrfach dasselbe
@@ -246,13 +251,14 @@ stehen schnell über hundert Trikots zur Wahl. Die per Drag in eine Reihenfolge
 zu bringen wäre unbenutzbar, und ein Reveal darüber liefe hundert Runden.
 Ausgewählt wird deshalb in einem Raster, sortiert nur noch, was übrig bleibt.
 
-Die Auswahl beginnt mit dem **Ausschnitt** — drei Achsen, frei kombinierbar:
+Die Auswahl beginnt mit dem **Ausschnitt** — vier Achsen, frei kombinierbar:
 
 | Achse | wofür |
 |---|---|
 | **Saison** | eine, mehrere, oder „Alle" fürs Archiv |
 | **Liga** | ein Wettbewerb, mehrere, oder „Alle" |
-| **Verein** | einer oder mehrere |
+| **Verein** | suchbare Mehrfachauswahl, Gewähltes als abwählbare Chips |
+| **Trikot** | Heim, Auswärts, Ausweich, Sonder — je nachdem, was die Sportart kennt |
 
 Damit geht beides: „alle Heimtrikots der Bundesliga 2026/27" genauso wie
 **„alle HSV-Trikots der letzten zehn Jahre"** — Saison auf „Alle", Verein auf
@@ -272,10 +278,41 @@ den gewählten Ausschnitt — ein Knopf, der stillschweigend mehr mitnimmt, wär
 eine böse Überraschung. Angeboten werden nur Kit-Typen, die es im Ausschnitt
 wirklich gibt.
 
-Der Ausschnitt steht bewusst **nicht** in der Datenbank: er sagt nur, worüber
-gerade entschieden wird, und gehört nicht zur Rangliste selbst. Beim
-Wiederkommen ergibt er sich aus dem, was schon drin ist — wer bisher nur
-HSV-Trikots gewählt hat, landet wieder dort.
+Der Ausschnitt **steht an der Rangliste** (vier `scope_*`-Spalten) und wird bei
+jeder Änderung geschrieben. Er ist das, was jemand eingestellt hat, und soll
+einen geschlossenen Tab überleben — vorher wurde er beim Laden aus den
+vorhandenen Einträgen erraten, und geteilt werden konnte er gar nicht.
+
+Eine leere Liste heißt auf jeder Achse **keine Einschränkung**; ein leerer
+Ausschnitt ist damit „alles". Für Ranglisten von vor dieser Änderung ist das der
+ehrlichste Ersatz für „wir wissen es nicht mehr".
+
+### Teilen: ansehen oder erst selbst ranken
+
+Beim Teilen gibt es zwei Absichten, und die Rangliste kennt beide
+(`rankings.share_mode`):
+
+| Modus | Wer den Link öffnet |
+|---|---|
+| `open` | sieht die Liste |
+| `gated` | muss erst selbst ranken — mit **demselben Ausschnitt** |
+
+Der zweite Fall erzwingt die Reihenfolge, in der ein Vergleich überhaupt etwas
+taugt: wer die fremde Reihenfolge vorher sieht, sortiert nicht mehr unbefangen.
+Danach sieht man beides — samt Auswertung, welche Trikots unstrittig waren und
+wo der größte Abstand liegt. Gerechnet wird sie von `Reveal.Result`, derselben
+Funktion wie im Reveal: sie rechnet über Ranglisten und weiß nichts von Räumen,
+zwei Listen sind der kleinste Fall davon.
+
+Der Ausschnitt einer abgeleiteten Liste lässt sich **nicht ändern** — das wäre
+der schnellste Weg, den Vergleich zu entwerten, für den sie gebaut wird. Geprüft
+wird beim Freischalten beides: dass die eigene Liste wirklich von dieser
+abgeleitet ist, und dass ihr Ausschnitt noch derselbe ist.
+
+**Das ist eine Höflichkeitsschranke, keine Sicherheitsgrenze.** Der Nachweis
+kommt aus dem localStorage des Browsers; ein privates Fenster hebt ihn auf. Für
+einen Abend unter Freunden reicht das — und es steht so auf dem Bildschirm, nicht
+im Kleingedruckten. Wer es dicht will, braucht Konten.
 
 ### Sortieren durch Vergleichen
 
@@ -313,8 +350,10 @@ Browser vielleicht nicht mehr hat.
 
 ## Reveal
 
-`/reveal/new` ist der Einstieg: links Code eingeben und beitreten, rechts einen
-Raum erstellen. `/reveal/:room_code` ist der Raum selbst. Beigetreten wird mit
+Der Einstieg steht **im Hero der Startseite**: Raumcode eintippen, Enter, drin —
+der häufigere Fall ist „ich habe einen Code im Chat bekommen", nicht „ich mache
+einen Raum auf". Daneben führt ein Link auf `/reveal/new`, wo links beigetreten
+und rechts ein Raum erstellt wird. `/reveal/:room_code` ist der Raum selbst. Beigetreten wird mit
 dem **Teilen-Link** der eigenen Rangliste, nicht mit dem Bearbeiten-Link — das
 Reveal braucht Leserechte, nicht mehr.
 
@@ -361,8 +400,23 @@ den Vergleich; gestapelt sieht man nie zwei gleichzeitig.
 
 ## Zur Oberfläche
 
-Die Übersicht liegt auf `/`, ein Team auf `/teams/:id`, der Vergleich auf `/vergleich`
-— alle drei bedient derselbe LiveView über `live_action`.
+`/` ist die **Sportart-Auswahl**; die Übersicht hängt darunter:
+
+| Pfad | was |
+|---|---|
+| `/` | Sportart wählen — und der Reveal-Einstieg mit Raumcode-Feld |
+| `/football` | Übersicht einer Sportart |
+| `/football/teams/:id` | Verein-Detail als Modal darüber |
+| `/football/vergleich` | Direktvergleich |
+
+Die letzten drei bedient derselbe LiveView über `live_action`. **`/:sport` steht
+als letzter Scope im Router** und fängt alles ab, was davor nicht gepasst hat —
+neue Top-Level-Routen müssen davor stehen, und ihr Pfad gehört in die Sperrliste
+in `Kitrank.Kits.Sport`, damit niemand eine Sportart anlegt, die sie verschluckt.
+
+**Der Direktvergleich reicht über Sportarten hinaus.** Ein Bundesliga-Trikot
+gegen ein NFL-Trikot zu stellen kann diese App und trikotranking.de nicht; die
+Sportart im Pfad sagt nur, wohin das Schließen zurückführt.
 
 Die Vergleichsauswahl steht im Query-Parameter `trikots`, nicht im Socket-State.
 Das macht sie teilbar (`/vergleich?trikots=12,40,7`), lässt den Zurück-Button
