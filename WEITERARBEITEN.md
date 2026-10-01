@@ -139,6 +139,7 @@ mix kitrank.import [datei]        # Stammdaten, idempotent, pro Sportart
 mix kitrank.aufraeumen            # Trikots ohne Kategorie in ihrer Sportart: melden
 mix kitrank.aufraeumen --loeschen # … und löschen (nur leere, unbenutzte)
 mix kitrank.thumbs                # kleine Bildvarianten nachholen
+mix kitrank.bilder_pruefen        # tote Bild-/Shop-Adressen melden
 mix kitrank.admin <mail>          # Admin anlegen/befördern (einmaliger Link)
 mix kitrank.admin <mail> --password  # dito, mit zufällig erzeugtem Passwort
 ```
@@ -150,6 +151,7 @@ Auf dem Server dasselbe über `Kitrank.Release`:
 /app/bin/kitrank eval 'Kitrank.Release.import_teams()'
 /app/bin/kitrank eval 'Kitrank.Release.import_teams("data/nfl_2026_27.json")'
 /app/bin/kitrank eval 'Kitrank.Release.aufraeumen()'
+/app/bin/kitrank eval 'Kitrank.Release.bilder_pruefen()'
 /app/bin/kitrank eval 'Kitrank.Release.admin("du@example.com")'
 /app/bin/kitrank eval 'Kitrank.Release.admin("du@example.com", :password)'
 ```

@@ -72,6 +72,18 @@ defmodule Kitrank.Release do
   end
 
   @doc """
+  Prüft, ob verlinkte Bild- und Shop-Adressen noch erreichbar sind, und meldet
+  die toten. Das Gegenstück zu `mix kitrank.bilder_pruefen` für den Server.
+
+      /app/bin/kitrank eval 'Kitrank.Release.bilder_pruefen()'
+  """
+  def bilder_pruefen do
+    start_app()
+    Kitrank.Kits.ImageCheck.run()
+    :ok
+  end
+
+  @doc """
   Legt ein Admin-Konto an oder befördert ein bestehendes.
 
   Das Gegenstück zu `mix kitrank.admin` für den Server. Es gibt bewusst keinen
