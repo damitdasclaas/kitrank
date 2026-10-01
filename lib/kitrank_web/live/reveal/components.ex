@@ -185,6 +185,30 @@ defmodule KitrankWeb.Reveal.Components do
             phx-value-id={participant.id}
             class="shrink-0 text-[11px] text-soft underline-offset-4 hover:text-ink hover:underline"
           >{gettext("Steuerung geben")}</button>
+          <button
+            :if={participant.id == @me}
+            type="button"
+            phx-click="toggle_ready"
+            class={[
+              "shrink-0 flex items-center gap-1 rounded-full border px-2.5 py-1 font-mono text-[10px] transition",
+              participant.ready && "border-transparent bg-emerald-500 text-white",
+              !participant.ready && "border-line text-soft hover:border-ink hover:text-ink"
+            ]}
+          >
+            <.icon :if={participant.ready} name="hero-check-mini" class="size-3" />
+            {if participant.ready, do: gettext("Bereit"), else: gettext("Bereit melden")}
+          </button>
+          <span
+            :if={participant.id != @me}
+            class={[
+              "shrink-0 flex items-center gap-1 font-mono text-[10px]",
+              participant.ready && "text-emerald-600",
+              !participant.ready && "text-soft"
+            ]}
+          >
+            <.icon :if={participant.ready} name="hero-check-mini" class="size-3" />
+            {if participant.ready, do: gettext("bereit"), else: gettext("wartet")}
+          </span>
         </li>
       </ul>
 
@@ -372,7 +396,9 @@ defmodule KitrankWeb.Reveal.Components do
         <p :if={@frage != :done} class="text-sm text-soft">
           {gettext("Welches gefällt dir besser?")}
         </p>
-        <p :if={@frage == :done} class="text-sm text-soft">{gettext("Steht — du bist bereit.")}</p>
+        <p :if={@frage == :done} class="text-sm text-soft">
+          {gettext("Fertig einsortiert. Unten noch „Bereit melden“ nicht vergessen.")}
+        </p>
         <p class="ml-auto font-mono text-[11px] text-soft">
           {gettext("%{platziert} von %{gesamt} eingeordnet",
             platziert: @fortschritt.placed,
@@ -834,19 +860,38 @@ defmodule KitrankWeb.Reveal.Components do
   end
 
   attr :room, :map, required: true
-  attr :ready?, :boolean, required: true
+  attr :ready_count, :integer, default: 0
+  attr :ready_total, :integer, default: 0
+  attr :all_ready?, :boolean, default: false
   attr :revealed, :integer, default: 0
   attr :total, :integer, default: 0
   attr :all_revealed?, :boolean, default: false
 
-  @doc "Die Steuerung – nur für den, der sie gerade hat."
+  @doc """
+  Die Steuerung – nur für den, der sie gerade hat.
+
+  Startet nicht blockiert, auch wenn nicht alle bereit sind: der Status sagt
+  das ehrlich ("3/5 bereit"), aber ein Host soll nicht an einer Person
+  festhängen, die das Handy weggelegt hat. `data-confirm` fragt dafür einmal
+  nach, statt den Knopf stumm zu sperren – dieselbe Haltung wie beim
+  Weiterschalten während des Reveals, wo das schon so gilt.
+  """
   def host_bar(assigns) do
     ~H"""
     <div class="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-panel/95 backdrop-blur">
       <div class="mx-auto flex max-w-[1500px] items-center gap-3 px-4 py-3 sm:px-6 lg:px-8">
         <p class="min-w-0 text-sm">
           <span :if={@room.status == "waiting"} class="text-soft">
-            {if @ready?, do: "Alle da? Dann los.", else: gettext("Warte auf Teilnehmer.")}
+            {cond do
+              @ready_total == 0 ->
+                gettext("Warte auf Teilnehmer.")
+
+              @all_ready? ->
+                gettext("Alle bereit. Los geht's.")
+
+              true ->
+                gettext("%{bereit}/%{gesamt} bereit.", bereit: @ready_count, gesamt: @ready_total)
+            end}
           </span>
           <span :if={@room.status == "revealing"} class="text-soft">
             <span class="font-mono tabular-nums text-ink">{@revealed}/{@total}</span> {gettext(
@@ -859,7 +904,11 @@ defmodule KitrankWeb.Reveal.Components do
         <button
           type="button"
           phx-click="reveal_next"
-          disabled={@room.status == "waiting" && !@ready?}
+          disabled={@room.status == "waiting" && @ready_total == 0}
+          data-confirm={
+            if @room.status == "waiting" && @ready_total > 0 && !@all_ready?,
+              do: gettext("Es sind noch nicht alle bereit. Trotzdem starten?")
+          }
           phx-disable-with="…"
           class={[
             "ml-auto rounded-md px-5 py-2.5 text-sm font-semibold transition disabled:opacity-40",

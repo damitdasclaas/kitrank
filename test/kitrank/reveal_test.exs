@@ -263,6 +263,68 @@ defmodule Kitrank.RevealTest do
     end
   end
 
+  describe "toggle_ready/2" do
+    test "wer beitritt, ist zunächst nicht bereit" do
+      room = room_fixture()
+      {:ok, tom} = Reveal.join(room, ranking_with(1).share_slug, "Tom")
+
+      refute tom.ready
+    end
+
+    test "schaltet zwischen bereit und nicht bereit um" do
+      room = room_fixture()
+      {:ok, tom} = Reveal.join(room, ranking_with(1).share_slug, "Tom")
+
+      assert {:ok, %{ready: true}} = Reveal.toggle_ready(room, tom.id)
+      assert {:ok, %{ready: false}} = Reveal.toggle_ready(room, tom.id)
+    end
+
+    test "broadcastet den geänderten Stand" do
+      room = room_fixture()
+      {:ok, tom} = Reveal.join(room, ranking_with(1).share_slug, "Tom")
+      Reveal.subscribe(room)
+
+      Reveal.toggle_ready(room, tom.id)
+
+      assert_receive {:participants_changed, [%{ready: true}]}
+    end
+
+    test "eine fremde ID geht ins Leere" do
+      room = room_fixture()
+      assert {:error, :not_a_participant} = Reveal.toggle_ready(room, -1)
+    end
+  end
+
+  describe "all_ready?/1" do
+    test "ein leerer Raum gilt nicht als bereit" do
+      refute Reveal.all_ready?(room_fixture())
+    end
+
+    test "erst wenn wirklich alle bereit sind" do
+      room = room_fixture()
+      {:ok, tom} = Reveal.join(room, ranking_with(1).share_slug, "Tom")
+      {:ok, anna} = Reveal.join(room, ranking_with(1).share_slug, "Anna")
+
+      Reveal.toggle_ready(room, tom.id)
+      refute Reveal.all_ready?(room)
+
+      Reveal.toggle_ready(room, anna.id)
+      assert Reveal.all_ready?(room)
+    end
+  end
+
+  describe "ready_progress/1" do
+    test "zählt bereite gegen alle Teilnehmer" do
+      room = room_fixture()
+      {:ok, tom} = Reveal.join(room, ranking_with(1).share_slug, "Tom")
+      {:ok, _anna} = Reveal.join(room, ranking_with(1).share_slug, "Anna")
+
+      assert Reveal.ready_progress(room) == {0, 2}
+      Reveal.toggle_ready(room, tom.id)
+      assert Reveal.ready_progress(room) == {1, 2}
+    end
+  end
+
   describe "start/1" do
     test "startet beim schlechtesten Rang der längsten Liste" do
       room = room_fixture()

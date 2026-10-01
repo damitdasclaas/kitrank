@@ -296,6 +296,53 @@ defmodule Kitrank.Reveal do
     Repo.one(from p in Participant, where: p.room_id == ^room_id, select: count(p.id))
   end
 
+  ## Bereit-Status
+
+  @doc """
+  Bereit-Status umschalten. Nur eigene, keine fremde ID – die Oberfläche
+  ruft das immer mit `me` auf, aber ein Context-Aufruf darf sich darauf nicht
+  verlassen.
+
+  Broadcastet `{:participants_changed, ...}`, dieselbe Nachricht wie beim
+  Beitritt – die Lobby lädt bei beidem einfach neu.
+  """
+  def toggle_ready(%Room{} = room, participant_id) do
+    case Repo.get_by(Participant, id: participant_id, room_id: room.id) do
+      nil ->
+        {:error, :not_a_participant}
+
+      participant ->
+        participant
+        |> Participant.ready_changeset(!participant.ready)
+        |> Repo.update()
+        |> case do
+          {:ok, participant} ->
+            broadcast(room, {:participants_changed, list_participants(room)})
+            {:ok, participant}
+
+          {:error, changeset} ->
+            {:error, changeset}
+        end
+    end
+  end
+
+  @doc """
+  Sind alle im Raum bereit? Ein leerer Raum zählt nicht als bereit – sonst
+  wäre der allererste Zustand schon "alle bereit".
+  """
+  def all_ready?(%Room{} = room) do
+    case list_participants(room) do
+      [] -> false
+      participants -> Enum.all?(participants, & &1.ready)
+    end
+  end
+
+  @doc "Wie viele von wie vielen sich bereit gemeldet haben – für die Anzeige beim Host."
+  def ready_progress(%Room{} = room) do
+    participants = list_participants(room)
+    {Enum.count(participants, & &1.ready), length(participants)}
+  end
+
   ## Ablauf
 
   @doc """

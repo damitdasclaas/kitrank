@@ -173,6 +173,98 @@ defmodule KitrankWeb.RevealLiveTest do
     end
   end
 
+  describe "Bereit melden" do
+    defp join_via_view(view, name, ranking) do
+      view
+      |> form(~s{form[phx-submit="join"]}, %{
+        "display_name" => name,
+        "share_slug" => ranking.share_slug
+      })
+      |> render_submit()
+    end
+
+    test "wer beitritt, ist zunächst nicht bereit", %{conn: conn} do
+      room = room_fixture()
+      {:ok, view, _html} = live(conn, ~p"/reveal/#{room.room_code}")
+
+      html = join_via_view(view, "Tom", ranking_with(1))
+
+      assert html =~ "Bereit melden"
+    end
+
+    test "Bereit melden schaltet um und ist bei allen sichtbar", %{conn: conn} do
+      room = room_fixture()
+      {:ok, eigen, _html} = live(conn, ~p"/reveal/#{room.room_code}")
+      join_via_view(eigen, "Tom", ranking_with(1))
+
+      {:ok, beobachter, _html} = live(conn, ~p"/reveal/#{room.room_code}")
+
+      eigen |> element(~s{button[phx-click="toggle_ready"]}) |> render_click()
+
+      # Beim Beitretenden selbst steht der eigene Knopf jetzt auf "Bereit" ...
+      assert render(eigen) =~ ~s{phx-click="toggle_ready"}
+      refute render(eigen) =~ "Bereit melden"
+      # ... und wer nur zuschaut, sieht denselben Stand als reine Anzeige.
+      assert render(beobachter) =~ "bereit"
+    end
+
+    test "noch mal klicken macht die Meldung rückgängig", %{conn: conn} do
+      room = room_fixture()
+      {:ok, view, _html} = live(conn, ~p"/reveal/#{room.room_code}")
+      join_via_view(view, "Tom", ranking_with(1))
+      knopf = ~s{button[phx-click="toggle_ready"]}
+
+      view |> element(knopf) |> render_click()
+      view |> element(knopf) |> render_click()
+
+      assert render(view) =~ "Bereit melden"
+    end
+
+    test "der Host sieht den ehrlichen Fortschritt statt nur 'irgendwer ist da'", %{conn: conn} do
+      room = room_fixture()
+      {:ok, host, _html} = live(conn, ~p"/reveal/#{room.room_code}")
+      as_host(host, room)
+
+      assert render(host) =~ "Warte auf Teilnehmer."
+
+      {:ok, gast, _html} = live(conn, ~p"/reveal/#{room.room_code}")
+      join_via_view(gast, "Tom", ranking_with(1))
+
+      assert render(host) =~ "0/1 bereit."
+
+      gast |> element(~s{button[phx-click="toggle_ready"]}) |> render_click()
+
+      # HTML-escapt das Apostroph zu &#39; - gegen das volle "Los geht's."
+      # pruefen waere zerbrechlich.
+      assert render(host) =~ "Alle bereit."
+    end
+
+    test "der Start-Knopf bleibt nutzbar, auch wenn noch nicht alle bereit sind", %{conn: conn} do
+      room = room_fixture()
+      {:ok, host, _html} = live(conn, ~p"/reveal/#{room.room_code}")
+      as_host(host, room)
+
+      {:ok, gast, _html} = live(conn, ~p"/reveal/#{room.room_code}")
+      join_via_view(gast, "Tom", ranking_with(1))
+
+      knopf = host |> element(~s{button[phx-click="reveal_next"]})
+      # disabled="" ist das echte Attribut - "disabled" allein matcht auch die
+      # Tailwind-Klasse "disabled:opacity-40", die immer im class-Attribut steht.
+      refute render(knopf) =~ ~s(disabled="")
+
+      render_click(knopf)
+      assert {:ok, %{status: "revealing"}} = Reveal.fetch_room(room.room_code)
+    end
+
+    test "ein leerer Raum lässt sich nicht starten", %{conn: conn} do
+      room = room_fixture()
+      {:ok, host, _html} = live(conn, ~p"/reveal/#{room.room_code}")
+      as_host(host, room)
+
+      assert render(host |> element(~s{button[phx-click="reveal_next"]})) =~ ~s(disabled="")
+    end
+  end
+
   describe "Ohne Vorbereitung beitreten" do
     setup do
       competition = competition_fixture(name: "Bundesliga", tier: 1)

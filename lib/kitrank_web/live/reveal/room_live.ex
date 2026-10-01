@@ -196,6 +196,19 @@ defmodule KitrankWeb.Reveal.RoomLive do
     {:noreply, update(socket, :board_open?, &(!&1))}
   end
 
+  ## Bereit melden
+
+  def handle_event("toggle_ready", _params, socket) do
+    case socket.assigns.me do
+      nil ->
+        {:noreply, socket}
+
+      participant_id ->
+        Reveal.toggle_ready(socket.assigns.room, participant_id)
+        {:noreply, socket}
+    end
+  end
+
   ## Ablauf – nur der Host
 
   def handle_event("reveal_next", _params, socket) do
@@ -258,12 +271,17 @@ defmodule KitrankWeb.Reveal.RoomLive do
         |> then(fn socket ->
           entries = Reveal.step_entries(room)
 
+          {ready_count, ready_total} = Reveal.ready_progress(room)
+
           assign(socket,
             room: room,
             participants: room.participants,
             step_entries: entries,
             revealed_count: Enum.count(entries, & &1.revealed?),
             all_revealed?: entries != [] and Enum.all?(entries, & &1.revealed?),
+            ready_count: ready_count,
+            ready_total: ready_total,
+            all_ready?: Reveal.all_ready?(room),
             fit: room.status == "waiting" && Reveal.ranking_fit(room),
             board: room.status != "waiting" && Reveal.revealed_board(room),
             # Erst am Ende – vorher waere sie ein Spoiler.
@@ -407,7 +425,9 @@ defmodule KitrankWeb.Reveal.RoomLive do
       <.host_bar
         :if={@host? && @room.status != "done"}
         room={@room}
-        ready?={@participants != []}
+        ready_count={@ready_count}
+        ready_total={@ready_total}
+        all_ready?={@all_ready?}
         revealed={@revealed_count}
         total={length(@step_entries)}
         all_revealed?={@all_revealed?}

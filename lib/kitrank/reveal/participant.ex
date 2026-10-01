@@ -14,6 +14,11 @@ defmodule Kitrank.Reveal.Participant do
     # Der Rang, den diese Person zuletzt selbst aufgedeckt hat.
     field :revealed_step, :integer
 
+    # Selbst gesetzt, nie automatisch beim Fertigstellen der eigenen Liste –
+    # sonst waere es wieder das alte "irgendwer ist da"-Problem, nur einen
+    # Schritt spaeter versteckt.
+    field :ready, :boolean, default: false
+
     belongs_to :room, Kitrank.Reveal.Room
     belongs_to :ranking, Kitrank.Rankings.Ranking
 
@@ -23,6 +28,11 @@ defmodule Kitrank.Reveal.Participant do
   @doc "Markiert diese Runde als aufgedeckt."
   def reveal_changeset(participant, step) do
     change(participant, revealed_step: step)
+  end
+
+  @doc "Bereit-Status umschalten."
+  def ready_changeset(participant, ready?) do
+    change(participant, ready: ready?)
   end
 
   def changeset(participant, attrs) do
