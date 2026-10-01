@@ -4,20 +4,31 @@ defmodule Mix.Tasks.Kitrank.Admin do
   @moduledoc """
   Admin-Konten verwalten.
 
-      mix kitrank.admin claas@example.com          # anlegen oder befördern
-      mix kitrank.admin claas@example.com --revoke # Rechte entziehen
-      mix kitrank.admin --list                     # alle Admins zeigen
+      mix kitrank.admin claas@example.com    # anlegen oder befördern
+      mix kitrank.admin claas@example.com --password
+      mix kitrank.admin claas@example.com --revoke  # Rechte entziehen
+      mix kitrank.admin --list                      # alle Admins zeigen
 
   Es gibt bewusst keinen Weg, über die Oberfläche Admin zu werden – sonst wäre
   die geschlossene Registrierung sinnlos.
 
-  Die Task gibt am Ende einen fertigen Anmelde-Link aus. Das ist der Grund,
-  warum sie existiert: beim ersten Admin gibt es noch niemanden, der eine
-  Einladung verschicken könnte, und in Produktion steht oft noch kein Mailer.
+  Ohne `--password` gibt die Task einen fertigen, aber einmaligen Anmelde-Link
+  aus – das war lange der einzige Weg hinein, weil es beim ersten Admin noch
+  niemanden gibt, der eine Einladung verschicken könnte, und in Produktion oft
+  noch kein Mailer steht.
+
+  Mit `--password` erzeugt die Task stattdessen ein zufälliges, dauerhaftes
+  Passwort und gibt es einmalig aus. **Bewusst kein eigenes Passwort als
+  Argument** – das würde in der Shell-History landen und dort liegen bleiben.
+  Anmelden geht danach über `/users/log-in` (E-Mail + Passwort) – eine Seite,
+  die es schon gibt, aber nirgends verlinkt ist (siehe
+  `KitrankWeb.Layouts.app/1`). Ein Passwort nach eigenem Geschmack setzt du
+  danach eingeloggt unter `/users/settings`.
 
   Auf dem Server (Railway und überall sonst, wo das Release läuft):
 
       /app/bin/kitrank eval 'Kitrank.Release.admin("du@example.com")'
+      /app/bin/kitrank eval 'Kitrank.Release.admin("du@example.com", :password)'
   """
   use Mix.Task
 
@@ -47,6 +58,22 @@ defmodule Mix.Tasks.Kitrank.Admin do
     end
   end
 
+  def run([email, "--password"]) do
+    password = random_password()
+
+    with {:ok, user} <- Accounts.promote_to_admin(email),
+         {:ok, {user, _expired_tokens}} <-
+           Accounts.update_user_password(user, %{password: password}) do
+      Mix.shell().info("#{user.email} ist jetzt Admin, mit Passwort.")
+      Mix.shell().info("\nPasswort (nur jetzt sichtbar, nirgends gespeichert):\n")
+      Mix.shell().info("  #{password}\n")
+      Mix.shell().info("Anmelden unter #{KitrankWeb.Endpoint.url()}/users/log-in")
+      Mix.shell().info("Eigenes Passwort danach unter /users/settings setzen.\n")
+    else
+      {:error, changeset} -> Mix.raise(errors(changeset))
+    end
+  end
+
   def run([email]) do
     case Accounts.promote_to_admin(email) do
       {:ok, user} ->
@@ -63,9 +90,17 @@ defmodule Mix.Tasks.Kitrank.Admin do
     Mix.raise("""
     Aufruf:
       mix kitrank.admin <email>
+      mix kitrank.admin <email> --password
       mix kitrank.admin <email> --revoke
       mix kitrank.admin --list
     """)
+  end
+
+  # 18 zufaellige Bytes, URL-sicher kodiert: 24 Zeichen, genug Entropie, dass
+  # Raten keine Rolle spielt. Kein Argument, damit es nie in der Shell-History
+  # landet – nur in dieser einmaligen Ausgabe.
+  defp random_password do
+    :crypto.strong_rand_bytes(18) |> Base.url_encode64(padding: false)
   end
 
   # Derselbe Magic-Link, den sonst die Anmelde-Mail enthaelt – nur direkt auf der

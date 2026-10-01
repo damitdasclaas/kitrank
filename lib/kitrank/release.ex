@@ -6,6 +6,7 @@ defmodule Kitrank.Release do
 
       /app/bin/kitrank eval 'Kitrank.Release.migrate()'
       /app/bin/kitrank eval 'Kitrank.Release.admin("du@example.com")'
+      /app/bin/kitrank eval 'Kitrank.Release.admin("du@example.com", :password)'
       /app/bin/kitrank eval 'Kitrank.Release.import_teams()'
   """
   @app :kitrank
@@ -71,28 +72,60 @@ defmodule Kitrank.Release do
   end
 
   @doc """
-  Legt ein Admin-Konto an oder befördert ein bestehendes und gibt einen
-  fertigen Anmelde-Link aus.
+  Legt ein Admin-Konto an oder befördert ein bestehendes.
 
   Das Gegenstück zu `mix kitrank.admin` für den Server. Es gibt bewusst keinen
   Weg über die Oberfläche, Admin zu werden — und beim ersten Admin gibt es
   niemanden, der eine Einladung verschicken könnte.
+
+  Ohne zweites Argument gibt es einen einmaligen Anmelde-Link aus, der nach
+  einer Anmeldung abläuft. Mit `:password` erzeugt es stattdessen ein
+  zufälliges, dauerhaftes Passwort und gibt es einmalig aus — Anmelden geht
+  danach über `/users/log-in` mit E-Mail und Passwort, ohne diesen Befehl
+  erneut aufzurufen. **Bewusst kein selbstgewähltes Passwort als Argument** –
+  das würde in der Shell-History der Konsole liegen bleiben, in der der Befehl
+  getippt wurde.
+
+      /app/bin/kitrank eval 'Kitrank.Release.admin("du@example.com")'
+      /app/bin/kitrank eval 'Kitrank.Release.admin("du@example.com", :password)'
   """
-  def admin(email) when is_binary(email) do
+  def admin(email, mode \\ nil) when is_binary(email) and mode in [nil, :password] do
     start_app()
 
     case Kitrank.Accounts.promote_to_admin(email) do
       {:ok, user} ->
-        {token, user_token} = Kitrank.Accounts.UserToken.build_email_token(user, "login")
-        Kitrank.Repo.insert!(user_token)
-
-        IO.puts("\n#{user.email} ist jetzt Admin.\n")
-        IO.puts("Anmelden über diesen Link (einmalig, läuft ab):\n")
-        IO.puts("  #{KitrankWeb.Endpoint.url()}/users/log-in/#{token}\n")
-        :ok
+        admin_done(user, mode)
 
       {:error, changeset} ->
         IO.puts("Ging nicht: #{inspect(changeset.errors)}")
+        :error
+    end
+  end
+
+  defp admin_done(user, nil) do
+    {token, user_token} = Kitrank.Accounts.UserToken.build_email_token(user, "login")
+    Kitrank.Repo.insert!(user_token)
+
+    IO.puts("\n#{user.email} ist jetzt Admin.\n")
+    IO.puts("Anmelden über diesen Link (einmalig, läuft ab):\n")
+    IO.puts("  #{KitrankWeb.Endpoint.url()}/users/log-in/#{token}\n")
+    :ok
+  end
+
+  defp admin_done(user, :password) do
+    password = :crypto.strong_rand_bytes(18) |> Base.url_encode64(padding: false)
+
+    case Kitrank.Accounts.update_user_password(user, %{password: password}) do
+      {:ok, {user, _expired_tokens}} ->
+        IO.puts("\n#{user.email} ist jetzt Admin, mit Passwort.\n")
+        IO.puts("Passwort (nur jetzt sichtbar, nirgends gespeichert):\n")
+        IO.puts("  #{password}\n")
+        IO.puts("Anmelden unter #{KitrankWeb.Endpoint.url()}/users/log-in")
+        IO.puts("Eigenes Passwort danach unter /users/settings setzen.\n")
+        :ok
+
+      {:error, changeset} ->
+        IO.puts("Passwort ging nicht: #{inspect(changeset.errors)}")
         :error
     end
   end

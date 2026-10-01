@@ -36,8 +36,17 @@ TSG schauen.** Auf einer Kachel ohne Foto sieht man nichts.
 Ein Admin-Konto brauchst du nur für `/admin`:
 
 ```bash
-mix kitrank.admin du@example.com   # gibt einen fertigen Anmelde-Link aus
+mix kitrank.admin du@example.com             # gibt einen fertigen Anmelde-Link aus
+mix kitrank.admin du@example.com --password  # erzeugt stattdessen ein Passwort
 ```
+
+Mit `--password` entfällt der Umweg über die Konsole danach komplett: Anmelden
+geht über `/users/log-in` (E-Mail + Passwort) — eine Seite, die es schon gibt,
+aber bewusst nirgends verlinkt ist, siehe `KitrankWeb.Layouts.app/1`. Das
+Passwort wird zufällig erzeugt und nur einmal ausgegeben, nie als Argument
+eingetippt — sonst stünde es für immer in der Shell-History. Wer sich eines
+nach eigenem Geschmack merken will, setzt es danach unter `/users/settings`.
+Auf dem Server dasselbe über `Kitrank.Release.admin("du@example.com", :password)`.
 
 ---
 
@@ -130,7 +139,8 @@ mix kitrank.import [datei]        # Stammdaten, idempotent, pro Sportart
 mix kitrank.aufraeumen            # Trikots ohne Kategorie in ihrer Sportart: melden
 mix kitrank.aufraeumen --loeschen # … und löschen (nur leere, unbenutzte)
 mix kitrank.thumbs                # kleine Bildvarianten nachholen
-mix kitrank.admin <mail>          # Admin anlegen/befördern
+mix kitrank.admin <mail>          # Admin anlegen/befördern (einmaliger Link)
+mix kitrank.admin <mail> --password  # dito, mit zufällig erzeugtem Passwort
 ```
 
 Auf dem Server dasselbe über `Kitrank.Release`:
@@ -141,6 +151,7 @@ Auf dem Server dasselbe über `Kitrank.Release`:
 /app/bin/kitrank eval 'Kitrank.Release.import_teams("data/nfl_2026_27.json")'
 /app/bin/kitrank eval 'Kitrank.Release.aufraeumen()'
 /app/bin/kitrank eval 'Kitrank.Release.admin("du@example.com")'
+/app/bin/kitrank eval 'Kitrank.Release.admin("du@example.com", :password)'
 ```
 
 **Pfade sind relativ zu `priv/`**, nicht zum Arbeitsverzeichnis: im Release
