@@ -477,7 +477,7 @@ defmodule KitrankWeb.Admin.KitLive do
               {if kit.model_image_urls != [], do: "+#{length(kit.model_image_urls)}"}
             </span>
           </:col>
-          <:col :let={%{kit: kit}} label="Shop" class="text-soft">
+          <:col :let={%{kit: kit}} label="Produktseite" class="text-soft">
             <span class="font-mono text-xs">{if kit.source_shop_url, do: "ja", else: "—"}</span>
           </:col>
           <:actions :let={%{kit: kit}}>
@@ -562,7 +562,11 @@ defmodule KitrankWeb.Admin.KitLive do
               </p>
             </div>
 
-            <.input field={@form[:source_shop_url]} label="Shop-Link" placeholder="https://…" />
+            <.input
+              field={@form[:source_shop_url]}
+              label="Produktseite (nur für Bildabruf, wird nicht mehr angezeigt)"
+              placeholder="https://…"
+            />
 
             <%!-- Versteckt, weil es keine Entscheidung ist: der Picker traegt
                   hier die kleine Variante ein, die der Shop selbst

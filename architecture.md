@@ -70,7 +70,9 @@ schema "kits" do
   field :name, :string              # nur zur Unterscheidung, Pflicht bei "special"
   field :cutout_url, :string
   field :model_image_urls, {:array, :string}  # 2-3 Bilder
-  field :source_shop_url, :string   # Deep-Link zum konkreten Produkt
+  field :source_shop_url, :string   # Deep-Link zum konkreten Produkt – nur
+                                     # noch intern fuer den Bilder-Picker, seit
+                                     # der Vereinsshop-Link am Team dafuer reicht
 end
 
 # Rankings-Context
@@ -107,7 +109,7 @@ end
 
 ### 4.1 Übersicht
 - Braucht keine Echtzeit-Logik – kann sogar eine "dead view" (normale Controller-Action) statt LiveView sein, wenn du willst. LiveView schadet aber nicht (Konsistenz mit Rest der App).
-- Team-Klick → `live_component` oder `phx-click` öffnet Modal mit den Kit-Varianten des Teams, je mit Cutout + Model-Bildern (kleine Galerie) + Shop-Link.
+- Team-Klick → `live_component` oder `phx-click` öffnet Modal mit den Kit-Varianten des Teams, je mit Cutout + Model-Bildern (kleine Galerie) + einem Shop-Link zum Verein (nicht mehr pro Trikot – der Deep-Link zum konkreten Produkt war zu wartungsaufwendig für zu wenig Nutzen).
 - Gruppierung nach Liga kommt aus `team_seasons` → `competitions` für die aktuelle Saison, sortiert nach `tier` – nicht aus einem festen Feld auf `Team`. So passt du Auf-/Abstieg jedes Jahr an, ohne Team-Stammdaten anzufassen, und eine weitere Liga (3. Liga, La Liga, ...) ist später nur eine neue Zeile in `competitions`, kein Code-Change.
 - Datenpflege läuft über die Admin-UI (siehe 4.4) – kein Seed-Script als Dauerlösung, das bleibt nur für lokale Entwicklung/Tests praktisch.
 

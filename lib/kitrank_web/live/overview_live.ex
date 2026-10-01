@@ -1133,19 +1133,6 @@ defmodule KitrankWeb.OverviewLive do
       <div class="flex flex-col items-start gap-2 border-t border-line px-4 py-3 sm:flex-row sm:items-center">
         <div class="min-w-0">
           <p class="text-sm font-medium">{KitLabel.display(@sport, @kit)}</p>
-          <a
-            :if={@kit.source_shop_url}
-            href={@kit.source_shop_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            class="mt-0.5 inline-flex items-center gap-1 text-[11px] text-soft underline underline-offset-4 hover:text-ink"
-          >
-            {gettext("Zum Vereinsshop")}
-            <.icon name="hero-arrow-top-right-on-square-mini" class="size-3" />
-          </a>
-          <p :if={!@kit.source_shop_url} class="mt-0.5 text-[11px] text-soft">
-            {gettext("Kein Shop-Link hinterlegt")}
-          </p>
         </div>
 
         <button
@@ -1275,8 +1262,8 @@ defmodule KitrankWeb.OverviewLive do
             <.compare_row label="Shop" entries={@entries}>
               <:cell :let={entry}>
                 <a
-                  :if={entry.kit.source_shop_url}
-                  href={entry.kit.source_shop_url}
+                  :if={entry.team.shop_url}
+                  href={entry.team.shop_url}
                   target="_blank"
                   rel="noopener noreferrer"
                   class="inline-flex items-center gap-1 underline underline-offset-4 hover:opacity-70"
@@ -1284,7 +1271,7 @@ defmodule KitrankWeb.OverviewLive do
                   {gettext("Vereinsshop")}
                   <.icon name="hero-arrow-top-right-on-square-mini" class="size-3" />
                 </a>
-                <span :if={!entry.kit.source_shop_url} class="text-soft">—</span>
+                <span :if={!entry.team.shop_url} class="text-soft">—</span>
               </:cell>
             </.compare_row>
 

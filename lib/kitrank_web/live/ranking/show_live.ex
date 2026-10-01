@@ -352,8 +352,8 @@ defmodule KitrankWeb.Ranking.ShowLive do
             </p>
 
             <a
-              :if={@entry.kit.source_shop_url}
-              href={@entry.kit.source_shop_url}
+              :if={@entry.kit.team.shop_url}
+              href={@entry.kit.team.shop_url}
               target="_blank"
               rel="noopener noreferrer"
               class="mt-2 inline-flex items-center gap-1 text-[11px] text-soft underline underline-offset-4 hover:text-ink"

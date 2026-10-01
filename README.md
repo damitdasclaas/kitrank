@@ -125,8 +125,8 @@ Sie zeigt ausdrücklich auch Trikots **ohne Liga-Zuordnung**, rot markiert. Die
 tauchen in der Übersicht nämlich nicht auf, und das soll im Admin auffallen
 statt unsichtbar zu bleiben.
 
-Das Dashboard zeigt, was noch fehlt — Trikots ohne Bild, ohne Shop-Link, und ob
-für die Saison überhaupt Zuordnungen existieren.
+Das Dashboard zeigt, was noch fehlt — Trikots ohne Bild, ohne Produktseite, und
+ob für die Saison überhaupt Zuordnungen existieren.
 
 **Ohne Saison-Zuordnung bleibt die Übersicht leer** — die Gruppierung kommt aus
 `team_seasons`, nicht aus einem Feld am Verein.

@@ -3,7 +3,7 @@ defmodule KitrankWeb.Admin.DashboardLive do
   Einstieg in die Datenpflege: was ist da, und was fehlt noch.
 
   Die Lücken sind der eigentliche Zweck der Seite – ein Trikot ohne Bild oder
-  Shop-Link fällt in der Übersicht nicht auf, hier schon.
+  Produktseite fällt in der Übersicht nicht auf, hier schon.
   """
   use KitrankWeb, :live_view
 
@@ -119,7 +119,10 @@ defmodule KitrankWeb.Admin.DashboardLive do
             </li>
             <li class="flex items-baseline gap-2">
               <span class="font-mono tabular-nums">{@without_shop}</span>
-              <span class="text-soft">Trikots ohne Shop-Link.</span>
+              <span class="text-soft">
+                Trikots ohne Produktseite — zeigt nirgends mehr öffentlich, der Picker braucht sie
+                trotzdem zum Bilder-Holen.
+              </span>
             </li>
           </ul>
         </div>
