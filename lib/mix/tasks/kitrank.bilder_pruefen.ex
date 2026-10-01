@@ -14,9 +14,13 @@ defmodule Mix.Tasks.Kitrank.BilderPruefen do
   Nachpflegen bleibt Handarbeit im Admin, am schnellsten über den Picker bei
   `cutout_url`.
 
-  Meldungen mit HTTP 401/403/429 heißen nicht zwingend "tot" – manche Shops
-  lehnen automatisierte Abrufe grundsätzlich ab und zeigen echten Besuchern
-  trotzdem alles normal an. Ein 404 oder eine unbekannte Adresse dagegen schon.
+  Die Ausgabe trennt deshalb zwei Töpfe: "wahrscheinlich tot" (404, unbekannte
+  Adresse – ein eindeutiges Signal vom Shop) und "unklar" (blockiert, Timeout,
+  nicht erreichbar – das sagt von einer Server-Adresse aus oft mehr über
+  Bot-Abwehr als über den Link). Nur der erste Topf ist eine
+  Handlungsaufforderung; der zweite kann zum großen Teil daraus bestehen, dass
+  ein Shop Server-Anfragen grundsätzlich ablehnt und echten Besuchern trotzdem
+  alles normal zeigt.
 
   Auf dem Server:
 

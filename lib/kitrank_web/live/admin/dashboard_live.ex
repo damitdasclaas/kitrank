@@ -28,7 +28,7 @@ defmodule KitrankWeb.Admin.DashboardLive do
        without_image: Enum.count(kits, &(&1.cutout_url in [nil, ""])),
        without_shop: Enum.count(kits, &(&1.source_shop_url in [nil, ""])),
        checking_images?: false,
-       dead_links: nil
+       pruef_ergebnis: nil
      )}
   end
 
@@ -36,13 +36,13 @@ defmodule KitrankWeb.Admin.DashboardLive do
   def handle_event("bilder_pruefen", _params, socket) do
     {:noreply,
      socket
-     |> assign(checking_images?: true, dead_links: nil)
+     |> assign(checking_images?: true, pruef_ergebnis: nil)
      |> start_async(:bilder_pruefen, fn -> Kitrank.Kits.ImageCheck.run() end)}
   end
 
   @impl true
-  def handle_async(:bilder_pruefen, {:ok, tote}, socket) do
-    {:noreply, assign(socket, checking_images?: false, dead_links: tote)}
+  def handle_async(:bilder_pruefen, {:ok, auffaellig}, socket) do
+    {:noreply, assign(socket, checking_images?: false, pruef_ergebnis: auffaellig)}
   end
 
   # Der Pruef-Prozess selbst ist gestorben – soll die Seite nicht mitreissen,
@@ -115,19 +115,44 @@ defmodule KitrankWeb.Admin.DashboardLive do
             </button>
           </div>
 
-          <p :if={@dead_links == []} class="mt-4 text-sm text-soft">
+          <p :if={@pruef_ergebnis == []} class="mt-4 text-sm text-soft">
             Alle Adressen waren beim letzten Lauf erreichbar.
           </p>
 
-          <ul :if={@dead_links not in [nil, []]} class="mt-4 space-y-2 text-sm">
-            <li :for={eintrag <- @dead_links} class="rounded border border-line p-2">
-              <p>
-                <span class="font-medium">{eintrag.kit.team.short_code}</span>
-                · {eintrag.feld} · {Kitrank.Kits.ProductImages.message(eintrag.grund)}
+          <div :if={@pruef_ergebnis not in [nil, []]} class="mt-4 space-y-5">
+            <div :if={tot(@pruef_ergebnis) != []}>
+              <h3 class="text-sm font-medium">{length(tot(@pruef_ergebnis))} wahrscheinlich tot</h3>
+              <ul class="mt-2 space-y-2 text-sm">
+                <li :for={eintrag <- tot(@pruef_ergebnis)} class="rounded border border-line p-2">
+                  <p>
+                    <span class="font-medium">{eintrag.kit.team.short_code}</span>
+                    · {eintrag.feld} · {Kitrank.Kits.ProductImages.message(eintrag.grund)}
+                  </p>
+                  <p class="mt-1 break-all text-xs text-soft">{eintrag.url}</p>
+                </li>
+              </ul>
+            </div>
+
+            <div :if={unklar(@pruef_ergebnis) != []}>
+              <h3 class="text-sm font-medium text-soft">
+                {length(unklar(@pruef_ergebnis))} unklar – vermutlich nur Bot-Abwehr
+              </h3>
+              <p class="mt-1 text-xs text-soft">
+                Die Prüfung läuft von diesem Server aus, nicht aus einem Browser. Manche Shops
+                blocken Server-Adressen grundsätzlich – das heißt nicht, dass der Link für
+                Besucher kaputt ist. Kein Grund zum Nachbessern, nur weil es hier steht.
               </p>
-              <p class="mt-1 break-all text-xs text-soft">{eintrag.url}</p>
-            </li>
-          </ul>
+              <ul class="mt-2 space-y-2 text-sm">
+                <li :for={eintrag <- unklar(@pruef_ergebnis)} class="rounded border border-line p-2">
+                  <p>
+                    <span class="font-medium">{eintrag.kit.team.short_code}</span>
+                    · {eintrag.feld} · {Kitrank.Kits.ProductImages.message(eintrag.grund)}
+                  </p>
+                  <p class="mt-1 break-all text-xs text-soft">{eintrag.url}</p>
+                </li>
+              </ul>
+            </div>
+          </div>
         </div>
 
         <div :if={@team_seasons == 0} class="mt-8 rounded-lg border border-dashed border-line p-6">
@@ -149,6 +174,9 @@ defmodule KitrankWeb.Admin.DashboardLive do
     </Layouts.app>
     """
   end
+
+  defp tot(ergebnis), do: Enum.filter(ergebnis, &(&1.kategorie == :tot))
+  defp unklar(ergebnis), do: Enum.filter(ergebnis, &(&1.kategorie == :unklar))
 
   attr :label, :string, required: true
   attr :value, :integer, required: true

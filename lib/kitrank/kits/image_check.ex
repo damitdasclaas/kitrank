@@ -9,6 +9,16 @@ defmodule Kitrank.Kits.ImageCheck do
   sieht. Diese Prüfung macht das vorher sichtbar. Nachpflegen bleibt
   Handarbeit im Admin – das hier ersetzt sie nicht, es verkürzt nur die Zeit
   bis jemand merkt, dass es nötig ist.
+
+  Die Prüfung läuft von einer Server-IP aus, nicht aus einem echten Browser.
+  Manche Shops (insbesondere Fanatics-Teamshops und einige
+  Bundesliga-Shop-Plattformen) blocken Server-IPs fast durchgängig als
+  vermeintliche Bots – unabhängig davon, ob der Link noch stimmt. Ein Ergebnis
+  ist deshalb immer eins von zwei Dingen: `:tot` (404, unbekannte Domain – ein
+  eindeutiges Signal vom Shop selbst) oder `:unklar` (blockiert, Timeout,
+  nicht erreichbar, unerwarteter Status – das sagt oft mehr über die
+  Server-IP als über den Link). Ohne diese Trennung ertrinkt der eine echte
+  404 in hundert falschen Alarmen.
   """
 
   import Ecto.Query
@@ -23,10 +33,11 @@ defmodule Kitrank.Kits.ImageCheck do
   @timeout 10_000
 
   @doc """
-  Läuft über alle gespeicherten Bild- und Shop-Adressen und gibt die toten als
-  Liste zurück.
+  Läuft über alle gespeicherten Bild- und Shop-Adressen und gibt die
+  auffälligen zurück, als `%{kit:, feld:, url:, grund:, kategorie:}` mit
+  `kategorie: :tot | :unklar`.
 
-  `log` (Standard `IO.puts/1`) bekommt eine Zeile je totem Fund plus eine
+  `log` (Standard `IO.puts/1`) bekommt eine Zeile je Fund plus eine
   Zusammenfassung – bei hunderten Adressen dauert ein Durchlauf, ohne
   Rückmeldung sähe das nach Hängen aus.
   """
@@ -40,7 +51,7 @@ defmodule Kitrank.Kits.ImageCheck do
 
     sag.("#{length(pruefungen)} Adressen werden geprüft …")
 
-    tote =
+    auffaellig =
       pruefungen
       |> Task.async_stream(&pruefe/1,
         max_concurrency: nebenlaeufig,
@@ -56,13 +67,23 @@ defmodule Kitrank.Kits.ImageCheck do
           [eintrag]
 
         {:exit, {{kit, feld, url}, _grund}} ->
-          [%{kit: kit, feld: feld, url: url, grund: :timeout}]
+          [%{kit: kit, feld: feld, url: url, grund: :timeout, kategorie: :unklar}]
       end)
 
-    Enum.each(tote, &sag.(zeile(&1)))
-    sag.("#{length(tote)} von #{length(pruefungen)} Adressen nicht erreichbar")
+    {tot, unklar} = Enum.split_with(auffaellig, &(&1.kategorie == :tot))
 
-    tote
+    sag.("#{length(tot)} wahrscheinlich tot:")
+    Enum.each(tot, &sag.(zeile(&1)))
+
+    sag.("#{length(unklar)} unklar – vermutlich nur Bot-Abwehr, kein Beleg für tot:")
+    Enum.each(unklar, &sag.(zeile(&1)))
+
+    sag.(
+      "#{length(tot)} wahrscheinlich tot, #{length(unklar)} unklar, " <>
+        "von #{length(pruefungen)} geprüften Adressen"
+    )
+
+    auffaellig
   end
 
   defp adressen(kit) do
@@ -84,10 +105,20 @@ defmodule Kitrank.Kits.ImageCheck do
       end
 
     case ergebnis do
-      :ok -> nil
-      {:fehler, grund} -> %{kit: kit, feld: feld, url: url, grund: grund}
+      :ok ->
+        nil
+
+      {:fehler, grund} ->
+        %{kit: kit, feld: feld, url: url, grund: grund, kategorie: kategorie(grund)}
     end
   end
+
+  # Nur ein eindeutiges "das gibt es nicht" vom Shop selbst zaehlt als tot.
+  # Alles andere laesst sich von einer Server-IP aus nicht von Bot-Abwehr
+  # unterscheiden – siehe Moduldoc.
+  defp kategorie(:not_found), do: :tot
+  defp kategorie(:unknown_host), do: :tot
+  defp kategorie(_), do: :unklar
 
   defp head(url) do
     Req.head(url,
