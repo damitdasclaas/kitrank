@@ -85,4 +85,18 @@ defmodule Kitrank.Kits.ImageFindings do
     |> ImageFinding.changeset(%{status: neuer_status})
     |> Repo.update!()
   end
+
+  @doc """
+  Setzt alle Funde einer Kategorie (`"tot"` oder `"unklar"`) auf einmal auf
+  `status` – gedacht für die "unklar"-Liste, die bei dauerhafter Bot-Abwehr
+  jeden Lauf wieder hundert gleiche Einträge zeigt und die sich niemand
+  einzeln anklicken will.
+  """
+  def mark_all(kategorie, status) when status in ["offen", "erledigt"] do
+    jetzt = DateTime.utc_now() |> DateTime.truncate(:second)
+
+    ImageFinding
+    |> where([f], f.kategorie == ^kategorie)
+    |> Repo.update_all(set: [status: status, updated_at: jetzt])
+  end
 end

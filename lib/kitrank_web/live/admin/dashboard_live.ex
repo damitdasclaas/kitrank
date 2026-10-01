@@ -62,6 +62,11 @@ defmodule KitrankWeb.Admin.DashboardLive do
     {:noreply, assign(socket, pruef_ergebnis: Kits.ImageFindings.list())}
   end
 
+  def handle_event("bilder_pruefen_alle", %{"kategorie" => kategorie, "status" => status}, socket) do
+    Kits.ImageFindings.mark_all(kategorie, status)
+    {:noreply, assign(socket, pruef_ergebnis: Kits.ImageFindings.list())}
+  end
+
   @impl true
   def handle_info({:bilder_pruefen_fortschritt, erledigt, gesamt}, socket) do
     {:noreply, assign(socket, pruef_erledigt: erledigt, pruef_gesamt: gesamt)}
@@ -167,24 +172,22 @@ defmodule KitrankWeb.Admin.DashboardLive do
           </p>
 
           <div :if={@pruef_ergebnis != []} class="mt-4 space-y-5">
-            <div :if={tot(@pruef_ergebnis) != []}>
-              <h3 class="text-sm font-medium">
-                {Enum.count(tot(@pruef_ergebnis), &(&1.status == "offen"))} wahrscheinlich tot
-              </h3>
-              <.finding_list findings={tot(@pruef_ergebnis)} />
-            </div>
+            <.finding_section
+              kategorie="tot"
+              title="wahrscheinlich tot"
+              findings={tot(@pruef_ergebnis)}
+            />
 
-            <div :if={unklar(@pruef_ergebnis) != []}>
-              <h3 class="text-sm font-medium text-soft">
-                {Enum.count(unklar(@pruef_ergebnis), &(&1.status == "offen"))} unklar – vermutlich nur Bot-Abwehr
-              </h3>
-              <p class="mt-1 text-xs text-soft">
-                Die Prüfung läuft von diesem Server aus, nicht aus einem Browser. Manche Shops
-                blocken Server-Adressen grundsätzlich – das heißt nicht, dass der Link für
-                Besucher kaputt ist. Kein Grund zum Nachbessern, nur weil es hier steht.
-              </p>
-              <.finding_list findings={unklar(@pruef_ergebnis)} />
-            </div>
+            <.finding_section
+              kategorie="unklar"
+              title="unklar – vermutlich nur Bot-Abwehr"
+              findings={unklar(@pruef_ergebnis)}
+              muted?={true}
+            >
+              Die Prüfung läuft von diesem Server aus, nicht aus einem Browser. Manche Shops
+              blocken Server-Adressen grundsätzlich – das heißt nicht, dass der Link für Besucher
+              kaputt ist. Kein Grund zum Nachbessern, nur weil es hier steht.
+            </.finding_section>
           </div>
         </div>
 
@@ -213,6 +216,54 @@ defmodule KitrankWeb.Admin.DashboardLive do
 
   defp prozent(_erledigt, 0), do: 0
   defp prozent(erledigt, gesamt), do: round(erledigt / gesamt * 100)
+
+  attr :kategorie, :string, required: true
+  attr :title, :string, required: true
+  attr :findings, :list, required: true
+  attr :muted?, :boolean, default: false
+  slot :inner_block
+
+  defp finding_section(assigns) do
+    offen? = Enum.any?(assigns.findings, &(&1.status == "offen"))
+    erledigt? = Enum.any?(assigns.findings, &(&1.status == "erledigt"))
+    assigns = assign(assigns, offen?: offen?, erledigt?: erledigt?)
+
+    ~H"""
+    <div>
+      <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+        <h3 class={["text-sm font-medium", @muted? && "text-soft"]}>
+          {Enum.count(@findings, &(&1.status == "offen"))} {@title}
+        </h3>
+        <div class="flex gap-3 text-xs">
+          <button
+            :if={@offen?}
+            type="button"
+            class="text-soft underline underline-offset-4 hover:text-ink"
+            phx-click="bilder_pruefen_alle"
+            phx-value-kategorie={@kategorie}
+            phx-value-status="erledigt"
+          >
+            Alle als erledigt markieren
+          </button>
+          <button
+            :if={@erledigt?}
+            type="button"
+            class="text-soft underline underline-offset-4 hover:text-ink"
+            phx-click="bilder_pruefen_alle"
+            phx-value-kategorie={@kategorie}
+            phx-value-status="offen"
+          >
+            Alle zurücksetzen
+          </button>
+        </div>
+      </div>
+      <p :if={@inner_block != []} class="mt-1 text-xs text-soft">
+        {render_slot(@inner_block)}
+      </p>
+      <.finding_list findings={@findings} />
+    </div>
+    """
+  end
 
   attr :findings, :list, required: true
 

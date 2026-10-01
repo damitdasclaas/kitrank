@@ -80,4 +80,44 @@ defmodule KitrankWeb.Admin.DashboardImageFindingsTest do
     refute html =~ "Zurücksetzen"
     assert ImageFindings.list() |> hd() |> Map.get(:status) == "offen"
   end
+
+  test "alle Funde einer Kategorie lassen sich auf einmal markieren", %{conn: conn} do
+    kit = kit_fixture()
+
+    ImageFindings.sync([
+      %{
+        kit: kit,
+        feld: :cutout_url,
+        url: "https://shop.example.com/tot.jpg",
+        grund: :not_found,
+        kategorie: :tot
+      },
+      %{
+        kit: kit,
+        feld: :source_shop_url,
+        url: "https://shop.example.com/unklar-1",
+        grund: :blocked,
+        kategorie: :unklar
+      },
+      %{
+        kit: kit,
+        feld: :cutout_thumb_url,
+        url: "https://shop.example.com/unklar-2",
+        grund: :timeout,
+        kategorie: :unklar
+      }
+    ])
+
+    {:ok, view, _html} = live(conn, ~p"/admin")
+
+    view
+    |> element("button[phx-value-kategorie='unklar'][phx-value-status='erledigt']")
+    |> render_click()
+
+    [tot, unklar_1, unklar_2] = ImageFindings.list() |> Enum.sort_by(& &1.kategorie)
+
+    assert tot.kategorie == "tot" and tot.status == "offen"
+    assert unklar_1.status == "erledigt"
+    assert unklar_2.status == "erledigt"
+  end
 end

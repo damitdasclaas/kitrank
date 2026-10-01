@@ -56,6 +56,42 @@ defmodule Kitrank.Kits.ImageFindingsTest do
     assert wieder_offen.status == "offen"
   end
 
+  test "mark_all markiert nur die Funde der angegebenen Kategorie" do
+    kit = kit_fixture()
+
+    ImageFindings.sync([
+      fund(kit, %{feld: :cutout_url, url: "https://shop.example.com/tot.jpg"}),
+      fund(kit, %{
+        feld: :source_shop_url,
+        url: "https://shop.example.com/unklar",
+        grund: :blocked,
+        kategorie: :unklar
+      })
+    ])
+
+    ImageFindings.mark_all("unklar", "erledigt")
+
+    [tot, unklar] = ImageFindings.list() |> Enum.sort_by(& &1.kategorie)
+    assert tot.status == "offen"
+    assert unklar.status == "erledigt"
+  end
+
+  test "mark_all zurueck auf offen setzt alle einer Kategorie wieder zurueck" do
+    kit = kit_fixture()
+
+    [a, b] =
+      ImageFindings.sync([
+        fund(kit, %{feld: :cutout_url, url: "https://shop.example.com/a.jpg"}),
+        fund(kit, %{feld: :cutout_url, url: "https://shop.example.com/b.jpg"})
+      ])
+
+    ImageFindings.toggle(a.id)
+    ImageFindings.toggle(b.id)
+    ImageFindings.mark_all("tot", "offen")
+
+    assert Enum.all?(ImageFindings.list(), &(&1.status == "offen"))
+  end
+
   test "list zeigt offene vor erledigten" do
     kit = kit_fixture()
 
