@@ -40,16 +40,22 @@ defmodule Kitrank.Kits.ImageCheck do
   `log` (Standard `IO.puts/1`) bekommt eine Zeile je Fund plus eine
   Zusammenfassung – bei hunderten Adressen dauert ein Durchlauf, ohne
   Rückmeldung sähe das nach Hängen aus.
+
+  `on_progress` (Standard: nichts tun) bekommt `erledigt, gesamt` – nicht bei
+  jeder einzelnen Adresse, sondern alle zehn, sonst wären das bei 800
+  Adressen 800 Nachrichten für eine Zahl, die sich kaum sichtbar ändert.
   """
   def run(opts \\ []) do
     sag = Keyword.get(opts, :log, &IO.puts/1)
+    melde_fortschritt = Keyword.get(opts, :on_progress, fn _erledigt, _gesamt -> :ok end)
     nebenlaeufig = Keyword.get(opts, :concurrency, 8)
 
     pruefungen =
       Repo.all(from k in Kit, preload: [:team])
       |> Enum.flat_map(&adressen/1)
 
-    sag.("#{length(pruefungen)} Adressen werden geprüft …")
+    gesamt = length(pruefungen)
+    sag.("#{gesamt} Adressen werden geprüft …")
 
     auffaellig =
       pruefungen
@@ -59,15 +65,20 @@ defmodule Kitrank.Kits.ImageCheck do
         on_timeout: :kill_task,
         zip_input_on_exit: true
       )
-      |> Enum.flat_map(fn
-        {:ok, nil} ->
-          []
+      |> Stream.with_index(1)
+      |> Enum.flat_map(fn {ergebnis, erledigt} ->
+        if rem(erledigt, 10) == 0 or erledigt == gesamt, do: melde_fortschritt.(erledigt, gesamt)
 
-        {:ok, eintrag} ->
-          [eintrag]
+        case ergebnis do
+          {:ok, nil} ->
+            []
 
-        {:exit, {{kit, feld, url}, _grund}} ->
-          [%{kit: kit, feld: feld, url: url, grund: :timeout, kategorie: :unklar}]
+          {:ok, eintrag} ->
+            [eintrag]
+
+          {:exit, {{kit, feld, url}, _grund}} ->
+            [%{kit: kit, feld: feld, url: url, grund: :timeout, kategorie: :unklar}]
+        end
       end)
 
     {tot, unklar} = Enum.split_with(auffaellig, &(&1.kategorie == :tot))
@@ -80,7 +91,7 @@ defmodule Kitrank.Kits.ImageCheck do
 
     sag.(
       "#{length(tot)} wahrscheinlich tot, #{length(unklar)} unklar, " <>
-        "von #{length(pruefungen)} geprüften Adressen"
+        "von #{gesamt} geprüften Adressen"
     )
 
     auffaellig

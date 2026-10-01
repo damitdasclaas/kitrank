@@ -28,21 +28,49 @@ defmodule KitrankWeb.Admin.DashboardLive do
        without_image: Enum.count(kits, &(&1.cutout_url in [nil, ""])),
        without_shop: Enum.count(kits, &(&1.source_shop_url in [nil, ""])),
        checking_images?: false,
-       pruef_ergebnis: nil
+       # Aus der Datenbank, nicht aus einem frischen Lauf – eine Markierung als
+       # erledigt soll einen Seitenneuaufruf ueberleben, nicht nur die
+       # laufende Sitzung.
+       pruef_ergebnis: Kits.ImageFindings.list(),
+       pruef_erledigt: 0,
+       pruef_gesamt: 0
      )}
   end
 
   @impl true
   def handle_event("bilder_pruefen", _params, socket) do
+    # start_async laeuft in einem eigenen Prozess – self() darin waere dieser
+    # neue Prozess, nicht die LiveView. Die Pid vorher einfangen, damit der
+    # Fortschritt hierher zurueckfindet.
+    lv = self()
+
     {:noreply,
      socket
-     |> assign(checking_images?: true, pruef_ergebnis: nil)
-     |> start_async(:bilder_pruefen, fn -> Kitrank.Kits.ImageCheck.run() end)}
+     |> assign(checking_images?: true, pruef_erledigt: 0, pruef_gesamt: 0)
+     |> start_async(:bilder_pruefen, fn ->
+       Kitrank.Kits.ImageCheck.run(
+         log: fn _zeile -> :ok end,
+         on_progress: fn erledigt, gesamt ->
+           send(lv, {:bilder_pruefen_fortschritt, erledigt, gesamt})
+         end
+       )
+     end)}
+  end
+
+  def handle_event("bilder_pruefen_umschalten", %{"id" => id}, socket) do
+    Kits.ImageFindings.toggle(id)
+    {:noreply, assign(socket, pruef_ergebnis: Kits.ImageFindings.list())}
+  end
+
+  @impl true
+  def handle_info({:bilder_pruefen_fortschritt, erledigt, gesamt}, socket) do
+    {:noreply, assign(socket, pruef_erledigt: erledigt, pruef_gesamt: gesamt)}
   end
 
   @impl true
   def handle_async(:bilder_pruefen, {:ok, auffaellig}, socket) do
-    {:noreply, assign(socket, checking_images?: false, pruef_ergebnis: auffaellig)}
+    ergebnis = Kits.ImageFindings.sync(auffaellig)
+    {:noreply, assign(socket, checking_images?: false, pruef_ergebnis: ergebnis)}
   end
 
   # Der Pruef-Prozess selbst ist gestorben – soll die Seite nicht mitreissen,
@@ -115,42 +143,44 @@ defmodule KitrankWeb.Admin.DashboardLive do
             </button>
           </div>
 
+          <div :if={@checking_images?} class="mt-4">
+            <div class="h-1.5 w-full overflow-hidden rounded-full bg-sunk">
+              <div
+                class="h-full rounded-full bg-ink transition-all duration-300"
+                style={"width: #{prozent(@pruef_erledigt, @pruef_gesamt)}%"}
+              >
+              </div>
+            </div>
+            <p class="mt-1 text-xs text-soft">
+              {if @pruef_gesamt > 0,
+                do: "#{@pruef_erledigt} von #{@pruef_gesamt} geprüft …",
+                else: "Adressen werden gezählt …"}
+            </p>
+          </div>
+
           <p :if={@pruef_ergebnis == []} class="mt-4 text-sm text-soft">
-            Alle Adressen waren beim letzten Lauf erreichbar.
+            Keine offenen Funde — entweder noch nie geprüft, oder beim letzten Lauf war alles
+            erreichbar.
           </p>
 
-          <div :if={@pruef_ergebnis not in [nil, []]} class="mt-4 space-y-5">
+          <div :if={@pruef_ergebnis != []} class="mt-4 space-y-5">
             <div :if={tot(@pruef_ergebnis) != []}>
-              <h3 class="text-sm font-medium">{length(tot(@pruef_ergebnis))} wahrscheinlich tot</h3>
-              <ul class="mt-2 space-y-2 text-sm">
-                <li :for={eintrag <- tot(@pruef_ergebnis)} class="rounded border border-line p-2">
-                  <p>
-                    <span class="font-medium">{eintrag.kit.team.short_code}</span>
-                    · {eintrag.feld} · {Kitrank.Kits.ProductImages.message(eintrag.grund)}
-                  </p>
-                  <p class="mt-1 break-all text-xs text-soft">{eintrag.url}</p>
-                </li>
-              </ul>
+              <h3 class="text-sm font-medium">
+                {Enum.count(tot(@pruef_ergebnis), &(&1.status == "offen"))} wahrscheinlich tot
+              </h3>
+              <.finding_list findings={tot(@pruef_ergebnis)} />
             </div>
 
             <div :if={unklar(@pruef_ergebnis) != []}>
               <h3 class="text-sm font-medium text-soft">
-                {length(unklar(@pruef_ergebnis))} unklar – vermutlich nur Bot-Abwehr
+                {Enum.count(unklar(@pruef_ergebnis), &(&1.status == "offen"))} unklar – vermutlich nur Bot-Abwehr
               </h3>
               <p class="mt-1 text-xs text-soft">
                 Die Prüfung läuft von diesem Server aus, nicht aus einem Browser. Manche Shops
                 blocken Server-Adressen grundsätzlich – das heißt nicht, dass der Link für
                 Besucher kaputt ist. Kein Grund zum Nachbessern, nur weil es hier steht.
               </p>
-              <ul class="mt-2 space-y-2 text-sm">
-                <li :for={eintrag <- unklar(@pruef_ergebnis)} class="rounded border border-line p-2">
-                  <p>
-                    <span class="font-medium">{eintrag.kit.team.short_code}</span>
-                    · {eintrag.feld} · {Kitrank.Kits.ProductImages.message(eintrag.grund)}
-                  </p>
-                  <p class="mt-1 break-all text-xs text-soft">{eintrag.url}</p>
-                </li>
-              </ul>
+              <.finding_list findings={unklar(@pruef_ergebnis)} />
             </div>
           </div>
         </div>
@@ -175,8 +205,51 @@ defmodule KitrankWeb.Admin.DashboardLive do
     """
   end
 
-  defp tot(ergebnis), do: Enum.filter(ergebnis, &(&1.kategorie == :tot))
-  defp unklar(ergebnis), do: Enum.filter(ergebnis, &(&1.kategorie == :unklar))
+  defp tot(ergebnis), do: Enum.filter(ergebnis, &(&1.kategorie == "tot"))
+  defp unklar(ergebnis), do: Enum.filter(ergebnis, &(&1.kategorie == "unklar"))
+
+  defp prozent(_erledigt, 0), do: 0
+  defp prozent(erledigt, gesamt), do: round(erledigt / gesamt * 100)
+
+  attr :findings, :list, required: true
+
+  defp finding_list(assigns) do
+    ~H"""
+    <ul class="mt-2 space-y-2 text-sm">
+      <li
+        :for={eintrag <- @findings}
+        class={[
+          "flex items-start justify-between gap-3 rounded border border-line p-2",
+          eintrag.status == "erledigt" && "opacity-50"
+        ]}
+      >
+        <div class={eintrag.status == "erledigt" && "line-through decoration-soft"}>
+          <p>
+            <span class="font-medium">{eintrag.kit.team.short_code}</span>
+            · {eintrag.feld} · {eintrag.beschreibung}
+          </p>
+          <p class="mt-1 break-all text-xs text-soft">{eintrag.url}</p>
+        </div>
+        <div class="flex shrink-0 items-center gap-3">
+          <.link
+            navigate={~p"/admin/trikots/#{eintrag.kit.id}"}
+            class="whitespace-nowrap text-xs font-medium underline underline-offset-4"
+          >
+            Bearbeiten
+          </.link>
+          <button
+            type="button"
+            class="whitespace-nowrap text-xs text-soft underline underline-offset-4"
+            phx-click="bilder_pruefen_umschalten"
+            phx-value-id={eintrag.id}
+          >
+            {if eintrag.status == "offen", do: "Erledigt", else: "Zurücksetzen"}
+          </button>
+        </div>
+      </li>
+    </ul>
+    """
+  end
 
   attr :label, :string, required: true
   attr :value, :integer, required: true
