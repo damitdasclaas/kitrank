@@ -26,8 +26,36 @@ defmodule KitrankWeb.Admin.DashboardLive do
        team_seasons: length(Kits.list_team_seasons(season)),
        kits: length(kits),
        without_image: Enum.count(kits, &(&1.cutout_url in [nil, ""])),
-       without_shop: Enum.count(kits, &(&1.source_shop_url in [nil, ""]))
+       without_shop: Enum.count(kits, &(&1.source_shop_url in [nil, ""])),
+       checking_images?: false,
+       dead_links: nil
      )}
+  end
+
+  @impl true
+  def handle_event("bilder_pruefen", _params, socket) do
+    {:noreply,
+     socket
+     |> assign(checking_images?: true, dead_links: nil)
+     |> start_async(:bilder_pruefen, fn -> Kitrank.Kits.ImageCheck.run() end)}
+  end
+
+  @impl true
+  def handle_async(:bilder_pruefen, {:ok, tote}, socket) do
+    {:noreply, assign(socket, checking_images?: false, dead_links: tote)}
+  end
+
+  # Der Pruef-Prozess selbst ist gestorben – soll die Seite nicht mitreissen,
+  # siehe KitLive.handle_async(:fetch_images, {:exit, ...}, ...) fuer denselben
+  # Fall beim Bilder-Abruf.
+  def handle_async(:bilder_pruefen, {:exit, grund}, socket) do
+    require Logger
+    Logger.warning("Bilder-Pruefung abgebrochen: #{inspect(grund)}")
+
+    {:noreply,
+     socket
+     |> assign(checking_images?: false)
+     |> put_flash(:error, "Die Prüfung ist abgebrochen. Nochmal versuchen?")}
   end
 
   @impl true
@@ -64,6 +92,40 @@ defmodule KitrankWeb.Admin.DashboardLive do
             <li class="flex items-baseline gap-2">
               <span class="font-mono tabular-nums">{@without_shop}</span>
               <span class="text-soft">Trikots ohne Shop-Link.</span>
+            </li>
+          </ul>
+        </div>
+
+        <div :if={@kits > 0} class="mt-8 rounded-lg border border-line p-5">
+          <div class="flex items-center justify-between gap-3">
+            <div>
+              <h2 class="kr-eyebrow">Bild- und Shop-Adressen</h2>
+              <p class="mt-1 text-xs text-soft">
+                Prüft jede gespeicherte Adresse per Abruf – Bilder werden nur verlinkt, nicht
+                gehostet, ein Verein kann die Adresse jederzeit ändern oder abschalten.
+              </p>
+            </div>
+            <button
+              type="button"
+              class="btn btn-sm shrink-0"
+              phx-click="bilder_pruefen"
+              disabled={@checking_images?}
+            >
+              {if @checking_images?, do: "Prüft …", else: "Jetzt prüfen"}
+            </button>
+          </div>
+
+          <p :if={@dead_links == []} class="mt-4 text-sm text-soft">
+            Alle Adressen waren beim letzten Lauf erreichbar.
+          </p>
+
+          <ul :if={@dead_links not in [nil, []]} class="mt-4 space-y-2 text-sm">
+            <li :for={eintrag <- @dead_links} class="rounded border border-line p-2">
+              <p>
+                <span class="font-medium">{eintrag.kit.team.short_code}</span>
+                · {eintrag.feld} · {Kitrank.Kits.ProductImages.message(eintrag.grund)}
+              </p>
+              <p class="mt-1 break-all text-xs text-soft">{eintrag.url}</p>
             </li>
           </ul>
         </div>
