@@ -11,8 +11,8 @@
 msgid ""
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/components.ex:175
-#: lib/kitrank_web/live/reveal/components.ex:308
+#: lib/kitrank_web/live/reveal/components.ex:251
+#: lib/kitrank_web/live/reveal/components.ex:384
 #, elixir-autogen, elixir-format
 msgid "(du)"
 msgstr ""
@@ -27,13 +27,13 @@ msgstr ""
 msgid "/r/AbCd1234"
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/new_live.ex:155
+#: lib/kitrank_web/live/reveal/new_live.ex:109
 #: lib/kitrank_web/live/sports_live.ex:103
 #, elixir-autogen, elixir-format
 msgid "ABC23"
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/components.ex:239
+#: lib/kitrank_web/live/reveal/components.ex:315
 #, elixir-autogen, elixir-format
 msgid "Abdeckung des Ausschnitts"
 msgstr ""
@@ -59,17 +59,12 @@ msgstr ""
 msgid "Alle"
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/new_live.ex:212
-#, elixir-autogen, elixir-format
-msgid "Alle Ranglisten werden auf diesen Ausschnitt gefiltert — dadurch vergleicht ihr dieselben Trikots, egal wie lang eure Listen sind."
-msgstr ""
-
-#: lib/kitrank_web/live/reveal/components.ex:255
+#: lib/kitrank_web/live/reveal/components.ex:331
 #, elixir-autogen, elixir-format
 msgid "Alle haben gleich viele Trikots im Ausschnitt. Kann losgehen."
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/new_live.ex:275
+#: lib/kitrank_web/live/reveal/new_live.ex:173
 #, elixir-autogen, elixir-format
 msgid "Alle treten mit dem Teilen-Link ihrer Rangliste bei — nicht mit dem Bearbeiten-Link."
 msgstr ""
@@ -80,7 +75,7 @@ msgstr ""
 msgid "Ansehen"
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/components.ex:825
+#: lib/kitrank_web/live/reveal/components.ex:901
 #, elixir-autogen, elixir-format
 msgid "Aufdecken"
 msgstr ""
@@ -100,7 +95,7 @@ msgstr ""
 msgid "Ausweich"
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/components.ex:558
+#: lib/kitrank_web/live/reveal/components.ex:634
 #, elixir-autogen, elixir-format
 msgid "Auswertung"
 msgstr ""
@@ -116,19 +111,19 @@ msgid "Auswärts"
 msgstr ""
 
 #: lib/kitrank_web/live/ranking/new_live.ex:147
-#: lib/kitrank_web/live/reveal/components.ex:433
+#: lib/kitrank_web/live/reveal/components.ex:509
 #, elixir-autogen, elixir-format
 msgid "Bearbeiten-Link"
 msgstr ""
 
 #: lib/kitrank_web/live/reveal/components.ex:98
-#: lib/kitrank_web/live/reveal/new_live.ex:164
+#: lib/kitrank_web/live/reveal/new_live.ex:118
 #: lib/kitrank_web/live/sports_live.ex:110
 #, elixir-autogen, elixir-format
 msgid "Beitreten"
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/new_live.ex:320
+#: lib/kitrank_web/live/reveal/new_live.ex:218
 #, elixir-autogen, elixir-format
 msgid "Code kopieren"
 msgstr ""
@@ -144,17 +139,17 @@ msgid "Dann bau sie hier. Du bekommst alle Trikots des Raums und sortierst sie g
 msgstr ""
 
 #: lib/kitrank_web/live/ranking/show_live.ex:285
-#: lib/kitrank_web/live/reveal/components.ex:579
+#: lib/kitrank_web/live/reveal/components.ex:655
 #, elixir-autogen, elixir-format
 msgid "Darauf konntet ihr euch einigen"
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/components.ex:584
+#: lib/kitrank_web/live/reveal/components.ex:660
 #, elixir-autogen, elixir-format
 msgid "Das mochte niemand"
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/components.ex:752
+#: lib/kitrank_web/live/reveal/components.ex:828
 #, elixir-autogen, elixir-format
 msgid "Das war's — ihr seid durch."
 msgstr ""
@@ -171,7 +166,7 @@ msgid "Dein Name"
 msgstr ""
 
 #: lib/kitrank_web/live/ranking/components.ex:71
-#: lib/kitrank_web/live/reveal/components.ex:395
+#: lib/kitrank_web/live/reveal/components.ex:471
 #, elixir-autogen, elixir-format
 msgid "Deine Rangliste"
 msgstr ""
@@ -182,12 +177,12 @@ msgid "Deine Ranglisten"
 msgstr ""
 
 #: lib/kitrank_web/live/reveal/components.ex:66
-#: lib/kitrank_web/live/reveal/room_live.ex:353
+#: lib/kitrank_web/live/reveal/room_live.ex:414
 #, elixir-autogen, elixir-format
 msgid "Der Raum ist voll."
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/new_live.ex:286
+#: lib/kitrank_web/live/reveal/new_live.ex:184
 #, elixir-autogen, elixir-format
 msgid "Der Raum läuft nach zwölf Stunden ab. Du kannst die Steuerung im Raum an jemand anderen abgeben."
 msgstr ""
@@ -210,7 +205,7 @@ msgstr ""
 msgid "Die Shop-Verweise führen zum jeweiligen Vereinsshop; KitRank verdient an keinem Kauf mit."
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/components.ex:218
+#: lib/kitrank_web/live/reveal/components.ex:294
 #, elixir-autogen, elixir-format
 msgid "Die Steuerung liegt gerade bei jemand anderem."
 msgstr ""
@@ -220,7 +215,7 @@ msgstr ""
 msgid "Diese Rangliste ist noch leer."
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/components.ex:624
+#: lib/kitrank_web/live/reveal/components.ex:700
 #, elixir-autogen, elixir-format
 msgid "Dieser Raum bleibt unter dem Code"
 msgstr ""
@@ -231,12 +226,12 @@ msgstr ""
 msgid "Direktvergleich"
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/new_live.ex:182
+#: lib/kitrank_web/live/reveal/new_live.ex:131
 #, elixir-autogen, elixir-format
 msgid "Du bekommst einen Code zum Weitergeben."
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/new_live.ex:270
+#: lib/kitrank_web/live/reveal/new_live.ex:163
 #, elixir-autogen, elixir-format
 msgid "Du bekommst einen Raumcode und gibst ihn weiter."
 msgstr ""
@@ -246,17 +241,17 @@ msgstr ""
 msgid "Du brauchst den"
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/new_live.ex:143
+#: lib/kitrank_web/live/reveal/new_live.ex:97
 #, elixir-autogen, elixir-format
 msgid "Du hast einen Code bekommen?"
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/components.ex:725
+#: lib/kitrank_web/live/reveal/components.ex:801
 #, elixir-autogen, elixir-format
 msgid "Du schaust nur zu — du bist keiner Rangliste in diesem Raum zugeordnet und hast deshalb nichts aufzudecken."
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/new_live.ex:280
+#: lib/kitrank_web/live/reveal/new_live.ex:178
 #, elixir-autogen, elixir-format
 msgid "Du startest, und alle sehen jeden Schritt gleichzeitig."
 msgstr ""
@@ -266,7 +261,7 @@ msgstr ""
 msgid "Du steuerst"
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/new_live.ex:339
+#: lib/kitrank_web/live/reveal/new_live.ex:237
 #, elixir-autogen, elixir-format
 msgid "Du steuerst das Reveal. Das merkt sich dein Browser — auf einem anderen Gerät musst du die Steuerung im Raum übernehmen lassen."
 msgstr ""
@@ -277,13 +272,13 @@ msgid "Eigene Rangliste bauen?"
 msgstr ""
 
 #: lib/kitrank_web/live/ranking/components.ex:364
-#: lib/kitrank_web/live/reveal/components.ex:470
+#: lib/kitrank_web/live/reveal/components.ex:546
 #, elixir-autogen, elixir-format
 msgid "Einen Platz nach oben"
 msgstr ""
 
 #: lib/kitrank_web/live/ranking/components.ex:375
-#: lib/kitrank_web/live/reveal/components.ex:481
+#: lib/kitrank_web/live/reveal/components.ex:557
 #, elixir-autogen, elixir-format
 msgid "Einen Platz nach unten"
 msgstr ""
@@ -303,17 +298,17 @@ msgstr ""
 msgid "Für dieses Trikot ist noch kein Foto hinterlegt."
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/new_live.ex:110
+#: lib/kitrank_web/live/reveal/new_live.ex:72
 #, elixir-autogen, elixir-format
 msgid "Gemeinsam aufdecken"
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/components.ex:286
+#: lib/kitrank_web/live/reveal/components.ex:362
 #, elixir-autogen, elixir-format
 msgid "Gesamtübersicht"
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/components.ex:641
+#: lib/kitrank_web/live/reveal/components.ex:717
 #, elixir-autogen, elixir-format
 msgid "Größter Streitfall"
 msgstr ""
@@ -344,17 +339,17 @@ msgstr ""
 msgid "Höher"
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/new_live.ex:112
+#: lib/kitrank_web/live/reveal/new_live.ex:74
 #, elixir-autogen, elixir-format
 msgid "Ihr geht eure Ranglisten Platz für Platz durch — vom letzten Rang nach vorn. Bei jedem Schritt deckt jede:r das eigene Trikot selbst auf."
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/components.ex:678
+#: lib/kitrank_web/live/reveal/components.ex:754
 #, elixir-autogen, elixir-format
 msgid "Ihr habt jedes gemeinsame Trikot auf denselben Platz gesetzt. Das ist entweder beeindruckend oder verdächtig."
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/components.ex:569
+#: lib/kitrank_web/live/reveal/components.ex:645
 #, elixir-autogen, elixir-format
 msgid "Ihr hattet kein einziges Trikot gemeinsam in der Liste — da gibt es nichts zu vergleichen."
 msgstr ""
@@ -369,7 +364,7 @@ msgstr ""
 msgid "Jede Antwort wird gespeichert — abbrechen kostet nichts."
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/components.ex:676
+#: lib/kitrank_web/live/reveal/components.ex:752
 #, elixir-autogen, elixir-format
 msgid "Kein Streit"
 msgstr ""
@@ -395,17 +390,17 @@ msgid "Leeren"
 msgstr ""
 
 #: lib/kitrank_web/live/ranking/components.ex:93
-#: lib/kitrank_web/live/reveal/new_live.ex:329
+#: lib/kitrank_web/live/reveal/new_live.ex:227
 #, elixir-autogen, elixir-format
 msgid "Link kopieren"
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/components.ex:843
+#: lib/kitrank_web/live/reveal/components.ex:919
 #, elixir-autogen, elixir-format
 msgid "Liste reicht nicht so weit"
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/new_live.ex:228
+#: lib/kitrank_web/live/reveal/new_live.ex:141
 #, elixir-autogen, elixir-format
 msgid "Lässt sich später nicht ändern."
 msgstr ""
@@ -415,7 +410,7 @@ msgstr ""
 msgid "Mitmachen"
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/components.ex:605
+#: lib/kitrank_web/live/reveal/components.ex:681
 #, elixir-autogen, elixir-format
 msgid "Mittlerer Abstand der Platzierungen. 0 heißt: identische Ranglisten."
 msgstr ""
@@ -436,7 +431,7 @@ msgstr ""
 msgid "Nichts im Ausschnitt"
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/components.ex:258
+#: lib/kitrank_web/live/reveal/components.ex:334
 #, elixir-autogen, elixir-format
 msgid "Niemand hat ein Trikot aus diesem Ausschnitt bewertet — so gibt es nichts aufzudecken."
 msgstr ""
@@ -456,7 +451,7 @@ msgstr ""
 msgid "Noch nichts ausgewählt. Tipp in der Übersicht auf „Vergleich“ bei zwei oder drei Trikots."
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/components.ex:155
+#: lib/kitrank_web/live/reveal/components.ex:231
 #, elixir-autogen, elixir-format
 msgid "Noch niemand. Gib den Code"
 msgstr ""
@@ -496,12 +491,12 @@ msgstr ""
 msgid "Optional. Steht später über deiner Liste und im Reveal neben deinem Namen."
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/components.ex:424
+#: lib/kitrank_web/live/reveal/components.ex:500
 #, elixir-autogen, elixir-format
 msgid "Pfeiltasten links und rechts gehen auch. Jede Antwort wird gespeichert."
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/components.ex:301
+#: lib/kitrank_web/live/reveal/components.ex:377
 #, elixir-autogen, elixir-format
 msgid "Platz"
 msgstr ""
@@ -516,29 +511,29 @@ msgstr ""
 msgid "Ranken, teilen, streiten"
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/new_live.ex:142
+#: lib/kitrank_web/live/reveal/new_live.ex:96
 #, elixir-autogen, elixir-format
 msgid "Raum beitreten"
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/new_live.ex:336
+#: lib/kitrank_web/live/reveal/new_live.ex:234
 #, elixir-autogen, elixir-format
 msgid "Raum betreten"
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/new_live.ex:181
+#: lib/kitrank_web/live/reveal/new_live.ex:130
 #, elixir-autogen, elixir-format
 msgid "Raum erstellen"
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/new_live.ex:234
+#: lib/kitrank_web/live/reveal/new_live.ex:152
 #, elixir-autogen, elixir-format
 msgid "Raum öffnen"
 msgstr ""
 
 #: lib/kitrank_web/live/reveal/components.ex:28
-#: lib/kitrank_web/live/reveal/new_live.ex:146
-#: lib/kitrank_web/live/reveal/new_live.ex:309
+#: lib/kitrank_web/live/reveal/new_live.ex:100
+#: lib/kitrank_web/live/reveal/new_live.ex:207
 #: lib/kitrank_web/live/sports_live.ex:95
 #, elixir-autogen, elixir-format
 msgid "Raumcode"
@@ -569,7 +564,7 @@ msgstr ""
 msgid "Selbst sortieren"
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/new_live.ex:267
+#: lib/kitrank_web/live/reveal/new_live.ex:160
 #, elixir-autogen, elixir-format
 msgid "So läuft es ab"
 msgstr ""
@@ -585,7 +580,7 @@ msgstr ""
 msgid "Sortieren"
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/components.ex:187
+#: lib/kitrank_web/live/reveal/components.ex:263
 #, elixir-autogen, elixir-format
 msgid "Steuerung geben"
 msgstr ""
@@ -705,28 +700,28 @@ msgstr ""
 msgid "Warum steht es genau hier? Was stört, was gefällt?"
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/components.ex:610
+#: lib/kitrank_web/live/reveal/components.ex:686
 #, elixir-autogen, elixir-format
 msgid "Was gesagt wurde"
 msgstr ""
 
 #: lib/kitrank_web/live/ranking/edit_live.ex:1250
-#: lib/kitrank_web/live/reveal/components.ex:397
+#: lib/kitrank_web/live/reveal/components.ex:473
 #, elixir-autogen, elixir-format
 msgid "Welches gefällt dir besser?"
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/components.ex:490
+#: lib/kitrank_web/live/reveal/components.ex:566
 #, elixir-autogen, elixir-format
 msgid "Wenn der Host startet, zählt diese Reihenfolge."
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/components.ex:148
+#: lib/kitrank_web/live/reveal/components.ex:224
 #, elixir-autogen, elixir-format
 msgid "Wer ist dabei"
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/components.ex:591
+#: lib/kitrank_web/live/reveal/components.ex:667
 #, elixir-autogen, elixir-format
 msgid "Wer liegt beieinander"
 msgstr ""
@@ -736,12 +731,12 @@ msgstr ""
 msgid "Wie der Zugriff funktioniert"
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/components.ex:559
+#: lib/kitrank_web/live/reveal/components.ex:635
 #, elixir-autogen, elixir-format
 msgid "Wie einig wart ihr?"
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/new_live.ex:220
+#: lib/kitrank_web/live/reveal/new_live.ex:133
 #, elixir-autogen, elixir-format
 msgid "Wie viele macht ihr mit?"
 msgstr ""
@@ -767,7 +762,7 @@ msgstr ""
 msgid "Zum Vereinsshop"
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/components.ex:771
+#: lib/kitrank_web/live/reveal/components.ex:847
 #, elixir-autogen, elixir-format
 msgid "Zum nächsten Teilnehmer wischen."
 msgstr ""
@@ -778,12 +773,12 @@ msgstr ""
 msgid "Zur Rangliste"
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/components.ex:223
+#: lib/kitrank_web/live/reveal/components.ex:299
 #, elixir-autogen, elixir-format
 msgid "Zurückholen"
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/components.ex:562
+#: lib/kitrank_web/live/reveal/components.ex:638
 #, elixir-autogen, elixir-format
 msgid "alle"
 msgstr ""
@@ -793,12 +788,12 @@ msgstr ""
 msgid "alle Trikots ansehen"
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/components.ex:892
+#: lib/kitrank_web/live/reveal/components.ex:973
 #, elixir-autogen, elixir-format
 msgid "aufgedeckt · noch"
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/components.ex:562
+#: lib/kitrank_web/live/reveal/components.ex:638
 #, elixir-autogen, elixir-format
 msgid "bewertet haben."
 msgstr ""
@@ -808,7 +803,7 @@ msgstr ""
 msgid "deiner Rangliste — den mit"
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/components.ex:805
+#: lib/kitrank_web/live/reveal/components.ex:881
 #, elixir-autogen, elixir-format
 msgid "du"
 msgstr ""
@@ -818,7 +813,7 @@ msgstr ""
 msgid "eine eigene Rangliste bauen"
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/components.ex:625
+#: lib/kitrank_web/live/reveal/components.ex:701
 #, elixir-autogen, elixir-format
 msgid "erreichbar, bis er abläuft — der Link zeigt weiterhin diese Auswertung."
 msgstr ""
@@ -833,23 +828,23 @@ msgstr ""
 msgid "noch eins dazu"
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/components.ex:180
+#: lib/kitrank_web/live/reveal/components.ex:256
 #, elixir-autogen, elixir-format
 msgid "steuert"
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/components.ex:595
+#: lib/kitrank_web/live/reveal/components.ex:671
 #, elixir-autogen, elixir-format
 msgid "und"
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/components.ex:334
-#: lib/kitrank_web/live/reveal/components.ex:809
+#: lib/kitrank_web/live/reveal/components.ex:410
+#: lib/kitrank_web/live/reveal/components.ex:885
 #, elixir-autogen, elixir-format
 msgid "verdeckt"
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/components.ex:156
+#: lib/kitrank_web/live/reveal/components.ex:232
 #, elixir-autogen, elixir-format
 msgid "weiter."
 msgstr ""
@@ -1133,22 +1128,22 @@ msgstr ""
 msgid "Alle auswählen"
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/room_live.ex:363
+#: lib/kitrank_web/live/reveal/room_live.ex:424
 #, elixir-autogen, elixir-format
 msgid "Bitte einen Namen angeben."
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/room_live.ex:356
+#: lib/kitrank_web/live/reveal/room_live.ex:417
 #, elixir-autogen, elixir-format
 msgid "Das Reveal läuft schon — zu spät für einen Beitritt."
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/room_live.ex:366
+#: lib/kitrank_web/live/reveal/room_live.ex:427
 #, elixir-autogen, elixir-format
 msgid "Das hat nicht geklappt."
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/new_live.ex:96
+#: lib/kitrank_web/live/reveal/new_live.ex:62
 #, elixir-autogen, elixir-format
 msgid "Der Raum ließ sich nicht anlegen. Nochmal?"
 msgstr ""
@@ -1168,31 +1163,31 @@ msgstr ""
 msgid "Die Notiz ist zu lang – höchstens 500 Zeichen."
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/room_live.ex:362
+#: lib/kitrank_web/live/reveal/room_live.ex:423
 #, elixir-autogen, elixir-format
 msgid "Diese Rangliste ist schon dabei."
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/new_live.ex:63
+#: lib/kitrank_web/live/reveal/new_live.ex:47
 #: lib/kitrank_web/live/sports_live.ex:51
 #, elixir-autogen, elixir-format
 msgid "Diesen Code kennen wir nicht. Vertippt?"
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/room_live.ex:27
+#: lib/kitrank_web/live/reveal/room_live.ex:28
 #, elixir-autogen, elixir-format
 msgid "Diesen Raum gibt es nicht."
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/room_live.ex:351
+#: lib/kitrank_web/live/reveal/room_live.ex:412
 #, elixir-autogen, elixir-format
 msgid "Diesen Teilen-Link kennen wir nicht. Er sieht so aus: /r/AbCd1234"
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/new_live.ex:59
-#: lib/kitrank_web/live/reveal/room_live.ex:30
-#: lib/kitrank_web/live/reveal/room_live.ex:297
+#: lib/kitrank_web/live/reveal/new_live.ex:43
+#: lib/kitrank_web/live/reveal/room_live.ex:31
 #: lib/kitrank_web/live/reveal/room_live.ex:358
+#: lib/kitrank_web/live/reveal/room_live.ex:419
 #: lib/kitrank_web/live/sports_live.ex:47
 #, elixir-autogen, elixir-format
 msgid "Dieser Raum ist abgelaufen."
@@ -1203,12 +1198,12 @@ msgstr ""
 msgid "Drin"
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/components.ex:916
+#: lib/kitrank_web/live/reveal/components.ex:997
 #, elixir-autogen, elixir-format
 msgid "Es haben noch nicht alle aufgedeckt – du kannst trotzdem weiter."
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/room_live.ex:135
+#: lib/kitrank_web/live/reveal/room_live.ex:167
 #, elixir-autogen, elixir-format
 msgid "Für den Ausschnitt dieses Raums gibt es keine Trikots — da lässt sich nichts ranken."
 msgstr ""
@@ -1228,7 +1223,7 @@ msgstr ""
 msgid "Neue Rangliste"
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/components.ex:922
+#: lib/kitrank_web/live/reveal/components.ex:1003
 #, elixir-autogen, elixir-format
 msgid "Nächster Platz"
 msgstr ""
@@ -1244,12 +1239,12 @@ msgstr ""
 msgid "Rangliste sortieren"
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/new_live.ex:92
+#: lib/kitrank_web/live/reveal/new_live.ex:58
 #, elixir-autogen, elixir-format
 msgid "Raum %{code}"
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/new_live.ex:232
+#: lib/kitrank_web/live/reveal/new_live.ex:150
 #, elixir-autogen, elixir-format
 msgid "Raum wird geöffnet …"
 msgstr ""
@@ -1264,32 +1259,22 @@ msgstr ""
 msgid "Trikots von %{verein}"
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/components.ex:886
+#: lib/kitrank_web/live/reveal/components.ex:963
 #, elixir-autogen, elixir-format
 msgid "Warte auf Teilnehmer."
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/new_live.ex:71
-#, elixir-autogen, elixir-format
-msgid "Wähl mindestens eine Liga."
-msgstr ""
-
-#: lib/kitrank_web/live/reveal/new_live.ex:74
-#, elixir-autogen, elixir-format
-msgid "Wähl mindestens einen Trikot-Typ."
-msgstr ""
-
-#: lib/kitrank_web/live/reveal/components.ex:586
+#: lib/kitrank_web/live/reveal/components.ex:662
 #, elixir-autogen, elixir-format
 msgid "höchster Schnitt"
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/room_live.ex:230
+#: lib/kitrank_web/live/reveal/room_live.ex:284
 #, elixir-autogen, elixir-format
 msgid "Übergabe hat nicht geklappt."
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/components.ex:598
+#: lib/kitrank_web/live/reveal/components.ex:674
 #, elixir-autogen, elixir-format
 msgid "%{abstand} Plätze auseinander"
 msgstr ""
@@ -1326,17 +1311,17 @@ msgstr ""
 msgid "%{liga} · Saison %{saison}"
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/components.ex:827
+#: lib/kitrank_web/live/reveal/components.ex:903
 #, elixir-autogen, elixir-format
 msgid "%{name} deckt noch auf"
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/components.ex:403
+#: lib/kitrank_web/live/reveal/components.ex:479
 #, elixir-autogen, elixir-format
 msgid "%{platziert} von %{gesamt} eingeordnet"
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/components.ex:669
+#: lib/kitrank_web/live/reveal/components.ex:745
 #, elixir-autogen, elixir-format
 msgid "%{spanne} Plätze Unterschied"
 msgstr ""
@@ -1367,8 +1352,8 @@ msgstr ""
 msgid "Noch keine Trikots für %{saison}"
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/components.ex:663
-#: lib/kitrank_web/live/reveal/components.ex:749
+#: lib/kitrank_web/live/reveal/components.ex:739
+#: lib/kitrank_web/live/reveal/components.ex:825
 #, elixir-autogen, elixir-format
 msgid "Platz %{nr}"
 msgstr ""
@@ -1390,7 +1375,7 @@ msgid_plural "Rangliste · %{count} Trikots"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/kitrank_web/live/reveal/room_live.ex:41
+#: lib/kitrank_web/live/reveal/room_live.ex:42
 #, elixir-autogen, elixir-format
 msgid "Reveal %{code}"
 msgstr ""
@@ -1421,22 +1406,22 @@ msgstr ""
 msgid "Such dir aus %{anzahl} Trikots die aus, über die du etwas zu sagen hast, und bring sie in eine Reihenfolge. Kein Konto nötig."
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/components.ex:429
+#: lib/kitrank_web/live/reveal/components.ex:505
 #, elixir-autogen, elixir-format
 msgid "Dieser Browser merkt sich die Rangliste."
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/components.ex:495
+#: lib/kitrank_web/live/reveal/components.ex:571
 #, elixir-autogen, elixir-format
 msgid "Nochmal vergleichen"
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/components.ex:434
+#: lib/kitrank_web/live/reveal/components.ex:510
 #, elixir-autogen, elixir-format
 msgid "— den brauchst du auf einem anderen Gerät. Geheim halten."
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/components.ex:288
+#: lib/kitrank_web/live/reveal/components.ex:364
 #, elixir-autogen, elixir-format
 msgid "%{count} Platz offen"
 msgid_plural "%{count} Plätze offen"
@@ -1765,42 +1750,72 @@ msgstr ""
 msgid "Noch kein Raum?"
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/components.ex:888
+#: lib/kitrank_web/live/reveal/components.ex:969
 #, elixir-autogen, elixir-format
 msgid "%{bereit}/%{gesamt} bereit."
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/components.ex:887
+#: lib/kitrank_web/live/reveal/components.ex:966
 #, elixir-autogen, elixir-format
 msgid "Alle bereit. Los geht's."
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/components.ex:199
+#: lib/kitrank_web/live/reveal/components.ex:275
 #, elixir-autogen, elixir-format
 msgid "Bereit"
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/components.ex:199
+#: lib/kitrank_web/live/reveal/components.ex:275
 #, elixir-autogen, elixir-format
 msgid "Bereit melden"
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/components.ex:905
+#: lib/kitrank_web/live/reveal/components.ex:986
 #, elixir-autogen, elixir-format
 msgid "Es sind noch nicht alle bereit. Trotzdem starten?"
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/components.ex:400
+#: lib/kitrank_web/live/reveal/components.ex:476
 #, elixir-autogen, elixir-format
 msgid "Fertig einsortiert. Unten noch „Bereit melden“ nicht vergessen."
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/components.ex:210
+#: lib/kitrank_web/live/reveal/components.ex:286
 #, elixir-autogen, elixir-format
 msgid "bereit"
 msgstr ""
 
-#: lib/kitrank_web/live/reveal/components.ex:210
+#: lib/kitrank_web/live/reveal/components.ex:286
 #, elixir-autogen, elixir-format
 msgid "wartet"
+msgstr ""
+
+#: lib/kitrank_web/live/reveal/components.ex:152
+#, elixir-autogen, elixir-format
+msgid "Einstellungen"
+msgstr ""
+
+#: lib/kitrank_web/live/reveal/new_live.ex:168
+#, elixir-autogen, elixir-format
+msgid "Im Raum legst du fest, um welche Ligen und Trikot-Typen es geht."
+msgstr ""
+
+#: lib/kitrank_web/live/reveal/components.ex:154
+#, elixir-autogen, elixir-format
+msgid "Lässt sich ändern, solange noch niemand gestartet hat."
+msgstr ""
+
+#: lib/kitrank_web/live/reveal/components.ex:158
+#, elixir-autogen, elixir-format
+msgid "Worum geht es?"
+msgstr ""
+
+#: lib/kitrank_web/live/reveal/room_live.ex:80
+#, elixir-autogen, elixir-format
+msgid "alle Ligen"
+msgstr ""
+
+#: lib/kitrank_web/live/reveal/room_live.ex:89
+#, elixir-autogen, elixir-format
+msgid "alle Trikot-Typen"
 msgstr ""

@@ -15,6 +15,7 @@ defmodule KitrankWeb.Reveal.RoomLive do
 
   import KitrankWeb.Reveal.Components
 
+  alias Kitrank.Kits
   alias Kitrank.Rankings
   alias Kitrank.Rankings.Duel
   alias Kitrank.Reveal
@@ -55,7 +56,10 @@ defmodule KitrankWeb.Reveal.RoomLive do
            my_ranking_mine?: false,
            my_entries: [],
            own_duel: nil,
-           scope_label: scope_label(room)
+           # Fuer die Einstellungen in der Lobby: einmal geladen, aendert sich
+           # waehrend des Raums nicht – was gewaehlt ist, kommt aus dem Raum.
+           competitions: Kits.list_competitions_for_season(room.season),
+           types: Kits.list_kit_types(room.season)
          )
          |> load_room()}
     end
@@ -68,15 +72,43 @@ defmodule KitrankWeb.Reveal.RoomLive do
   end
 
   # Kurzform des Ausschnitts fuer den Kopf: "Bundesliga · Heim, Auswaerts".
+  # Leer heisst "keine Einschraenkung" (siehe Room.scope_changeset) - das darf
+  # hier nicht wie "nichts ausgewaehlt" aussehen.
   defp scope_label(room) do
     ligen =
-      Kitrank.Kits.list_competitions()
-      |> Enum.filter(&(&1.id in room.competition_ids))
-      |> Enum.map_join(", ", & &1.name)
+      if room.competition_ids == [] do
+        gettext("alle Ligen")
+      else
+        Kitrank.Kits.list_competitions()
+        |> Enum.filter(&(&1.id in room.competition_ids))
+        |> Enum.map_join(", ", & &1.name)
+      end
 
-    typen = Enum.map_join(room.kit_types, ", ", &KitrankWeb.KitLabel.label/1)
+    typen =
+      if room.kit_types == [] do
+        gettext("alle Trikot-Typen")
+      else
+        Enum.map_join(room.kit_types, ", ", &KitrankWeb.KitLabel.label/1)
+      end
 
     [ligen, typen] |> Enum.reject(&(&1 == "")) |> Enum.join(" · ")
+  end
+
+  # Fuer die Chips in den Einstellungen: ist nichts eingeschraenkt, zeigt die
+  # Oberflaeche alles als ausgewaehlt - abwaehlen ergibt dann die Teilmenge,
+  # die wirklich gespeichert wird.
+  defp chosen_leagues(room, competitions) do
+    if room.competition_ids == [],
+      do: MapSet.new(competitions, & &1.id),
+      else: MapSet.new(room.competition_ids)
+  end
+
+  defp chosen_types(room, types) do
+    if room.kit_types == [], do: MapSet.new(types), else: MapSet.new(room.kit_types)
+  end
+
+  defp toggle_in(set, value) do
+    if MapSet.member?(set, value), do: MapSet.delete(set, value), else: MapSet.put(set, value)
   end
 
   ## Host-Erkennung
@@ -209,6 +241,28 @@ defmodule KitrankWeb.Reveal.RoomLive do
     end
   end
 
+  ## Ausschnitt aendern – nur der Host, nur vor dem Start
+
+  def handle_event("toggle_scope_league", %{"id" => id}, socket) do
+    if host?(socket) and socket.assigns.room.status == "waiting" do
+      chosen = toggle_in(socket.assigns.chosen_leagues, String.to_integer(id))
+      Reveal.update_scope(socket.assigns.room, %{competition_ids: MapSet.to_list(chosen)})
+      {:noreply, socket}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_event("toggle_scope_type", %{"type" => type}, socket) do
+    if host?(socket) and socket.assigns.room.status == "waiting" do
+      chosen = toggle_in(socket.assigns.chosen_types, type)
+      Reveal.update_scope(socket.assigns.room, %{kit_types: MapSet.to_list(chosen)})
+      {:noreply, socket}
+    else
+      {:noreply, socket}
+    end
+  end
+
   ## Ablauf – nur der Host
 
   def handle_event("reveal_next", _params, socket) do
@@ -258,6 +312,10 @@ defmodule KitrankWeb.Reveal.RoomLive do
     {:noreply, load_room(socket)}
   end
 
+  def handle_info({:scope_changed, _room}, socket) do
+    {:noreply, load_room(socket)}
+  end
+
   def handle_info(%Phoenix.Socket.Broadcast{event: "presence_diff"}, socket) do
     {:noreply, assign_online(socket)}
   end
@@ -285,7 +343,10 @@ defmodule KitrankWeb.Reveal.RoomLive do
             fit: room.status == "waiting" && Reveal.ranking_fit(room),
             board: room.status != "waiting" && Reveal.revealed_board(room),
             # Erst am Ende – vorher waere sie ein Spoiler.
-            result: room.status == "done" && Reveal.result(room)
+            result: room.status == "done" && Reveal.result(room),
+            scope_label: scope_label(room),
+            chosen_leagues: chosen_leagues(room, socket.assigns.competitions),
+            chosen_types: chosen_types(room, socket.assigns.types)
           )
         end)
         |> assign_host()
@@ -379,6 +440,15 @@ defmodule KitrankWeb.Reveal.RoomLive do
           host?={@host?}
           online={map_size(@online)}
           scope={@scope_label}
+        />
+
+        <.scope_settings
+          :if={@host? && @room.status == "waiting"}
+          room={@room}
+          competitions={@competitions}
+          chosen_leagues={@chosen_leagues}
+          types={@types}
+          chosen_types={@chosen_types}
         />
 
         <.join_panel

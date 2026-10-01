@@ -34,11 +34,6 @@ defmodule KitrankWeb.RevealLiveTest do
 
   describe "Raum anlegen" do
     test "zeigt den Code und legt das Host-Token im Browser ab", %{conn: conn} do
-      # Ohne Liga gibt es keinen Ausschnitt zu waehlen – und ohne Ausschnitt
-      # laesst die Oberflaeche keinen Raum anlegen.
-      %{competition: competition} =
-        league_fixture(season: Kits.current_season(), team_count: 1, kit_types: ["home"])
-
       {:ok, view, _html} = live(conn, ~p"/reveal/new")
 
       html =
@@ -49,10 +44,86 @@ defmodule KitrankWeb.RevealLiveTest do
       assert html =~ ~s(phx-hook="RememberHost")
       assert [room] = Kitrank.Repo.all(Reveal.Room)
       assert room.max_participants == 4
-      assert room.competition_ids == [competition.id]
-      assert room.kit_types == ["home"]
+      # Unbeschraenkt beim Anlegen - der Ausschnitt wird erst im Raum selbst
+      # festgelegt, siehe NewLive-Moduldoc.
+      assert room.competition_ids == []
+      assert room.kit_types == []
       assert html =~ room.room_code
       assert html =~ ~s(data-host-token="#{room.host_token}")
+    end
+  end
+
+  describe "Ausschnitt in der Lobby ändern" do
+    setup do
+      %{competition: a} = league_fixture(season: Kits.current_season(), team_count: 1)
+      %{competition: b} = league_fixture(season: Kits.current_season(), team_count: 1)
+      %{room: room_fixture(), a: a, b: b}
+    end
+
+    test "zeigt unbeschränkt als vollständig ausgewählt", %{conn: conn, room: room, a: a, b: b} do
+      {:ok, host, _html} = live(conn, ~p"/reveal/#{room.room_code}")
+      as_host(host, room)
+
+      html = render(host)
+      assert html =~ ~s(phx-value-id="#{a.id}" aria-pressed="true")
+      assert html =~ ~s(phx-value-id="#{b.id}" aria-pressed="true")
+    end
+
+    test "nur der Host sieht die Einstellungen", %{conn: conn, room: room} do
+      {:ok, gast, _html} = live(conn, ~p"/reveal/#{room.room_code}")
+      refute render(gast) =~ "Einstellungen"
+    end
+
+    test "eine Liga abwählen schränkt den Ausschnitt ein, sichtbar bei allen", %{
+      conn: conn,
+      room: room,
+      a: a,
+      b: b
+    } do
+      {:ok, host, _html} = live(conn, ~p"/reveal/#{room.room_code}")
+      as_host(host, room)
+      {:ok, beobachter, _html} = live(conn, ~p"/reveal/#{room.room_code}")
+
+      host |> element(~s{button[phx-value-id="#{a.id}"]}) |> render_click()
+
+      {:ok, aktualisiert} = Reveal.fetch_room(room.room_code)
+      refute a.id in aktualisiert.competition_ids
+      assert aktualisiert.competition_ids == [b.id]
+
+      assert render(host) =~ ~s(phx-value-id="#{a.id}" aria-pressed="false")
+      # Das Label zeigt nur noch die uebrig gebliebene Liga.
+      refute render(beobachter) =~ a.name
+      assert render(beobachter) =~ b.name
+    end
+
+    test "ein Trikot-Typ lässt sich ebenso abwählen", %{conn: conn, room: room} do
+      {:ok, host, _html} = live(conn, ~p"/reveal/#{room.room_code}")
+      as_host(host, room)
+
+      host |> element(~s{button[phx-value-type="home"]}) |> render_click()
+
+      {:ok, aktualisiert} = Reveal.fetch_room(room.room_code)
+      refute "home" in aktualisiert.kit_types
+    end
+
+    test "wer nicht Host ist, kann nichts umschalten", %{conn: conn, room: room, a: a} do
+      {:ok, gast, _html} = live(conn, ~p"/reveal/#{room.room_code}")
+
+      render_hook(gast, "toggle_scope_league", %{"id" => to_string(a.id)})
+
+      {:ok, unveraendert} = Reveal.fetch_room(room.room_code)
+      assert unveraendert.competition_ids == []
+    end
+
+    test "nach dem Start lässt sich nichts mehr ändern", %{conn: conn, room: room, a: a} do
+      {:ok, _tom} = Reveal.join(room, ranking_with(2).share_slug, "Tom")
+      {:ok, room} = Reveal.start(room)
+
+      {:ok, host, _html} = live(conn, ~p"/reveal/#{room.room_code}")
+      as_host(host, room)
+
+      refute render(host) =~ "Einstellungen"
+      assert {:error, :already_started} = Reveal.update_scope(room, %{competition_ids: [a.id]})
     end
   end
 

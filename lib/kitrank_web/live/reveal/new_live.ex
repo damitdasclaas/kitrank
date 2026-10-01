@@ -9,47 +9,31 @@ defmodule KitrankWeb.Reveal.NewLive do
   Nach dem Anlegen wird deshalb nicht sofort weitergeleitet: erst muss das
   Host-Token im Browser liegen, sonst betritt der Ersteller seinen eigenen Raum
   ohne Steuerung.
+
+  Der Ausschnitt (welche Ligen, welche Trikot-Typen) wird hier bewusst nicht
+  abgefragt – das wäre eine Hürde, bevor es überhaupt einen Code zum
+  Weitergeben gibt. Er startet unbeschränkt und lässt sich im Raum selbst
+  einschränken, solange noch niemand gestartet hat.
   """
   use KitrankWeb, :live_view
 
   alias Kitrank.Kits
   alias Kitrank.Reveal
-  alias KitrankWeb.KitLabel
 
   @impl true
   def mount(_params, _session, socket) do
-    season = Kits.current_season()
-    competitions = Kits.list_competitions_for_season(season)
-    # Einmal fragen, zweimal verwenden – der Aufruf ging vorher zweimal an die
-    # Datenbank, und beim Rendern eines LiveView passiert das zweimal.
-    types = Kits.list_kit_types(season)
-
     {:ok,
      assign(socket,
        page_title: "Reveal",
        max: 8,
        room: nil,
        code_error: nil,
-       season: season,
-       competitions: competitions,
-       # Standard: alles, was es in dieser Saison gibt. Einschraenken kann man
-       # danach – aufmachen muss man nichts.
-       chosen_leagues: MapSet.new(competitions, & &1.id),
-       chosen_types: MapSet.new(types),
-       types: types,
-       scope_error: nil
+       season: Kits.current_season(),
+       create_error: nil
      )}
   end
 
   @impl true
-  def handle_event("toggle_league", %{"id" => id}, socket) do
-    {:noreply, update(socket, :chosen_leagues, &toggle(&1, String.to_integer(id)))}
-  end
-
-  def handle_event("toggle_type", %{"type" => type}, socket) do
-    {:noreply, update(socket, :chosen_types, &toggle(&1, type))}
-  end
-
   def handle_event("join", %{"room_code" => code}, socket) do
     case Reveal.fetch_room(code) do
       {:ok, room} ->
@@ -66,25 +50,7 @@ defmodule KitrankWeb.Reveal.NewLive do
 
   @impl true
   def handle_event("create", %{"max_participants" => max}, socket) do
-    cond do
-      MapSet.size(socket.assigns.chosen_leagues) == 0 ->
-        {:noreply, assign(socket, :scope_error, gettext("Wähl mindestens eine Liga."))}
-
-      MapSet.size(socket.assigns.chosen_types) == 0 ->
-        {:noreply, assign(socket, :scope_error, gettext("Wähl mindestens einen Trikot-Typ."))}
-
-      true ->
-        create_room(socket, max)
-    end
-  end
-
-  defp create_room(socket, max) do
-    attrs = %{
-      max_participants: String.to_integer(max),
-      season: socket.assigns.season,
-      competition_ids: MapSet.to_list(socket.assigns.chosen_leagues),
-      kit_types: MapSet.to_list(socket.assigns.chosen_types)
-    }
+    attrs = %{max_participants: String.to_integer(max), season: socket.assigns.season}
 
     case Reveal.create_room(attrs) do
       {:ok, room} ->
@@ -93,12 +59,8 @@ defmodule KitrankWeb.Reveal.NewLive do
 
       {:error, _changeset} ->
         {:noreply,
-         assign(socket, :scope_error, gettext("Der Raum ließ sich nicht anlegen. Nochmal?"))}
+         assign(socket, :create_error, gettext("Der Raum ließ sich nicht anlegen. Nochmal?"))}
     end
-  end
-
-  defp toggle(set, value) do
-    if MapSet.member?(set, value), do: MapSet.delete(set, value), else: MapSet.put(set, value)
   end
 
   @impl true
@@ -116,15 +78,7 @@ defmodule KitrankWeb.Reveal.NewLive do
 
         <div :if={!@room} class="mt-8 grid gap-4 sm:grid-cols-2">
           <.join_form error={@code_error} />
-          <.setup_form
-            max={@max}
-            season={@season}
-            competitions={@competitions}
-            chosen_leagues={@chosen_leagues}
-            types={@types}
-            chosen_types={@chosen_types}
-            error={@scope_error}
-          />
+          <.setup_form max={@max} error={@create_error} />
         </div>
 
         <.how_it_works :if={!@room} />
@@ -168,11 +122,6 @@ defmodule KitrankWeb.Reveal.NewLive do
   end
 
   attr :max, :integer, required: true
-  attr :season, :string, required: true
-  attr :competitions, :list, required: true
-  attr :chosen_leagues, :any, required: true
-  attr :types, :list, required: true
-  attr :chosen_types, :any, required: true
   attr :error, :string, default: nil
 
   defp setup_form(assigns) do
@@ -180,42 +129,6 @@ defmodule KitrankWeb.Reveal.NewLive do
     <form phx-submit="create" class="rounded-xl border border-line bg-panel p-5">
       <h2 class="kr-display text-lg">{gettext("Raum erstellen")}</h2>
       <p class="mt-1 text-xs text-soft">{gettext("Du bekommst einen Code zum Weitergeben.")}</p>
-
-      <%!-- Der Ausschnitt ist das Wichtigste an dieser Seite: er sorgt dafuer,
-            dass "Platz 3" spaeter bei allen dasselbe bedeutet. --%>
-      <fieldset class="mt-4">
-        <legend class="kr-eyebrow">Worum geht es? · {@season}</legend>
-
-        <div class="mt-2 flex flex-wrap gap-1.5">
-          <.chip
-            :for={competition <- @competitions}
-            event="toggle_league"
-            value={competition.id}
-            key="id"
-            label={competition.name}
-            on?={MapSet.member?(@chosen_leagues, competition.id)}
-          />
-        </div>
-
-        <div class="mt-2 flex flex-wrap gap-1.5">
-          <.chip
-            :for={type <- @types}
-            event="toggle_type"
-            value={type}
-            key="type"
-            label={KitLabel.label(type)}
-            on?={MapSet.member?(@chosen_types, type)}
-          />
-        </div>
-
-        <p class="mt-2 text-xs text-soft">
-          {gettext(
-            "Alle Ranglisten werden auf diesen Ausschnitt gefiltert — dadurch vergleicht ihr dieselben Trikots, egal wie lang eure Listen sind."
-          )}
-        </p>
-      </fieldset>
-
-      <p :if={@error} class="mt-2 text-xs text-red-600">{@error}</p>
 
       <label for="max" class="mt-4 block text-xs font-medium">{gettext("Wie viele macht ihr mit?")}</label>
       <select
@@ -227,37 +140,17 @@ defmodule KitrankWeb.Reveal.NewLive do
       </select>
       <p class="mt-1.5 text-xs text-soft">{gettext("Lässt sich später nicht ändern.")}</p>
 
+      <p :if={@error} class="mt-2 text-xs text-red-600">{@error}</p>
+
+      <%!-- Welche Ligen und Trikot-Typen es sein sollen, fragt der Raum selbst
+            ab, sobald er steht – siehe Moduldoc. Hier waere es nur eine Huerde
+            vor dem eigentlichen Zweck dieser Seite: einen Code zu bekommen. --%>
       <button
         type="submit"
         phx-disable-with={gettext("Raum wird geöffnet …")}
         class="mt-3 w-full rounded-md bg-ink px-4 py-2.5 text-sm font-semibold text-chalk transition hover:opacity-90"
       >{gettext("Raum öffnen")}</button>
     </form>
-    """
-  end
-
-  attr :event, :string, required: true
-  attr :value, :any, required: true
-  attr :key, :string, required: true
-  attr :label, :string, required: true
-  attr :on?, :boolean, required: true
-
-  defp chip(assigns) do
-    ~H"""
-    <button
-      type="button"
-      phx-click={@event}
-      phx-value-id={@key == "id" && @value}
-      phx-value-type={@key == "type" && @value}
-      aria-pressed={to_string(@on?)}
-      class={[
-        "rounded-full border px-3 py-1 text-xs transition",
-        @on? && "border-transparent bg-ink text-chalk",
-        !@on? && "border-line text-soft hover:border-ink hover:text-ink"
-      ]}
-    >
-      {@label}
-    </button>
     """
   end
 
@@ -273,11 +166,16 @@ defmodule KitrankWeb.Reveal.NewLive do
         </li>
         <li>
           <span class="text-ink">2.</span> {gettext(
-            "Alle treten mit dem Teilen-Link ihrer Rangliste bei — nicht mit dem Bearbeiten-Link."
+            "Im Raum legst du fest, um welche Ligen und Trikot-Typen es geht."
           )}
         </li>
         <li>
           <span class="text-ink">3.</span> {gettext(
+            "Alle treten mit dem Teilen-Link ihrer Rangliste bei — nicht mit dem Bearbeiten-Link."
+          )}
+        </li>
+        <li>
+          <span class="text-ink">4.</span> {gettext(
             "Du startest, und alle sehen jeden Schritt gleichzeitig."
           )}
         </li>

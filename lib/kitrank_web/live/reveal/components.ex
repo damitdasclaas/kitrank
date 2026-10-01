@@ -133,6 +133,82 @@ defmodule KitrankWeb.Reveal.Components do
   end
 
   attr :room, :map, required: true
+  attr :competitions, :list, required: true
+  attr :chosen_leagues, :any, required: true
+  attr :types, :list, required: true
+  attr :chosen_types, :any, required: true
+
+  @doc """
+  Ausschnitt im Nachhinein festlegen – nur fürs Hosten, nur vorm Start.
+
+  Steht bewusst nicht mehr auf der Seite, auf der der Raum entsteht: dort
+  wäre es eine Hürde vor dem eigentlichen Zweck, erst mal einen Code zu
+  bekommen. Der Ausschnitt startet unbeschränkt und wird hier bei Bedarf
+  eingeengt, während schon Leute beitreten können.
+  """
+  def scope_settings(assigns) do
+    ~H"""
+    <div class="mt-8 rounded-xl border border-line bg-panel p-5">
+      <h2 class="kr-display text-lg">{gettext("Einstellungen")}</h2>
+      <p class="mt-1 text-xs text-soft">
+        {gettext("Lässt sich ändern, solange noch niemand gestartet hat.")}
+      </p>
+
+      <fieldset class="mt-4">
+        <legend class="kr-eyebrow">{gettext("Worum geht es?")} · {@room.season}</legend>
+
+        <div class="mt-2 flex flex-wrap gap-1.5">
+          <.chip
+            :for={competition <- @competitions}
+            event="toggle_scope_league"
+            value={competition.id}
+            key="id"
+            label={competition.name}
+            on?={MapSet.member?(@chosen_leagues, competition.id)}
+          />
+        </div>
+
+        <div class="mt-2 flex flex-wrap gap-1.5">
+          <.chip
+            :for={type <- @types}
+            event="toggle_scope_type"
+            value={type}
+            key="type"
+            label={KitLabel.label(type)}
+            on?={MapSet.member?(@chosen_types, type)}
+          />
+        </div>
+      </fieldset>
+    </div>
+    """
+  end
+
+  attr :event, :string, required: true
+  attr :value, :any, required: true
+  attr :key, :string, required: true
+  attr :label, :string, required: true
+  attr :on?, :boolean, required: true
+
+  defp chip(assigns) do
+    ~H"""
+    <button
+      type="button"
+      phx-click={@event}
+      phx-value-id={@key == "id" && @value}
+      phx-value-type={@key == "type" && @value}
+      aria-pressed={to_string(@on?)}
+      class={[
+        "rounded-full border px-3 py-1 text-xs transition",
+        @on? && "border-transparent bg-ink text-chalk",
+        !@on? && "border-line text-soft hover:border-ink hover:text-ink"
+      ]}
+    >
+      {@label}
+    </button>
+    """
+  end
+
+  attr :room, :map, required: true
   attr :participants, :list, required: true
   attr :online, :map, required: true
   attr :me, :any, required: true

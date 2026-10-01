@@ -71,6 +71,18 @@ defmodule Kitrank.Reveal.Room do
     |> validate_number(:current_step, greater_than: 0)
   end
 
+  @doc """
+  Changeset für den Ausschnitt, nachträglich in der Lobby geändert.
+
+  Leer heißt weiterhin "keine Einschränkung" – ein Host darf alles abwählen
+  und landet damit wieder beim unbeschränkten Zustand, nicht bei einem Fehler.
+  """
+  def scope_changeset(room, attrs) do
+    room
+    |> cast(attrs, [:competition_ids, :kit_types])
+    |> validate_subset(:kit_types, Kitrank.Kits.Kit.kit_types())
+  end
+
   defp put_default(changeset, field, fun) do
     case get_field(changeset, field) do
       nil -> put_change(changeset, field, fun.())

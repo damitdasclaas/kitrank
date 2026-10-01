@@ -83,6 +83,30 @@ defmodule Kitrank.Reveal do
     {length(entries_in_scope(scope, ranking_id)), MapSet.size(scope)}
   end
 
+  @doc """
+  Ändert den Ausschnitt eines Raums – die Lobby erlaubt das, solange noch
+  niemand gestartet hat. Danach würde "Platz 3" plötzlich etwas anderes
+  bedeuten als beim Beitritt.
+
+  Broadcastet `{:scope_changed, room}`, damit Ausschnitt-Label und
+  Abdeckungs-Anzeige bei allen sofort nachziehen.
+  """
+  def update_scope(%Room{status: "waiting"} = room, attrs) do
+    room
+    |> Room.scope_changeset(attrs)
+    |> Repo.update()
+    |> case do
+      {:ok, room} ->
+        broadcast(room, {:scope_changed, room})
+        {:ok, room}
+
+      {:error, changeset} ->
+        {:error, changeset}
+    end
+  end
+
+  def update_scope(%Room{} = _room, _attrs), do: {:error, :already_started}
+
   ## Räume
 
   @doc """

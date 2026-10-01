@@ -325,6 +325,55 @@ defmodule Kitrank.RevealTest do
     end
   end
 
+  describe "update_scope/2" do
+    test "schränkt den Ausschnitt ein, solange noch niemand gestartet hat" do
+      competition = competition_fixture()
+      room = room_fixture()
+
+      assert {:ok, aktualisiert} =
+               Reveal.update_scope(room, %{
+                 competition_ids: [competition.id],
+                 kit_types: ["home"]
+               })
+
+      assert aktualisiert.competition_ids == [competition.id]
+      assert aktualisiert.kit_types == ["home"]
+    end
+
+    test "leer setzen heißt wieder unbeschränkt, kein Fehler" do
+      competition = competition_fixture()
+      room = room_fixture(%{competition_ids: [competition.id], kit_types: ["home"]})
+
+      assert {:ok, aktualisiert} =
+               Reveal.update_scope(room, %{competition_ids: [], kit_types: []})
+
+      assert aktualisiert.competition_ids == []
+      assert aktualisiert.kit_types == []
+    end
+
+    test "lehnt ungültige Trikot-Typen ab" do
+      assert {:error, changeset} = Reveal.update_scope(room_fixture(), %{kit_types: ["erfunden"]})
+      assert changeset.errors[:kit_types]
+    end
+
+    test "geht nicht mehr, sobald der Raum gestartet ist" do
+      room = room_fixture()
+      {:ok, _} = Reveal.join(room, ranking_with(1).share_slug, "Tom")
+      {:ok, room} = Reveal.start(room)
+
+      assert {:error, :already_started} = Reveal.update_scope(room, %{kit_types: ["home"]})
+    end
+
+    test "broadcastet die Änderung" do
+      room = room_fixture()
+      Reveal.subscribe(room)
+
+      Reveal.update_scope(room, %{kit_types: ["home"]})
+
+      assert_receive {:scope_changed, %Room{kit_types: ["home"]}}
+    end
+  end
+
   describe "start/1" do
     test "startet beim schlechtesten Rang der längsten Liste" do
       room = room_fixture()
