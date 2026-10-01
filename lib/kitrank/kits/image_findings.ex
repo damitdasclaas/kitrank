@@ -24,12 +24,15 @@ defmodule Kitrank.Kits.ImageFindings do
   def sync(auffaellig) do
     jetzt = DateTime.utc_now() |> DateTime.truncate(:second)
 
-    aktuelle_schluessel =
-      MapSet.new(auffaellig, &{&1.kit.id, Atom.to_string(&1.feld), &1.url})
+    aktuelle_schluessel = MapSet.new(auffaellig, &schluessel/1)
 
     Enum.each(auffaellig, fn eintrag ->
+      kit_id = eintrag.kit && eintrag.kit.id
+      team_id = eintrag.team && eintrag.team.id
+
       attrs = %{
-        kit_id: eintrag.kit.id,
+        kit_id: kit_id,
+        team_id: team_id,
         feld: Atom.to_string(eintrag.feld),
         url: eintrag.url,
         beschreibung: ProductImages.message(eintrag.grund),
@@ -37,7 +40,7 @@ defmodule Kitrank.Kits.ImageFindings do
         last_seen_at: jetzt
       }
 
-      case Repo.get_by(ImageFinding, kit_id: attrs.kit_id, feld: attrs.feld, url: attrs.url) do
+      case bestehenden_fund(kit_id, team_id, attrs.feld, attrs.url) do
         nil ->
           %ImageFinding{}
           |> ImageFinding.changeset(Map.put(attrs, :status, "offen"))
@@ -55,12 +58,35 @@ defmodule Kitrank.Kits.ImageFindings do
     list()
   end
 
+  # Repo.get_by lehnt nil als Vergleichswert ab ("unsafe") – kit_id/team_id
+  # sind aber hier bewusst oft nil (genau eins von beiden ist gesetzt).
+  defp bestehenden_fund(kit_id, team_id, feld, url) do
+    kit_filter =
+      if kit_id, do: dynamic([f], f.kit_id == ^kit_id), else: dynamic([f], is_nil(f.kit_id))
+
+    team_filter =
+      if team_id, do: dynamic([f], f.team_id == ^team_id), else: dynamic([f], is_nil(f.team_id))
+
+    Repo.one(
+      from f in ImageFinding,
+        where: ^kit_filter,
+        where: ^team_filter,
+        where: f.feld == ^feld and f.url == ^url
+    )
+  end
+
+  defp schluessel(eintrag) do
+    kit_id = eintrag.kit && eintrag.kit.id
+    team_id = eintrag.team && eintrag.team.id
+    {kit_id, team_id, Atom.to_string(eintrag.feld), eintrag.url}
+  end
+
   defp loesche_veraltete(aktuelle_schluessel) do
     veraltete_ids =
-      from(f in ImageFinding, select: {f.id, f.kit_id, f.feld, f.url})
+      from(f in ImageFinding, select: {f.id, f.kit_id, f.team_id, f.feld, f.url})
       |> Repo.all()
-      |> Enum.reject(fn {_id, kit_id, feld, url} ->
-        MapSet.member?(aktuelle_schluessel, {kit_id, feld, url})
+      |> Enum.reject(fn {_id, kit_id, team_id, feld, url} ->
+        MapSet.member?(aktuelle_schluessel, {kit_id, team_id, feld, url})
       end)
       |> Enum.map(&elem(&1, 0))
 
@@ -72,7 +98,7 @@ defmodule Kitrank.Kits.ImageFindings do
     ImageFinding
     |> order_by([f], desc: f.last_seen_at)
     |> Repo.all()
-    |> Repo.preload(kit: :team)
+    |> Repo.preload([:team, kit: :team])
     |> Enum.sort_by(&(&1.status == "erledigt"))
   end
 

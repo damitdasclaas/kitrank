@@ -1,7 +1,7 @@
 defmodule Kitrank.Kits.ImageCheck do
   @moduledoc """
-  Prüft, ob die verlinkten Bild- und Shop-Adressen eines Trikots noch
-  erreichbar sind.
+  Prüft, ob die verlinkten Bild-Adressen eines Trikots und der
+  Vereinsshop-Link eines Teams noch erreichbar sind.
 
   Bilder werden nicht gehostet, nur verlinkt (siehe `Kitrank.Kits.Kit`) –
   ändert ein Verein seine Shop-Struktur oder nimmt ein Produkt offline, bricht
@@ -9,6 +9,12 @@ defmodule Kitrank.Kits.ImageCheck do
   sieht. Diese Prüfung macht das vorher sichtbar. Nachpflegen bleibt
   Handarbeit im Admin – das hier ersetzt sie nicht, es verkürzt nur die Zeit
   bis jemand merkt, dass es nötig ist.
+
+  Geprüft wird nur, was öffentlich auch gezeigt wird: die Bild-Adressen eines
+  Trikots (`cutout_url`, `cutout_thumb_url`, `model_image_urls`) und der
+  Vereinsshop-Link (`Team.shop_url`). `Kit.source_shop_url` fehlt bewusst –
+  der ist seit der Entfernung der Pro-Trikot-Shop-Links nur noch eine interne
+  Quelle für den Bilder-Picker, kein öffentlicher Link mehr.
 
   Die Prüfung läuft von einer Server-IP aus, nicht aus einem echten Browser.
   Manche Shops (insbesondere Fanatics-Teamshops und einige
@@ -23,7 +29,7 @@ defmodule Kitrank.Kits.ImageCheck do
 
   import Ecto.Query
 
-  alias Kitrank.Kits.{Kit, ProductImages}
+  alias Kitrank.Kits.{Kit, ProductImages, Team}
   alias Kitrank.Repo
 
   # Derselbe User-Agent wie bei ProductImages: ein Shop soll die Anfrage nicht
@@ -33,9 +39,11 @@ defmodule Kitrank.Kits.ImageCheck do
   @timeout 10_000
 
   @doc """
-  Läuft über alle gespeicherten Bild- und Shop-Adressen und gibt die
-  auffälligen zurück, als `%{kit:, feld:, url:, grund:, kategorie:}` mit
-  `kategorie: :tot | :unklar`.
+  Läuft über alle gespeicherten Bild-Adressen und Vereinsshop-Links und gibt
+  die auffälligen zurück, als `%{kit:, team:, feld:, url:, grund:, kategorie:}`
+  mit `kategorie: :tot | :unklar`. Genau eins von `kit`/`team` ist gesetzt –
+  ein Fund gehört entweder zu einem Trikot oder zum Vereinsshop, nie zu
+  beidem.
 
   `log` (Standard `IO.puts/1`) bekommt eine Zeile je Fund plus eine
   Zusammenfassung – bei hunderten Adressen dauert ein Durchlauf, ohne
@@ -51,8 +59,8 @@ defmodule Kitrank.Kits.ImageCheck do
     nebenlaeufig = Keyword.get(opts, :concurrency, 8)
 
     pruefungen =
-      Repo.all(from k in Kit, preload: [:team])
-      |> Enum.flat_map(&adressen/1)
+      (Repo.all(from k in Kit, preload: [:team]) |> Enum.flat_map(&kit_adressen/1)) ++
+        (Repo.all(from t in Team, where: not is_nil(t.shop_url)) |> Enum.map(&team_adresse/1))
 
     gesamt = length(pruefungen)
     sag.("#{gesamt} Adressen werden geprüft …")
@@ -76,8 +84,8 @@ defmodule Kitrank.Kits.ImageCheck do
           {:ok, eintrag} ->
             [eintrag]
 
-          {:exit, {{kit, feld, url}, _grund}} ->
-            [%{kit: kit, feld: feld, url: url, grund: :timeout, kategorie: :unklar}]
+          {:exit, {eingabe, _grund}} ->
+            [fund(eingabe, :timeout)]
         end
       end)
 
@@ -97,18 +105,19 @@ defmodule Kitrank.Kits.ImageCheck do
     auffaellig
   end
 
-  defp adressen(kit) do
+  defp kit_adressen(kit) do
     [
       {:cutout_url, kit.cutout_url},
-      {:cutout_thumb_url, kit.cutout_thumb_url},
-      {:source_shop_url, kit.source_shop_url}
+      {:cutout_thumb_url, kit.cutout_thumb_url}
     ]
     |> Kernel.++(Enum.map(kit.model_image_urls || [], &{:model_image_urls, &1}))
     |> Enum.reject(fn {_feld, url} -> is_nil(url) end)
-    |> Enum.map(fn {feld, url} -> {kit, feld, url} end)
+    |> Enum.map(fn {feld, url} -> {:kit, kit, feld, url} end)
   end
 
-  defp pruefe({kit, feld, url}) do
+  defp team_adresse(team), do: {:team, team, :shop_url, team.shop_url}
+
+  defp pruefe({_art, _quelle, _feld, url} = eingabe) do
     ergebnis =
       case klassifiziere(head(url)) do
         :methode_unerlaubt -> klassifiziere(get_kurz(url))
@@ -116,12 +125,17 @@ defmodule Kitrank.Kits.ImageCheck do
       end
 
     case ergebnis do
-      :ok ->
-        nil
-
-      {:fehler, grund} ->
-        %{kit: kit, feld: feld, url: url, grund: grund, kategorie: kategorie(grund)}
+      :ok -> nil
+      {:fehler, grund} -> fund(eingabe, grund)
     end
+  end
+
+  defp fund({:kit, kit, feld, url}, grund) do
+    %{kit: kit, team: nil, feld: feld, url: url, grund: grund, kategorie: kategorie(grund)}
+  end
+
+  defp fund({:team, team, feld, url}, grund) do
+    %{kit: nil, team: team, feld: feld, url: url, grund: grund, kategorie: kategorie(grund)}
   end
 
   # Nur ein eindeutiges "das gibt es nicht" vom Shop selbst zaehlt als tot.
@@ -173,11 +187,17 @@ defmodule Kitrank.Kits.ImageCheck do
 
   defp klassifiziere({:error, _exception}), do: {:fehler, :unreachable}
 
-  defp zeile(%{kit: kit, feld: feld, url: url, grund: grund}) do
-    "  #{kit.team.short_code} #{bezeichnung(kit)} · #{feld}: #{ProductImages.message(grund)}\n" <>
+  defp zeile(%{feld: feld, url: url, grund: grund} = eintrag) do
+    "  #{bezeichnung(eintrag)} · #{feld}: #{ProductImages.message(grund)}\n" <>
       "    #{url}"
   end
 
-  defp bezeichnung(%Kit{kit_type: "special", name: name}), do: name || "Sondertrikot"
-  defp bezeichnung(%Kit{kit_type: typ}), do: typ
+  defp bezeichnung(%{kit: %Kit{} = kit}) do
+    "#{kit.team.short_code} #{kit_typ(kit)}"
+  end
+
+  defp bezeichnung(%{team: %Team{} = team}), do: "#{team.short_code} (Vereinsshop)"
+
+  defp kit_typ(%Kit{kit_type: "special", name: name}), do: name || "Sondertrikot"
+  defp kit_typ(%Kit{kit_type: typ}), do: typ
 end

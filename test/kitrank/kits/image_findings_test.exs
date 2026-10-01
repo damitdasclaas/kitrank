@@ -8,8 +8,20 @@ defmodule Kitrank.Kits.ImageFindingsTest do
   defp fund(kit, attrs \\ %{}) do
     Enum.into(attrs, %{
       kit: kit,
+      team: nil,
       feld: :cutout_url,
       url: "https://shop.example.com/kaputt.jpg",
+      grund: :not_found,
+      kategorie: :tot
+    })
+  end
+
+  defp team_fund(team, attrs \\ %{}) do
+    Enum.into(attrs, %{
+      kit: nil,
+      team: team,
+      feld: :shop_url,
+      url: "https://shop.example.com",
       grund: :not_found,
       kategorie: :tot
     })
@@ -90,6 +102,31 @@ defmodule Kitrank.Kits.ImageFindingsTest do
     ImageFindings.mark_all("tot", "offen")
 
     assert Enum.all?(ImageFindings.list(), &(&1.status == "offen"))
+  end
+
+  test "ein Vereinsshop-Fund (ohne Kit) wird genauso gespeichert" do
+    team = team_fixture()
+
+    [gespeichert] = ImageFindings.sync([team_fund(team)])
+
+    assert gespeichert.status == "offen"
+    assert gespeichert.kit_id == nil
+    assert gespeichert.team.id == team.id
+  end
+
+  test "Kit-Funde und Vereinsshop-Funde stehen nebeneinander, ohne sich zu stoeren" do
+    team = team_fixture()
+    kit = kit_fixture(team_id: team.id)
+
+    ergebnis =
+      ImageFindings.sync([
+        fund(kit),
+        team_fund(team)
+      ])
+
+    assert length(ergebnis) == 2
+    assert Enum.any?(ergebnis, &(&1.kit_id == kit.id))
+    assert Enum.any?(ergebnis, &(&1.team_id == team.id and &1.kit_id == nil))
   end
 
   test "list zeigt offene vor erledigten" do

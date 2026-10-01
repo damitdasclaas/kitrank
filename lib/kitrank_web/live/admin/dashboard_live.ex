@@ -135,10 +135,11 @@ defmodule KitrankWeb.Admin.DashboardLive do
         <div :if={@kits > 0} class="mt-8 rounded-lg border border-line p-5">
           <div class="flex items-center justify-between gap-3">
             <div>
-              <h2 class="kr-eyebrow">Bild- und Shop-Adressen</h2>
+              <h2 class="kr-eyebrow">Bilder und Vereinsshop-Links</h2>
               <p class="mt-1 text-xs text-soft">
-                Prüft jede gespeicherte Adresse per Abruf – Bilder werden nur verlinkt, nicht
-                gehostet, ein Verein kann die Adresse jederzeit ändern oder abschalten.
+                Prüft die Bild-Adressen jedes Trikots und den Vereinsshop-Link jedes Teams per
+                Abruf – beides wird nur verlinkt, nicht gehostet, ein Verein kann die Adresse
+                jederzeit ändern oder abschalten.
               </p>
             </div>
             <button
@@ -265,6 +266,12 @@ defmodule KitrankWeb.Admin.DashboardLive do
     """
   end
 
+  defp quelle_name(%{kit: kit}) when not is_nil(kit), do: kit.team.short_code
+  defp quelle_name(%{team: team}) when not is_nil(team), do: team.short_code
+
+  defp bearbeiten_pfad(%{kit: kit}) when not is_nil(kit), do: ~p"/admin/trikots/#{kit.id}"
+  defp bearbeiten_pfad(%{team: team}) when not is_nil(team), do: ~p"/admin/vereine/#{team.id}"
+
   attr :findings, :list, required: true
 
   defp finding_list(assigns) do
@@ -279,14 +286,14 @@ defmodule KitrankWeb.Admin.DashboardLive do
       >
         <div class={eintrag.status == "erledigt" && "line-through decoration-soft"}>
           <p>
-            <span class="font-medium">{eintrag.kit.team.short_code}</span>
+            <span class="font-medium">{quelle_name(eintrag)}</span>
             · {eintrag.feld} · {eintrag.beschreibung}
           </p>
           <p class="mt-1 break-all text-xs text-soft">{eintrag.url}</p>
         </div>
         <div class="flex shrink-0 items-center gap-3">
           <.link
-            navigate={~p"/admin/trikots/#{eintrag.kit.id}"}
+            navigate={bearbeiten_pfad(eintrag)}
             class="whitespace-nowrap text-xs font-medium underline underline-offset-4"
           >
             Bearbeiten

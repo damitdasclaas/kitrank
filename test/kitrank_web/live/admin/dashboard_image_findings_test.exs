@@ -24,6 +24,7 @@ defmodule KitrankWeb.Admin.DashboardImageFindingsTest do
     ImageFindings.sync([
       %{
         kit: kit,
+        team: nil,
         feld: :cutout_url,
         url: "https://shop.example.com/tot.jpg",
         grund: :not_found,
@@ -31,7 +32,8 @@ defmodule KitrankWeb.Admin.DashboardImageFindingsTest do
       },
       %{
         kit: kit,
-        feld: :source_shop_url,
+        team: nil,
+        feld: :model_image_urls,
         url: "https://shop.example.com/produkt",
         grund: :blocked,
         kategorie: :unklar
@@ -47,6 +49,30 @@ defmodule KitrankWeb.Admin.DashboardImageFindingsTest do
     assert html =~ ~p"/admin/trikots/#{kit.id}"
   end
 
+  test "ein Vereinsshop-Fund verlinkt zur Vereins-Bearbeitung, nicht zum Trikot", %{conn: conn} do
+    team = team_fixture()
+    # Der Bild-Pruef-Block zeigt sich erst, wenn es ueberhaupt Trikots in der
+    # laufenden Saison gibt - unabhaengig vom Verein hier, den der Test prueft.
+    kit_fixture()
+
+    ImageFindings.sync([
+      %{
+        kit: nil,
+        team: team,
+        feld: :shop_url,
+        url: "https://shop.example.com",
+        grund: :not_found,
+        kategorie: :tot
+      }
+    ])
+
+    {:ok, _view, html} = live(conn, ~p"/admin")
+
+    assert html =~ team.short_code
+    assert html =~ ~p"/admin/vereine/#{team.id}"
+    refute html =~ ~p"/admin/trikots/"
+  end
+
   test "ein Fund laesst sich als erledigt markieren und zuruecksetzen", %{conn: conn} do
     kit = kit_fixture()
 
@@ -54,6 +80,7 @@ defmodule KitrankWeb.Admin.DashboardImageFindingsTest do
       ImageFindings.sync([
         %{
           kit: kit,
+          team: nil,
           feld: :cutout_url,
           url: "https://shop.example.com/tot.jpg",
           grund: :not_found,
@@ -87,6 +114,7 @@ defmodule KitrankWeb.Admin.DashboardImageFindingsTest do
     ImageFindings.sync([
       %{
         kit: kit,
+        team: nil,
         feld: :cutout_url,
         url: "https://shop.example.com/tot.jpg",
         grund: :not_found,
@@ -94,13 +122,15 @@ defmodule KitrankWeb.Admin.DashboardImageFindingsTest do
       },
       %{
         kit: kit,
-        feld: :source_shop_url,
+        team: nil,
+        feld: :model_image_urls,
         url: "https://shop.example.com/unklar-1",
         grund: :blocked,
         kategorie: :unklar
       },
       %{
         kit: kit,
+        team: nil,
         feld: :cutout_thumb_url,
         url: "https://shop.example.com/unklar-2",
         grund: :timeout,
